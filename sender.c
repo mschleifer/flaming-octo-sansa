@@ -117,6 +117,6 @@ main(int argc, char *argv[])
     	printf(" Port: %i\n Requester Port: %i\n Rate: %i\n Seq_no: %i\n Length: %i\n", port, requesterPort, rate, sequenceNumber, length);
 
 	printPacketInfo(requesterPort,sequenceNumber);
-
+	//Test comment
 	return 0;
 }
