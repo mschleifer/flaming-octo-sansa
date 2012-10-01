@@ -59,7 +59,7 @@ printPacketInfo(int requesterIP, int sequenceNumber) {//, char* payload) {
     	ftime(&time);
     	char timeString[80];
     	strftime(timeString, sizeof(timeString), "%H:%M:%S", localtime(&(time.time)));
-    	printf("%s:%d", timeString, time.millitm);
+    	printf("TIME: %s:%d\nREQUESTER IP: %i\nSEQUENCE NUBMER: %i\nPAYLOAD: \n", timeString, time.millitm, requesterIP, sequenceNumber);
 }
 
 int
@@ -72,10 +72,9 @@ main(int argc, char *argv[])
 		return 0;
 	}
 	if(argc != 11) {
-		printError("Incorrect number of aruegments");
+		printError("Incorrect number of arguments");
 		return 0;
 	}
-
 	// arguments
     int port  = 0;
     int requesterPort = 0;
@@ -115,8 +114,9 @@ main(int argc, char *argv[])
 	    	printError("Incorrent requester port number");
 	    	return 0;
 	    }
-    	printf("Port: %i\n Requester Port: %i\n Rate: %i\n Seq_no: %i\n Length: %i\n", port, requesterPort, rate, sequenceNumber, length);
+    	printf(" Port: %i\n Requester Port: %i\n Rate: %i\n Seq_no: %i\n Length: %i\n", port, requesterPort, rate, sequenceNumber, length);
+
+	printPacketInfo(requesterPort,sequenceNumber);
 
 	return 0;
 }
-
