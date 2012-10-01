@@ -37,6 +37,7 @@
 #include <sys/timeb.h>
 #include <sys/types.h>
 #include <sys/socket.h> 
+#include <netinet/in.h>
 
 
 #define BUFFER (514)
@@ -119,11 +120,40 @@ main(int argc, char *argv[])
     	printf(" Port: %i\n Requester Port: %i\n Rate: %i\n Seq_no: %i\n Length: %i\n", port, requesterPort, rate, sequenceNumber, length);
 
 	printPacketInfo(requesterPort,sequenceNumber);
+
+// CREATE SOCKET
 	int socketFD;
-	socketFD = socket(AF_INET, SOCK_STREAM, 17); // 17 is UDP???
+	socketFD = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP); // 17 is UDP???
 	if(socketFD == -1) {
 		perror("Create socket");
+		close(socketFD);
 	}
-	printf("Socket created. FD: %i\n", socketFD);
+	else {
+		printf("Socket created. FD: %i\n", socketFD);
+	}
+
+// BIND SOCKET
+	struct sockaddr_in address;
+
+	/* type of socket created in socket() */
+  	address.sin_family = AF_INET;
+  	address.sin_addr.s_addr = INADDR_ANY;
+	/* 7000 is the port to use for connections */
+  	address.sin_port = htons(port);
+	/* bind the socket to the port specified above */
+  	if(bind(socketFD,(struct sockaddr *)&address,sizeof(address)) == -1) {
+		perror("Bind Socket");
+		close(socketFD);
+	}
+	else {
+		printf("Socket bound. FD: %i\n", socketFD);
+	}
+	int addrLength = sizeof(struct sockaddr_in);
+	while(1) {
+		if(recvfrom(socketFD, buffer, BUFFER, 0, (struct sockaddr *)&address, (socklen_t *) &addrLength) == -1) {
+			perror("recvfrom");
+		}
+	}
+
 	return 0;
 }
