@@ -18,6 +18,19 @@ usage(char *prog) {
     exit(1);
 }
 
+void
+printPacketInfo(int requesterIP, int sequenceNumber) {//, char* payload) {
+	//TODO: Print some info about the sender
+	//TODO: These parameters might not be quite right or we might want
+	//	differnt ones/names/etc.
+	struct timeb time;
+    	ftime(&time);
+    	char timeString[80];
+    	strftime(timeString, sizeof(timeString), "%H:%M:%S", localtime(&(time.time)));
+    	printf("TIME: %s:%d\nREQUESTER IP: %i\nSEQUENCE NUBMER: %i\nPAYLOAD: \n", timeString, time.millitm, requesterIP, sequenceNumber);
+}
+
+
 int
 main(int argc, char *argv[])
 {
@@ -53,4 +66,6 @@ main(int argc, char *argv[])
 	}
 
 	printf("Port: %i\nFileOption: %s\n", port, fileOption);
+
+	return 0;
 }
