@@ -34,7 +34,9 @@
 #include <string.h>
 #include <unistd.h>
 #include <time.h>
-#include<sys/timeb.h>
+#include <sys/timeb.h>
+#include <sys/types.h>
+#include <sys/socket.h> 
 
 
 #define BUFFER (514)
@@ -117,6 +119,11 @@ main(int argc, char *argv[])
     	printf(" Port: %i\n Requester Port: %i\n Rate: %i\n Seq_no: %i\n Length: %i\n", port, requesterPort, rate, sequenceNumber, length);
 
 	printPacketInfo(requesterPort,sequenceNumber);
-	//Test comment
+	int socketFD;
+	socketFD = socket(AF_INET, SOCK_STREAM, 17); // 17 is UDP???
+	if(socketFD == -1) {
+		perror("Create socket");
+	}
+	printf("Socket created. FD: %i\n", socketFD);
 	return 0;
 }
