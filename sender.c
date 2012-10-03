@@ -125,7 +125,7 @@ main(int argc, char *argv[])
 	int socketFD;
 	socketFD = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP); // 17 is UDP???
 	if(socketFD == -1) {
-		perror("Create socket");
+		perror("socket");
 		close(socketFD);
 	}
 	else {
@@ -142,7 +142,7 @@ main(int argc, char *argv[])
   	address.sin_port = htons(port);
 	/* bind the socket to the port specified above */
   	if(bind(socketFD,(struct sockaddr *)&address,sizeof(address)) == -1) {
-		perror("Bind Socket");
+		perror("bind");
 		close(socketFD);
 	}
 	else {
