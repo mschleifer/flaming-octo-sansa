@@ -41,119 +41,188 @@
 
 
 #define BUFFER (514)
+#define MAX_TABLE_SIZE (100)
+
+struct packet {
+  char type;
+  uint32_t sequence;
+  uint32_t length;
+  unsigned char* payload;
+};
+
+
+//can hold the data in one row of tracker file 'table'
+struct tracker_entry {
+  char* file_name;
+  int sequence_id;
+  char* sender_hostname;
+  int sender_port;
+};
+
+//array and array size tracker for global use
+struct tracker_entry* tracker_array; 
+int tracker_array_size;
+
+
+/**
+ * Reads the tracker.txt file and puts the contents of the file in an array, 
+ * tracker_array, with corresponting size, tracker_array_size.  Basic file
+ * input is done.
+ * The array is printed at the end of the method.
+ */
+int
+readTrackerFile() {
+  printf("\n-----------------------\n\nReading 'tracker.txt' into array of structs\n");
+  tracker_array = (struct tracker_entry*)malloc(sizeof(struct tracker_entry) * 100);  //setting max size to 100..
+  FILE *in_file = fopen("tracker.txt", "r");  //read only
+  tracker_array_size = 0;
+  
+  //test for not existing
+  if (in_file == NULL) {
+    printf("Error.  Could not open file\n");
+    return -1;
+  }
+  
+  
+  //read each row into struct, insert into array, increment size
+  struct tracker_entry entry;
+  while( fscanf(in_file, "%s %d %s %d", entry.file_name, &entry.sequence_id, entry.sender_hostname, &entry.sender_port) != EOF) {
+    tracker_array[tracker_array_size] = entry;
+    tracker_array_size++;
+  }
+
+  printf("tracker array/table size: %d\n", tracker_array_size);
+  int i = 0;
+  for (i = 0; i < tracker_array_size; i++) {
+    printf("Row %d: %s, %d, %s, %d\n", i, tracker_array[i].file_name, tracker_array[i].sequence_id, tracker_array[i].sender_hostname, tracker_array[i].sender_port);
+  }
+  fclose(in_file);
+  return 0;
+}
 
 void
 printError(char* errorMessage) {
-	fprintf(stderr, "An error has occured: %s\n", errorMessage);
+  fprintf(stderr, "An error has occured: %s\n", errorMessage);
 }
 
 void
 usage(char *prog) {
-    fprintf(stderr, "usage: %s -p <port> -g <requester port> -r <rate> -q <seq_no> -l <length>\n", prog);
-    exit(1);
+  fprintf(stderr, "usage: %s -p <port> -g <requester port> -r <rate> -q <seq_no> -l <length>\n", prog);
+  exit(1);
 }
 
 void
 printPacketInfo(int requesterIP, int sequenceNumber) {//, char* payload) {
-	//TODO: Print some info about the sender
-	//TODO: These parameters might not be quite right or we might want
-	//	differnt ones/names/etc.
-	struct timeb time;
-    	ftime(&time);
-    	char timeString[80];
-    	strftime(timeString, sizeof(timeString), "%H:%M:%S", localtime(&(time.time)));
-    	printf("TIME: %s:%d\nREQUESTER IP: %i\nSEQUENCE NUBMER: %i\nPAYLOAD: \n", timeString, time.millitm, requesterIP, sequenceNumber);
+  printf("\n----------------------------\n\nPrinting packet info.\n");
+  //TODO: Print some info about the sender
+  //TODO: These parameters might not be quite right or we might want
+  //	differnt ones/names/etc.
+  struct timeb time;
+  ftime(&time);
+  char timeString[80];
+  strftime(timeString, sizeof(timeString), "%H:%M:%S", localtime(&(time.time)));
+  printf("TIME: %s:%d\nREQUESTER IP: %i\nSEQUENCE NUBMER: %i\nPAYLOAD: \n", timeString, time.millitm, requesterIP, sequenceNumber);
 }
 
 int
 main(int argc, char *argv[])
 {
-	char *buffer;
-	buffer = malloc(BUFFER);
-	if(buffer == NULL) {
-		printError("Buffer could not be allocated");
-		return 0;
-	}
-	if(argc != 11) {
-		printError("Incorrect number of arguments");
-		return 0;
-	}
-	// arguments
-    int port  = 0;
-    int requesterPort = 0;
-    int rate = 0;
-    int sequenceNumber = 0;
-    int length = 0;
-
+  char *buffer;
+  buffer = malloc(BUFFER);
+  if(buffer == NULL) {
+    printError("Buffer could not be allocated");
+    return 0;
+  }
+  if(argc != 11) {
+    printError("Incorrect number of arguments");
+    usage(argv[0]);
+    return 0;
+  }
+  // arguments
+  int port  = 0;
+  int requesterPort = 0;
+  int rate = 0;
+  int sequenceNumber = 0;
+  int length = 0;
+  
     // input params
-    int c;
-    opterr = 0;
-    while ((c = getopt(argc, argv, "p:g:r:q:l:")) != -1) {
-		switch (c) {
-		case 'p':
-	    	port = atoi(optarg);
-	    	break;
-		case 'g':
-	    	requesterPort = atoi(optarg);
-	    	break;
-		case 'r':
-	    	rate = atoi(optarg);
-	    	break;
-		case 'q':
-	    	sequenceNumber = atoi(optarg);
-	    	break;
-		case 'l':
-	    	length = atoi(optarg);
-	    	break;
-		default:
-	    	usage(argv[0]);
-		}
+  int c;
+  opterr = 0;
+  while ((c = getopt(argc, argv, "p:g:r:q:l:")) != -1) {
+    switch (c) {
+    case 'p':
+      port = atoi(optarg);
+      break;
+    case 'g':
+      requesterPort = atoi(optarg);
+      break;
+    case 'r':
+      rate = atoi(optarg);
+      break;
+    case 'q':
+      sequenceNumber = atoi(optarg);
+      break;
+    case 'l':
+      length = atoi(optarg);
+      break;
+    default:
+      usage(argv[0]);
     }
-    if(port < 1024 || port > 65536) {
-	    	printError("Incorrect port number");
-	    	return 0;
-	    }
-	if(requesterPort < 1024 || requesterPort > 65536) {
-	    	printError("Incorrent requester port number");
-	    	return 0;
-	    }
-    	printf(" Port: %i\n Requester Port: %i\n Rate: %i\n Seq_no: %i\n Length: %i\n", port, requesterPort, rate, sequenceNumber, length);
-
-	printPacketInfo(requesterPort,sequenceNumber);
-
-// CREATE SOCKET
-	int socketFD;
-	socketFD = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP); // 17 is UDP???
-	if(socketFD == -1) {
-		perror("socket");
-		close(socketFD);
-	}
-	else {
-		printf("Socket created. FD: %i\n", socketFD);
-	}
-
-// BIND SOCKET
-	struct sockaddr_in address;
-
-	/* type of socket created in socket() */
-  	address.sin_family = AF_INET;
-  	address.sin_addr.s_addr = INADDR_ANY;
-	/* 7000 is the port to use for connections */
-  	address.sin_port = htons(port);
-	/* bind the socket to the port specified above */
-  	if(bind(socketFD,(struct sockaddr *)&address,sizeof(address)) == -1) {
-		perror("bind");
-		close(socketFD);
-	}
-	else {
-		printf("Socket bound. FD: %i\n", socketFD);
-	}
-	int addrLength = sizeof(struct sockaddr_in);
-	while(1) {
-		if(recvfrom(socketFD, buffer, BUFFER, 0, (struct sockaddr *)&address, (socklen_t *) &addrLength) == -1) {
-			perror("recvfrom");
-		}
-	}
-
-	return 0;
+  }
+  if(port < 1024 || port > 65536) {
+    printError("Incorrect port number");
+    return 0;
+  }
+  if(requesterPort < 1024 || requesterPort > 65536) {
+    printError("Incorrent requester port number");
+    return 0;
+  }
+  printf(" Port: %i\n Requester Port: %i\n Rate: %i\n Seq_no: %i\n Length: %i\n", port, requesterPort, rate, sequenceNumber, length);
+  
+  printPacketInfo(requesterPort,sequenceNumber);
+  
+  // CREATE SOCKET
+  int socketFD;
+  socketFD = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP); // 17 is UDP???
+  if(socketFD == -1) {
+    perror("socket");
+    close(socketFD);
+  }
+  else {
+    printf("Socket created. FD: %i\n", socketFD);
+  }
+  
+  // BIND SOCKET
+  struct sockaddr_in address;
+  
+  /* type of socket created in socket() */
+  address.sin_family = AF_INET;
+  address.sin_addr.s_addr = INADDR_ANY;
+  /* 7000 is the port to use for connections */
+  address.sin_port = htons(port);
+  /* bind the socket to the port specified above */
+  if(bind(socketFD,(struct sockaddr *)&address,sizeof(address)) == -1) {
+    perror("bind");
+    close(socketFD);
+  }
+  else {
+    printf("Socket bound. FD: %i\n", socketFD);
+  }
+  int addrLength = sizeof(struct sockaddr_in);
+  
+	/* 
+	   Doing some testing with packets, we may need them.
+	*/
+  struct packet PACKET;
+  PACKET.type = 'M';
+  printf("PACKET type: %c\n", PACKET.type);
+  readTrackerFile();
+  
+  while(1) {
+    if(recvfrom(socketFD, buffer, BUFFER, 0, (struct sockaddr *)&address, (socklen_t *) &addrLength) == -1) {
+      perror("recvfrom");
+    }
+  }
+  
+  return 0;
 }
