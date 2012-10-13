@@ -8,8 +8,10 @@
 #include <sys/socket.h> 
 #include <netinet/in.h>
 #include "packets.h"
+#include <arpa/inet.h>
 
-#define BUFFER (514)
+#define SRV_IP "127.0.0.1"
+#define BUFFER (512)
 //array and array size tracker for global use
 tracker_entry* tracker_array; 
 int tracker_array_size;
@@ -102,36 +104,62 @@ main(int argc, char *argv[])
 			usage(argv[0]);
 		}
 	}
+
+	// Read from tracker.txt 
+	if (readTrackerFile() == -1) {
+	  printf("Error reading from tracker file.  Exiting.");
+	  exit(-1);
+	}
 	
 	/* Print args */
-	printf("Port: %i\nFileOption: %s\n", port, fileOption);
+	printf("Client Port: %i\nFileOption: %s\n", port, fileOption);
 
 	// CREATE SOCKET
-  	int socketFD;
- 	 socketFD = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP); // 17 is UDP???
-  	if(socketFD == -1) {
+  	int socketFD_Client;
+ 	 socketFD_Client = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP); // 17 is UDP???
+  	if(socketFD_Client == -1) {
    	 perror("socket");
-   	 close(socketFD);
+   	 close(socketFD_Client);
   	}
-  	else {
-   	 printf("Socket created. FD: %i\n", socketFD);
-  	}
-  
+  	int i;
+	for(i = 0; i < tracker_array_size; i++) {
+		if(strcmp(tracker_array[i].file_name, fileOption) == 0) {
+				struct sockaddr_in address_server;
+
+	memset((char *) &address_server, 0, sizeof(address_server));
+	address_server.sin_family = AF_INET;
+	address_server.sin_port = htons(tracker_array[i].sender_port);
+	if (inet_aton(SRV_IP, &address_server.sin_addr)==0) {
+		fprintf(stderr, "inet_aton() failed\n");
+		exit(1);
+	}
+	int j;
+	for (j=0; j<1; j++) {
+		printf("Sending packet %d from tracker file%d on port %d\n", j, i, tracker_array[i].sender_port);
+		sprintf(buffer, "This is packet %d from file part %d\n", j, i);
+		if (sendto(socketFD_Client, buffer, BUFFER, 0, (struct sockaddr *)&address_server, sizeof(address_server))==-1)
+			perror("sendto()");
+	}
+		}
+	}
+
+	// SET UP sockaddr_in WITH CORRESPONDING SERVER SOCKETS
+
+
+/*
   	// BIND SOCKET
-  	struct sockaddr_in address;
-  
-  	/* type of socket created in socket() */
-  	address.sin_family = AF_INET;
-  	address.sin_addr.s_addr = INADDR_ANY;
- 	 /* 7000 is the port to use for connections */
-  	address.sin_port = htons(port);
- 	 /* bind the socket to the port specified above */
-  	if(bind(socketFD,(struct sockaddr *)&address,sizeof(address)) == -1) {
+  	// type of socket created in socket()
+  	address_server.sin_family = AF_INET;
+  	address_server.sin_addr.s_addr = INADDR_ANY;
+ 	 // 7000 is the port to use for connections
+  	address_server.sin_port = htons(port);
+ 	 // bind the socket to the port specified above
+  	if(bind(socketFD_Client,(struct sockaddr *)&address_server,sizeof(address_server)) == -1) {
    		perror("bind");
-  		close(socketFD);
+  		close(socketFD_Client);
   	}
   	else {
-    	printf("Socket bound. FD: %i\n", socketFD);
+    	printf("Socket bound. FD: %i\n", socketFD_Client);
   	}
 
 	// Read from tracker.txt 
@@ -142,10 +170,11 @@ main(int argc, char *argv[])
 
   	int addrLength = sizeof(struct sockaddr_in);
 	while(1) {
-    	if(recvfrom(socketFD, buffer, BUFFER, 0, (struct sockaddr *)&address, (socklen_t *) &addrLength) == -1) {
+    	if(recvfrom(socketFD_Client, buffer, BUFFER, 0, (struct sockaddr *)&address_server, (socklen_t *) &addrLength) == -1) {
       		perror("recvfrom");
     	}
-  	}	
-
+  	}
+*/
+	close(socketFD_Client);
 	return 0;
 }

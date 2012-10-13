@@ -39,8 +39,9 @@
 #include <sys/socket.h> 
 #include <netinet/in.h>
 #include "packets.h"
+#include <arpa/inet.h>
 
-#define BUFFER (514)
+#define BUFFER (512)
 
 //array and array size tracker for global use
 tracker_entry* tracker_array; 
@@ -124,10 +125,36 @@ main(int argc, char *argv[])
     printError("Incorrent requester port number");
     return 0;
   }
-  printf(" Port: %i\n Requester Port: %i\n Rate: %i\n Seq_no: %i\n Length: %i\n", port, requesterPort, rate, sequenceNumber, length);
+  printf(" Port: %i\n Requester Port: %i\n Rate: %i\n Seq_no: %i\n Length: %i\n", 
+			port, requesterPort, rate, sequenceNumber, length);
   
   printPacketInfo(requesterPort,sequenceNumber);
-  
+ 
+	struct sockaddr_in si_me, si_other;
+	int s, i, slen=sizeof(si_other);
+	char buf[BUFFER];
+
+	if ((s=socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP))==-1)
+		perror("socket");
+
+	memset((char *) &si_me, 0, sizeof(si_me));
+	si_me.sin_family = AF_INET;
+	si_me.sin_port = htons(port);
+	si_me.sin_addr.s_addr = htonl(INADDR_ANY);
+	if (bind(s, (struct sockaddr *)&si_me, sizeof(si_me))==-1)
+		perror("bind");
+
+	for (i=0; i<10; i++) {
+	if (recvfrom(s, buf, BUFFER, 0, (struct sockaddr *)&si_other, (socklen_t *)&slen)==-1)
+	perror("recvfrom()");
+	printf("Received packet from %s:%d\nData: %s\n\n",
+		inet_ntoa(si_other.sin_addr), ntohs(si_other.sin_port), buf);
+	}
+
+	close(s);
+
+
+/* 
   // CREATE SOCKET
   int socketFD;
   socketFD = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP); // 17 is UDP???
@@ -142,12 +169,12 @@ main(int argc, char *argv[])
   // BIND SOCKET
   struct sockaddr_in address;
   
-  /* type of socket created in socket() */
+  // type of socket created in socket()
   address.sin_family = AF_INET;
   address.sin_addr.s_addr = INADDR_ANY;
-  /* 7000 is the port to use for connections */
+  // 7000 is the port to use for connections
   address.sin_port = htons(port);
-  /* bind the socket to the port specified above */
+  // bind the socket to the port specified above
   if(bind(socketFD,(struct sockaddr *)&address,sizeof(address)) == -1) {
     perror("bind");
     close(socketFD);
@@ -170,6 +197,7 @@ main(int argc, char *argv[])
       exit(-1);
     }
   }
+*/
   
   return 0;
 }
