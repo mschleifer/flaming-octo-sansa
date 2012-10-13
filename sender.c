@@ -46,44 +46,6 @@
 tracker_entry* tracker_array; 
 int tracker_array_size;
 
-
-/**
- * Reads the tracker.txt file and puts the contents of the file in an array, 
- * tracker_array, with corresponting size, tracker_array_size.  Basic file
- * input is done.
- * The array is printed at the end of the method.
- */
-int
-readTrackerFile() {
-  printf("\n-----------------------\n\nReading 'tracker.txt' into array of structs\n");
-  
-  tracker_array = (tracker_entry*)malloc(sizeof(tracker_entry) * 100);  //setting max size to 100.
-  FILE *in_file = fopen("tracker.txt", "r");  //read only
-  tracker_array_size = 0;
-  
-  //test for not existing
-  if (in_file == NULL) {
-    printf("Error.  Could not open file\n");
-    return -1;
-  }
-  
-  
-  //read each row into struct, insert into array, increment size
-  tracker_entry entry;  
-  while( fscanf(in_file, "%s %d %s %d", entry.file_name, &entry.sequence_id, entry.sender_hostname, &entry.sender_port) == 4) {
-    tracker_array[tracker_array_size] = entry;
-    tracker_array_size++;
-  }
-
-  printf("tracker array/table size: %d\n", tracker_array_size);
-  int i = 0;
-  for (i = 0; i < tracker_array_size; i++) {
-    printf("Row %d: %s, %d, %s, %d\n", i, tracker_array[i].file_name, tracker_array[i].sequence_id, tracker_array[i].sender_hostname, tracker_array[i].sender_port);
-  }
-  fclose(in_file);
-  return 0;
-}
-
 void
 printError(char* errorMessage) {
   fprintf(stderr, "An error has occured: %s\n", errorMessage);
@@ -201,7 +163,6 @@ main(int argc, char *argv[])
   PACKET.sequence = htonl(sequenceNumber); //convert with htonl and ntohl
   PACKET.length = length;
   printf("PACKET Details: type(%c), sequence(%d), length(%d)\n", PACKET.type, PACKET.sequence, PACKET.length);
-  readTrackerFile();
   
   while(1) {
     if(recvfrom(socketFD, buffer, BUFFER, 0, (struct sockaddr *)&address, (socklen_t *) &addrLength) == -1) {
