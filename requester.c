@@ -21,6 +21,8 @@ usage(char *prog) {
     exit(1);
 }
 
+
+
 void
 printPacketInfo(int requesterIP, int sequenceNumber) {//, char* payload) {
 	//TODO: Print some info about the sender

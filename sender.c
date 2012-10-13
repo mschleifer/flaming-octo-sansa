@@ -38,26 +38,9 @@
 #include <sys/types.h>
 #include <sys/socket.h> 
 #include <netinet/in.h>
-
+#include "packets.h"
 
 #define BUFFER (514)
-#define MAX_TABLE_SIZE (100)
-
-struct packet {
-  char type;
-  uint32_t sequence;
-  uint32_t length;
-  unsigned char* payload;
-};
-
-
-//can hold the data in one row of tracker file 'table'
-struct tracker_entry {
-  char file_name[32];
-  int sequence_id;
-  char sender_hostname[32];
-  int sender_port;
-};
 
 //array and array size tracker for global use
 struct tracker_entry* tracker_array; 
@@ -139,6 +122,7 @@ main(int argc, char *argv[])
     usage(argv[0]);
     return 0;
   }
+  
   // arguments
   int port  = 0;
   int requesterPort = 0;
@@ -211,17 +195,18 @@ main(int argc, char *argv[])
   }
   int addrLength = sizeof(struct sockaddr_in);
   
-	/* 
-	   Doing some testing with packets, we may need them.
-	*/
+  //Fill out a packet and print it out
   struct packet PACKET;
   PACKET.type = 'M';
-  printf("PACKET type: %c\n", PACKET.type);
+  PACKET.sequence = htonl(sequenceNumber); //convert with htonl and ntohl
+  PACKET.length = length;
+  printf("PACKET Details: type(%c), sequence(%d), length(%d)\n", PACKET.type, PACKET.sequence, PACKET.length);
   readTrackerFile();
   
   while(1) {
     if(recvfrom(socketFD, buffer, BUFFER, 0, (struct sockaddr *)&address, (socklen_t *) &addrLength) == -1) {
       perror("recvfrom");
+      exit(-1);
     }
   }
   
