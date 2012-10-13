@@ -11,7 +11,7 @@
 
 #define BUFFER (514)
 //array and array size tracker for global use
-struct tracker_entry* tracker_array; 
+tracker_entry* tracker_array; 
 int tracker_array_size;
 
 void
@@ -28,7 +28,7 @@ usage(char *prog) {
 int readTrackerFile() {
   printf("\n-----------------------\n\nReading 'tracker.txt' into array of structs\n");
   
-  tracker_array = (struct tracker_entry*)malloc(sizeof(struct tracker_entry) * 100);  //setting max size to 100.
+  tracker_array = (tracker_entry*)malloc(sizeof(tracker_entry) * 100);  //setting max size to 100.
   FILE *in_file = fopen("tracker.txt", "r");  //read only
   tracker_array_size = 0;
   
@@ -40,7 +40,7 @@ int readTrackerFile() {
   
   
   //read each row into struct, insert into array, increment size
-  struct tracker_entry entry;  
+  tracker_entry entry;  
   while( fscanf(in_file, "%s %d %s %d", entry.file_name, &entry.sequence_id, entry.sender_hostname, &entry.sender_port) == 4) {
     tracker_array[tracker_array_size] = entry;
     tracker_array_size++;
