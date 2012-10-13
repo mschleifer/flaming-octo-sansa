@@ -53,9 +53,9 @@ struct packet {
 
 //can hold the data in one row of tracker file 'table'
 struct tracker_entry {
-  char* file_name;
+  char file_name[32];
   int sequence_id;
-  char* sender_hostname;
+  char sender_hostname[32];
   int sender_port;
 };
 
@@ -73,7 +73,8 @@ int tracker_array_size;
 int
 readTrackerFile() {
   printf("\n-----------------------\n\nReading 'tracker.txt' into array of structs\n");
-  tracker_array = (struct tracker_entry*)malloc(sizeof(struct tracker_entry) * 100);  //setting max size to 100..
+  
+  tracker_array = (struct tracker_entry*)malloc(sizeof(struct tracker_entry) * 100);  //setting max size to 100.
   FILE *in_file = fopen("tracker.txt", "r");  //read only
   tracker_array_size = 0;
   
@@ -85,8 +86,8 @@ readTrackerFile() {
   
   
   //read each row into struct, insert into array, increment size
-  struct tracker_entry entry;
-  while( fscanf(in_file, "%s %d %s %d", entry.file_name, &entry.sequence_id, entry.sender_hostname, &entry.sender_port) != EOF) {
+  struct tracker_entry entry;  
+  while( fscanf(in_file, "%s %d %s %d", entry.file_name, &entry.sequence_id, entry.sender_hostname, &entry.sender_port) == 4) {
     tracker_array[tracker_array_size] = entry;
     tracker_array_size++;
   }
