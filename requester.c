@@ -7,8 +7,12 @@
 #include <sys/types.h>
 #include <sys/socket.h> 
 #include <netinet/in.h>
+#include "packets.h"
 
 #define BUFFER (514)
+//array and array size tracker for global use
+struct tracker_entry* tracker_array; 
+int tracker_array_size;
 
 void
 printError(char* errorMessage) {
@@ -21,7 +25,36 @@ usage(char *prog) {
     exit(1);
 }
 
-
+int readTrackerFile() {
+  printf("\n-----------------------\n\nReading 'tracker.txt' into array of structs\n");
+  
+  tracker_array = (struct tracker_entry*)malloc(sizeof(struct tracker_entry) * 100);  //setting max size to 100.
+  FILE *in_file = fopen("tracker.txt", "r");  //read only
+  tracker_array_size = 0;
+  
+  //test for not existing
+  if (in_file == NULL) {
+    printf("Error.  Could not open file\n");
+    return -1;
+  }
+  
+  
+  //read each row into struct, insert into array, increment size
+  struct tracker_entry entry;  
+  while( fscanf(in_file, "%s %d %s %d", entry.file_name, &entry.sequence_id, entry.sender_hostname, &entry.sender_port) == 4) {
+    tracker_array[tracker_array_size] = entry;
+    tracker_array_size++;
+  }
+  
+  printf("tracker array/table size: %d\n", tracker_array_size);
+  int i = 0;
+  for (i = 0; i < tracker_array_size; i++) {
+    printf("Row %d: %s, %d, %s, %d\n", i, tracker_array[i].file_name, tracker_array[i].sequence_id, tracker_array[i].sender_hostname, tracker_array[i].sender_port);
+  }
+  fclose(in_file);
+  printf("\n---------------------------\nDone reading from tracker file.\n");
+  return 0;
+}
 
 void
 printPacketInfo(int requesterIP, int sequenceNumber) {//, char* payload) {
@@ -100,6 +133,13 @@ main(int argc, char *argv[])
   	else {
     	printf("Socket bound. FD: %i\n", socketFD);
   	}
+
+	// Read from tracker.txt 
+	if (readTrackerFile() == -1) {
+	  printf("Error reading from tracker file.  Exiting.");
+	  exit(-1);
+	}
+
   	int addrLength = sizeof(struct sockaddr_in);
 	while(1) {
     	if(recvfrom(socketFD, buffer, BUFFER, 0, (struct sockaddr *)&address, (socklen_t *) &addrLength) == -1) {
