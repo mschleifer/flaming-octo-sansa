@@ -58,18 +58,20 @@ int readTrackerFile() {
   return 0;
 }
 
-void
-printPacketInfo(int requesterIP, int sequenceNumber) {//, char* payload) {
-  //TODO: Print some info about the sender
-  //TODO: These parameters might not be quite right or we might want
-  //	differnt ones/names/etc.
+/**
+ * Should be called for each packet that is sent to the requester.  
+ * Prints out the time, IP, sequence number and 4 bytes of the payload.
+ * TODO: We need to print a section of the payload
+ */
+int printInfoAtSend(int requester_ip, packet pkt) {
   struct timeb time;
   ftime(&time);
   char timeString[80];
   strftime(timeString, sizeof(timeString), "%H:%M:%S", localtime(&(time.time)));
-  printf("TIME: %s:%d\nREQUESTER IP: %i\nSEQUENCE NUBMER: %i\nPAYLOAD: \n", timeString, time.millitm, requesterIP, sequenceNumber);
+  printf("Sending packet at: %s.%d(ms).  Requester IP: %d.  Sequence number: %d.  Payload: (null)\n",
+	 timeString, time.millitm, requester_ip, pkt.sequence);
+  return 0;
 }
-
 
 int
 main(int argc, char *argv[])
@@ -85,11 +87,12 @@ main(int argc, char *argv[])
     return 0;
   }
   
-  // arguments
+  // Port on which the requester waits for packets
   int port  = 0;
-  char* fileOption = malloc(BUFFER);
+  // The name of the file that's being requested
+  char* requested_file_name = malloc(BUFFER);
   
-  // input params
+  // Deal with command-line arguments
   int c;
   opterr = 0;
   while ((c = getopt(argc, argv, "p:o:")) != -1) {
@@ -98,11 +101,16 @@ main(int argc, char *argv[])
       port = atoi(optarg);
       break;
     case 'o':
-      fileOption = optarg;
+      requested_file_name = optarg;
       break;
     default: 
       usage(argv[0]);
     }
+  }
+
+  if(port < 1024 || port > 65536) {
+    printError("Incorrect port number");
+    return 0;
   }
   
   // Read from tracker.txt 
@@ -112,7 +120,7 @@ main(int argc, char *argv[])
   }
   
   /* Print args */
-  printf("Client Port: %i\nFileOption: %s\n", port, fileOption);
+  printf("Client Port: %i\nRequested filename: %s\n", port, requested_file_name);
   
   // CREATE SOCKET
   int socketFD_Client;
@@ -121,9 +129,12 @@ main(int argc, char *argv[])
     perror("socket");
     close(socketFD_Client);
   }
+
   int i;
+
+  
   for(i = 0; i < tracker_array_size; i++) {
-    if(strcmp(tracker_array[i].file_name, fileOption) == 0) {
+    if(strcmp(tracker_array[i].file_name, requested_file_name) == 0) {
       struct sockaddr_in address_server;
       
       memset((char *) &address_server, 0, sizeof(address_server));
@@ -139,10 +150,10 @@ main(int argc, char *argv[])
 	PACKET.type = 'D';
 	PACKET.sequence = 1;
 	PACKET.length = 1;
-	printf("Sending packet from tracker file%d with info: type%c, sequence%d, length%d\n", i, PACKET.type, PACKET.sequence, PACKET.length);
-	//printf("Sending packet %d from tracker file%d on port %d\n", j, i, tracker_array[i].sender_port);
-	//sprintf(buffer, PACKET);//"This is packet %d from file part %d\n", j, i);
 	memcpy(buffer, &PACKET, sizeof(packet));
+	
+	// Print info and then send the packet to the requester
+	printInfoAtSend(10, PACKET);
 	if (sendto(socketFD_Client, buffer, BUFFER, 0, (struct sockaddr *)&address_server, sizeof(address_server))==-1)
 	  perror("sendto()");
       }
