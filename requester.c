@@ -63,13 +63,13 @@ int readTrackerFile() {
  * Prints out the time, IP, sequence number and 4 bytes of the payload.
  * TODO: We need to print a section of the payload
  */
-int printInfoAtSend(int requester_ip, packet pkt) {
+int printInfoAtReceive(char* sender_ip, packet pkt) {
   struct timeb time;
   ftime(&time);
   char timeString[80];
   strftime(timeString, sizeof(timeString), "%H:%M:%S", localtime(&(time.time)));
-  printf("Sending packet at: %s.%d(ms).  Requester IP: %d.  Sequence number: %d.  Payload: (null)\n",
-	 timeString, time.millitm, requester_ip, pkt.sequence);
+  printf("Sending packet at: %s.%d(ms).  Sender IP: %s.  Sequence number: %d.  Length: %d.  Payload: (null)\n",
+	 timeString, time.millitm, sender_ip, pkt.length, pkt.sequence);
   return 0;
 }
 
@@ -171,25 +171,17 @@ main(int argc, char *argv[])
   if (bind(s, (struct sockaddr *)&si_me, sizeof(si_me))==-1)
     perror("bind");
   
-  //int i;
-  //for (i=0; i<10; i++) {
+  
+  
   while (1) {
-    //printf("in endless loop\n");
-    //readTrackerFile();
     if (recvfrom(s, buf, BUFFER, 0, (struct sockaddr *)&si_other, (socklen_t *)&slen)==-1) {
       perror("recvfrom()");
     }
-    //printf("Received pkt from %s:%d\nData: %s", inet_ntoa(si_other.sin_addr), ntohs(si_other.sin_port), buf);
+
     packet PACKET;
     memcpy(&PACKET, buf, sizeof(packet));
-    struct timeb time;
-    ftime(&time);
-    char timeString[80];
-    strftime(timeString, sizeof(timeString), "%H:%M:%S", localtime(&(time.time)));
-    printf("Received pkt from %s:%d\n", inet_ntoa(si_other.sin_addr), ntohs(si_other.sin_port));
-    printf("Packet info: type: %c, sequence: %d, length: %d\n", PACKET.type, PACKET.sequence, PACKET.length);
-    printf("pkt received at : %s:%d\n", timeString, time.millitm);
-    printf("------------------------------\n");
+    printInfoAtReceive(inet_ntoa(si_other.sin_addr), PACKET);
+    //printf("Received pkt from %s:%d\n", inet_ntoa(si_other.sin_addr), ntohs(si_other.sin_port));
   }
   
   close(s);
