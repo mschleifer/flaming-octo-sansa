@@ -40,14 +40,12 @@
 #include <netinet/in.h>
 #include "packets.h"
 #include <arpa/inet.h>
-#include <stdbool.h>
 
 #define BUFFER (512)
-#define SRV_IP "127.0.0.1"
 
 //array and array size tracker for global use
-//tracker_entry* tracker_array;
-//int tracker_array_size;
+tracker_entry* tracker_array;
+int tracker_array_size;
 
 void
 printError(char* errorMessage) {
@@ -94,16 +92,16 @@ main(int argc, char *argv[])
   int port  = 0;
 
   // Port on which the requester is waiting
-  int requester_port = 0;
+  int requesterPort = 0;
 
   // The number of packets sent per second
-  int rate;
+  int rate = 0;
 
   // The initial sequence of the packet exchange
-  int sequence_number;
+  int sequenceNumber = 0;
 
   // The length of the payload in the packets (each chunk of the file part the sender has)
-  int length;
+  int length = 0;
 
     
   int c;
@@ -114,13 +112,13 @@ main(int argc, char *argv[])
       port = atoi(optarg);
       break;
     case 'g':
-      requester_port = atoi(optarg);
+      requesterPort = atoi(optarg);
       break;
     case 'r':
       rate = atoi(optarg);
       break;
     case 'q':
-      sequence_number = atoi(optarg);
+      sequenceNumber = atoi(optarg);
       break;
     case 'l':
       length = atoi(optarg);
@@ -130,17 +128,17 @@ main(int argc, char *argv[])
     }
   }
 
-  if( (port < 1024 || port > 65536) || (requester_port < 1024 || requester_port > 65536) ) {
+  if( (port < 1024 || port > 65536) || (requesterPort < 1024 || requesterPort > 65536) ) {
     printError("Incorrect port number(s).  Ports should be in range (1024 - 65536)");
     return 0;
   }
 
   
-  //printf(" Port: %i\n Requester Port: %i\n Rate: %i\n Seq_no: %i\n Length: %i\n",port, requester_port, rate, sequence_number, length);
+  printf(" Port: %i\n Requester Port: %i\n Rate: %i\n Seq_no: %i\n Length: %i\n",
+			port, requesterPort, rate, sequenceNumber, length);
 
-  
   struct sockaddr_in si_me, si_other;
-  int s, slen=sizeof(si_other);
+  int s, i, slen=sizeof(si_other);
   char buf[BUFFER];
   
   if ((s=socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP))==-1)
@@ -153,90 +151,70 @@ main(int argc, char *argv[])
   if (bind(s, (struct sockaddr *)&si_me, sizeof(si_me))==-1)
     perror("bind");
   
-
-  while (1) {
+  for (i=0; i<10; i++) {
     if (recvfrom(s, buf, BUFFER, 0, (struct sockaddr *)&si_other, (socklen_t *)&slen)==-1) {
       perror("recvfrom()");
     }
-
-    printf("Buffer received (filename request): %s\n", buf);
-    
-    int socketFD_Client;
-    socketFD_Client = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP); // 17 is UDP???
-    if(socketFD_Client == -1) {
-      perror("socket");
-      close(socketFD_Client);
-    }
-    
-    
-    if(strcmp(buf, "split.txt") == 0) {
-      struct sockaddr_in address_server;
-      
-      memset((char *) &address_server, 0, sizeof(address_server));
-      address_server.sin_family = AF_INET;
-      address_server.sin_port = htons(requester_port);
-      if (inet_aton(SRV_IP, &address_server.sin_addr)==0) {
-	fprintf(stderr, "inet_aton() failed\n");
-	exit(1);
-      }
-      int j;
-      for (j=0; j<1; j++) {
-	rate = rate;  //TODO: We have to use rate somewhere, this is for the compiler
-	packet PACKET;
-	PACKET.type = 'D';
-	PACKET.sequence = sequence_number;
-	PACKET.length = length;
-	memcpy(buffer, &PACKET, sizeof(packet));
-	
-	// Wait for the requester to get set up.. not sure we want to do this but currently have to
-	sleep(1);  
-      
-	// Print info and then send the packet to the requester
-	printInfoAtSend(requester_port, PACKET);
-	if (sendto(socketFD_Client, buffer, BUFFER, 0, (struct sockaddr *)&address_server, sizeof(address_server))==-1)
-	  perror("sendto()");
-      }
-    }
-    close(socketFD_Client);
+    //printf("Received pkt from %s:%d\nData: %s", inet_ntoa(si_other.sin_addr), ntohs(si_other.sin_port), buf);
+    packet PACKET;
+    memcpy(&PACKET, buf, sizeof(packet));
+    struct timeb time;
+    ftime(&time);
+    char timeString[80];
+    strftime(timeString, sizeof(timeString), "%H:%M:%S", localtime(&(time.time)));
+    printf("Received pkt from %s:%d\n", inet_ntoa(si_other.sin_addr), ntohs(si_other.sin_port));
+    printf("Packet info: type: %c, sequence: %d, length: %d\n", PACKET.type, PACKET.sequence, PACKET.length);
+    printf("pkt received at : %s:%d\n", timeString, time.millitm);
+    printf("------------------------------\n");
   }
   
-  //close:
   close(s);
-
-  /*int socketFD_Client;
-  socketFD_Client = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP); // 17 is UDP???
-  if(socketFD_Client == -1) {
+  
+  
+/*
+  // CREATE SOCKET
+  int socketFD;
+  socketFD = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP); // 17 is UDP???
+  if(socketFD == -1) {
     perror("socket");
-    close(socketFD_Client);
+    close(socketFD);
+  }
+  else {
+    printf("Socket created. FD: %i\n", socketFD);
   }
 
-  for(i = 0; i < tracker_array_size; i++) {
-    if(strcmp(tracker_array[i].file_name, "split.txt") == 0) {
-      struct sockaddr_in address_server;
-      
-      memset((char *) &address_server, 0, sizeof(address_server));
-      address_server.sin_family = AF_INET;
-      address_server.sin_port = htons(tracker_array[i].sender_port);
-      if (inet_aton(SRV_IP, &address_server.sin_addr)==0) {
-	fprintf(stderr, "inet_aton() failed\n");
-	exit(1);
-      }
-      int j;
-      for (j=0; j<1; j++) {
-	packet PACKET;
-	PACKET.type = 'D';
-	PACKET.sequence = 1;
-	PACKET.length = 1;
-	memcpy(buffer, &PACKET, sizeof(packet));
-	
-	// Print info and then send the packet to the requester
-	printInfoAtSend(10, PACKET);
-	if (sendto(socketFD_Client, buffer, BUFFER, 0, (struct sockaddr *)&address_server, sizeof(address_server))==-1)
-	  perror("sendto()");
-      }
+  // BIND SOCKET
+  struct sockaddr_in address;
+
+  // type of socket created in socket()
+  address.sin_family = AF_INET;
+  address.sin_addr.s_addr = INADDR_ANY;
+  // 7000 is the port to use for connections
+  address.sin_port = htons(port);
+  // bind the socket to the port specified above
+  if(bind(socketFD,(struct sockaddr *)&address,sizeof(address)) == -1) {
+    perror("bind");
+    close(socketFD);
+  }
+  else {
+    printf("Socket bound. FD: %i\n", socketFD);
+  }
+  int addrLength = sizeof(struct sockaddr_in);
+
+  //Fill out a packet and print it out
+  packet PACKET;
+  PACKET.type = 'M';
+  PACKET.sequence = htonl(sequenceNumber); //convert with htonl and ntohl
+  PACKET.length = length;
+  printf("PACKET Details: type(%c), sequence(%d), length(%d)\n", PACKET.type, PACKET.sequence, PACKET.length);
+
+  while(1) {
+    if(recvfrom(socketFD, buffer, BUFFER, 0, (struct sockaddr *)&address, (socklen_t *) &addrLength) == -1) {
+      perror("recvfrom");
+      exit(-1);
     }
   }
-  
-  close(socketFD_Client);  */
+*/
+
   return 0;
 }

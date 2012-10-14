@@ -28,7 +28,7 @@ usage(char *prog) {
 }
 
 int readTrackerFile() {
-  //printf("\n-----------------------\n\nReading 'tracker.txt' into array of structs\n");
+  printf("\n-----------------------\n\nReading 'tracker.txt' into array of structs\n");
   
   tracker_array = (tracker_entry*)malloc(sizeof(tracker_entry) * 100);  //setting max size to 100.
   FILE *in_file = fopen("tracker.txt", "r");  //read only
@@ -48,13 +48,13 @@ int readTrackerFile() {
     tracker_array_size++;
   }
   
-  //printf("tracker array/table size: %d\n", tracker_array_size);
+  printf("tracker array/table size: %d\n", tracker_array_size);
   int i = 0;
   for (i = 0; i < tracker_array_size; i++) {
-    //printf("Row %d: %s, %d, %s, %d\n", i, tracker_array[i].file_name, tracker_array[i].sequence_id, tracker_array[i].sender_hostname, tracker_array[i].sender_port);
+    printf("Row %d: %s, %d, %s, %d\n", i, tracker_array[i].file_name, tracker_array[i].sequence_id, tracker_array[i].sender_hostname, tracker_array[i].sender_port);
   }
   fclose(in_file);
-  //printf("\n---------------------------\nDone reading from tracker file.\n");
+  printf("\n---------------------------\nDone reading from tracker file.\n");
   return 0;
 }
 
@@ -118,10 +118,9 @@ main(int argc, char *argv[])
     printf("Error reading from tracker file.  Exiting.");
     exit(-1);
   }
-
   
   /* Print args */
-  //printf("ARGS: \tClient Port: %i\n\tRequested filename: %s\n", port, requested_file_name);
+  printf("Client Port: %i\nRequested filename: %s\n", port, requested_file_name);
   
   // CREATE SOCKET
   int socketFD_Client;
@@ -132,6 +131,8 @@ main(int argc, char *argv[])
   }
 
   int i;
+
+  
   for(i = 0; i < tracker_array_size; i++) {
     if(strcmp(tracker_array[i].file_name, requested_file_name) == 0) {
       struct sockaddr_in address_server;
@@ -143,55 +144,54 @@ main(int argc, char *argv[])
 	fprintf(stderr, "inet_aton() failed\n");
 	exit(1);
       }
-      
-      memcpy(buffer, &tracker_array[i].file_name, sizeof(tracker_array[i].file_name));
-      printf("Sending message to sender with data: %s\n", tracker_array[i].file_name);
-      
-      // Print info and then send the packet to the requester
-      //printInfoAtSend(10, PACKET);
-      if (sendto(socketFD_Client, buffer, BUFFER, 0, (struct sockaddr *)&address_server, sizeof(address_server))==-1) {
-	perror("sendto()");
+      int j;
+      for (j=0; j<1; j++) {
+	packet PACKET;
+	PACKET.type = 'D';
+	PACKET.sequence = 1;
+	PACKET.length = 1;
+	memcpy(buffer, &PACKET, sizeof(packet));
+	
+	// Print info and then send the packet to the requester
+	printInfoAtSend(10, PACKET);
+	if (sendto(socketFD_Client, buffer, BUFFER, 0, (struct sockaddr *)&address_server, sizeof(address_server))==-1)
+	  perror("sendto()");
       }
     }
   }
   
+  // SET UP sockaddr_in WITH CORRESPONDING SERVER SOCKETS
+  
+  
+  /*
+  // BIND SOCKET
+  // type of socket created in socket()
+  address_server.sin_family = AF_INET;
+  address_server.sin_addr.s_addr = INADDR_ANY;
+  // 7000 is the port to use for connections
+  address_server.sin_port = htons(port);
+  // bind the socket to the port specified above
+  if(bind(socketFD_Client,(struct sockaddr *)&address_server,sizeof(address_server)) == -1) {
+  perror("bind");
   close(socketFD_Client);
-
-  struct sockaddr_in si_me, si_other;
-  int s, slen=sizeof(si_other);
-  char buf[BUFFER];
-  
-  if ((s=socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP))==-1)
-    perror("socket");
-  
-  memset((char *) &si_me, 0, sizeof(si_me));
-  si_me.sin_family = AF_INET;
-  si_me.sin_port = htons(port);
-  si_me.sin_addr.s_addr = htonl(INADDR_ANY);
-  if (bind(s, (struct sockaddr *)&si_me, sizeof(si_me))==-1)
-    perror("bind");
-  
-  //int i;
-  //for (i=0; i<10; i++) {
-  while (1) {
-    //printf("in endless loop\n");
-    //readTrackerFile();
-    if (recvfrom(s, buf, BUFFER, 0, (struct sockaddr *)&si_other, (socklen_t *)&slen)==-1) {
-      perror("recvfrom()");
-    }
-    //printf("Received pkt from %s:%d\nData: %s", inet_ntoa(si_other.sin_addr), ntohs(si_other.sin_port), buf);
-    packet PACKET;
-    memcpy(&PACKET, buf, sizeof(packet));
-    struct timeb time;
-    ftime(&time);
-    char timeString[80];
-    strftime(timeString, sizeof(timeString), "%H:%M:%S", localtime(&(time.time)));
-    printf("Received pkt from %s:%d\n", inet_ntoa(si_other.sin_addr), ntohs(si_other.sin_port));
-    printf("Packet info: type: %c, sequence: %d, length: %d\n", PACKET.type, PACKET.sequence, PACKET.length);
-    printf("pkt received at : %s:%d\n", timeString, time.millitm);
-    printf("------------------------------\n");
+  }
+  else {
+  printf("Socket bound. FD: %i\n", socketFD_Client);
   }
   
-  close(s);
+  // Read from tracker.txt 
+  if (readTrackerFile() == -1) {
+  printf("Error reading from tracker file.  Exiting.");
+  exit(-1);
+  }
+  
+  int addrLength = sizeof(struct sockaddr_in);
+  while(1) {
+  if(recvfrom(socketFD_Client, buffer, BUFFER, 0, (struct sockaddr *)&address_server, (socklen_t *) &addrLength) == -1) {
+  perror("recvfrom");
+  }
+  }
+  */
+  close(socketFD_Client);
   return 0;
 }
