@@ -2,7 +2,7 @@
  * sender.c
  *
  *  Created on: Sep. 30 2012
- *  
+ *
  *  Matthew Schleifer
  *  Adam Eggum
  *
@@ -18,7 +18,7 @@
  Additional notes for the parameters:
 
     sender and requester port should be in this range: 1024<port<65536
-    for implementing the rate parameter the sending interval should be evenly distributed, i.e. when rate is 10 packets per second the sender 
+    for implementing the rate parameter the sending interval should be evenly distributed, i.e. when rate is 10 packets per second the sender
     has to send one packet at about every 100 milliseconds. It should not send them all in a short time and wait for the remaining time in the second.
 
  The sender must print the following information for each packet sent to the requester, with each packet's information in a separate line.
@@ -26,7 +26,7 @@
     The time that the packet was sent with milisecond granularity,
     The IP of the requester,
     The sequence number, and
-    The first 4 bytes of the payload 
+    The first 4 bytes of the payload
  */
 
 #include <stdio.h>
@@ -36,7 +36,7 @@
 #include <time.h>
 #include <sys/timeb.h>
 #include <sys/types.h>
-#include <sys/socket.h> 
+#include <sys/socket.h>
 #include <netinet/in.h>
 #include "packets.h"
 #include <arpa/inet.h>
@@ -44,7 +44,7 @@
 #define BUFFER (512)
 
 //array and array size tracker for global use
-tracker_entry* tracker_array; 
+tracker_entry* tracker_array;
 int tracker_array_size;
 
 void
@@ -92,7 +92,7 @@ main(int argc, char *argv[])
   int rate = 0;
   int sequenceNumber = 0;
   int length = 0;
-  
+
     // input params
   int c;
   opterr = 0;
@@ -125,36 +125,46 @@ main(int argc, char *argv[])
     printError("Incorrent requester port number");
     return 0;
   }
-  printf(" Port: %i\n Requester Port: %i\n Rate: %i\n Seq_no: %i\n Length: %i\n", 
+  printf(" Port: %i\n Requester Port: %i\n Rate: %i\n Seq_no: %i\n Length: %i\n",
 			port, requesterPort, rate, sequenceNumber, length);
-  
+
   printPacketInfo(requesterPort,sequenceNumber);
- 
-	struct sockaddr_in si_me, si_other;
-	int s, i, slen=sizeof(si_other);
-	char buf[BUFFER];
-
-	if ((s=socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP))==-1)
-		perror("socket");
-
-	memset((char *) &si_me, 0, sizeof(si_me));
-	si_me.sin_family = AF_INET;
-	si_me.sin_port = htons(port);
-	si_me.sin_addr.s_addr = htonl(INADDR_ANY);
-	if (bind(s, (struct sockaddr *)&si_me, sizeof(si_me))==-1)
-		perror("bind");
-
-	for (i=0; i<10; i++) {
-	if (recvfrom(s, buf, BUFFER, 0, (struct sockaddr *)&si_other, (socklen_t *)&slen)==-1)
-	perror("recvfrom()");
-	printf("Received packet from %s:%d\nData: %s\n\n",
-		inet_ntoa(si_other.sin_addr), ntohs(si_other.sin_port), buf);
-	}
-
-	close(s);
-
-
-/* 
+  
+  struct sockaddr_in si_me, si_other;
+  int s, i, slen=sizeof(si_other);
+  char buf[BUFFER];
+  
+  if ((s=socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP))==-1)
+    perror("socket");
+  
+  memset((char *) &si_me, 0, sizeof(si_me));
+  si_me.sin_family = AF_INET;
+  si_me.sin_port = htons(port);
+  si_me.sin_addr.s_addr = htonl(INADDR_ANY);
+  if (bind(s, (struct sockaddr *)&si_me, sizeof(si_me))==-1)
+    perror("bind");
+  
+  for (i=0; i<10; i++) {
+    if (recvfrom(s, buf, BUFFER, 0, (struct sockaddr *)&si_other, (socklen_t *)&slen)==-1) {
+      perror("recvfrom()");
+    }
+    //printf("Received pkt from %s:%d\nData: %s", inet_ntoa(si_other.sin_addr), ntohs(si_other.sin_port), buf);
+    packet PACKET;
+    memcpy(&PACKET, buf, sizeof(packet));
+    struct timeb time;
+    ftime(&time);
+    char timeString[80];
+    strftime(timeString, sizeof(timeString), "%H:%M:%S", localtime(&(time.time)));
+    printf("Received pkt from %s:%d\n", inet_ntoa(si_other.sin_addr), ntohs(si_other.sin_port));
+    printf("Packet info: type: %c, sequence: %d, length: %d\n", PACKET.type, PACKET.sequence, PACKET.length);
+    printf("pkt received at : %s:%d\n", timeString, time.millitm);
+    printf("------------------------------\n");
+  }
+  
+  close(s);
+  
+  
+/*
   // CREATE SOCKET
   int socketFD;
   socketFD = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP); // 17 is UDP???
@@ -165,10 +175,10 @@ main(int argc, char *argv[])
   else {
     printf("Socket created. FD: %i\n", socketFD);
   }
-  
+
   // BIND SOCKET
   struct sockaddr_in address;
-  
+
   // type of socket created in socket()
   address.sin_family = AF_INET;
   address.sin_addr.s_addr = INADDR_ANY;
@@ -183,14 +193,14 @@ main(int argc, char *argv[])
     printf("Socket bound. FD: %i\n", socketFD);
   }
   int addrLength = sizeof(struct sockaddr_in);
-  
+
   //Fill out a packet and print it out
   packet PACKET;
   PACKET.type = 'M';
   PACKET.sequence = htonl(sequenceNumber); //convert with htonl and ntohl
   PACKET.length = length;
   printf("PACKET Details: type(%c), sequence(%d), length(%d)\n", PACKET.type, PACKET.sequence, PACKET.length);
-  
+
   while(1) {
     if(recvfrom(socketFD, buffer, BUFFER, 0, (struct sockaddr *)&address, (socklen_t *) &addrLength) == -1) {
       perror("recvfrom");
@@ -198,6 +208,6 @@ main(int argc, char *argv[])
     }
   }
 */
-  
+
   return 0;
 }
