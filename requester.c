@@ -139,7 +139,8 @@ main(int argc, char *argv[])
 	PACKET.type = 'D';
 	PACKET.sequence = 1;
 	PACKET.length = 1;
-	printf("Sending packet %d from tracker file%d on port %d\n", j, i, tracker_array[i].sender_port);
+	printf("Sending packet from tracker file%d with info: type%c, sequence%d, length%d\n", i, PACKET.type, PACKET.sequence, PACKET.length);
+	//printf("Sending packet %d from tracker file%d on port %d\n", j, i, tracker_array[i].sender_port);
 	//sprintf(buffer, PACKET);//"This is packet %d from file part %d\n", j, i);
 	memcpy(buffer, &PACKET, sizeof(packet));
 	if (sendto(socketFD_Client, buffer, BUFFER, 0, (struct sockaddr *)&address_server, sizeof(address_server))==-1)
