@@ -189,7 +189,7 @@ main(int argc, char *argv[])
 	memcpy(buffer, &PACKET, sizeof(packet));
 	
 	// Wait for the requester to get set up.. not sure we want to do this but currently have to
-	sleep(1);  
+	//sleep(1);  
       
 	// Print info and then send the packet to the requester
 	printInfoAtSend(requester_port, PACKET);

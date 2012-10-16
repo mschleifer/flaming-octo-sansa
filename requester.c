@@ -3,12 +3,13 @@
 #include <string.h>
 #include <unistd.h>
 #include <time.h>
-#include<sys/timeb.h>
+#include <sys/timeb.h>
 #include <sys/types.h>
 #include <sys/socket.h> 
 #include <netinet/in.h>
 #include "packets.h"
 #include <arpa/inet.h>
+#include <stdbool.h>
 
 #define SRV_IP "127.0.0.1"
 #define BUFFER (512)
@@ -27,8 +28,14 @@ usage(char *prog) {
     exit(1);
 }
 
+/** 
+ * Reads the tracker file and puts it into an array of structs, one for each
+ * row in the table.  It also sorts the table so that any rows with the same 
+ * file name have sorted sequence numbers.
+ * @return 0 if there are no issues, -1 if there is a problem
+ */
 int readTrackerFile() {
-  printf("\n-----------------------\n\nReading 'tracker.txt' into array of structs\n");
+  //printf("\n-----------------------\n\nReading 'tracker.txt' into array of structs\n");
   int i, k;
   tracker_array = (tracker_entry*)malloc(sizeof(tracker_entry) * 100);  //setting max size to 100.
   FILE *in_file = fopen("test_tracker.txt", "r");  //read only
@@ -72,6 +79,7 @@ int readTrackerFile() {
   for (i = 0; i < tracker_array_size; i++) {
     //printf("Row %d: %s, %d, %s, %d\n", i, tracker_array[i].file_name, tracker_array[i].sequence_id, tracker_array[i].sender_hostname, tracker_array[i].sender_port);
     }
+  
   fclose(in_file);
   //printf("\n---------------------------\nDone reading from tracker file.\n");
   return 0;
@@ -144,65 +152,73 @@ main(int argc, char *argv[])
   
   // CREATE SOCKET
   int socketFD_Client;
+  struct sockaddr_in client, server;
+  int slen=sizeof(server);
+  bzero(&client, sizeof(client));
+  client.sin_family = AF_INET;
+  client.sin_port = htons(port);
+  
+  if (inet_aton(SRV_IP, &client.sin_addr) == 0) {
+    fprintf(stderr, "inet_aton() failed\n");
+    exit(-1);
+  }
+
   socketFD_Client = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP); // 17 is UDP???
   if(socketFD_Client == -1) {
     perror("socket");
     close(socketFD_Client);
   }
 
-  int i;
-  for(i = 0; i < tracker_array_size; i++) {
-    if(strcmp(tracker_array[i].file_name, requested_file_name) == 0) {
-      struct sockaddr_in address_server;
-      
-      memset((char *) &address_server, 0, sizeof(address_server));
-      address_server.sin_family = AF_INET;
-      address_server.sin_port = htons(tracker_array[i].sender_port);
-      if (inet_aton(SRV_IP, &address_server.sin_addr)==0) {
-	fprintf(stderr, "inet_aton() failed\n");
-	exit(1);
-      }
-      
-      memcpy(buffer, &tracker_array[i].file_name, sizeof(tracker_array[i].file_name));
-      printf("Sending message to sender with data: %s\n", tracker_array[i].file_name);
-      
-      // Print info and then send the packet to the requester
-      //printInfoAtSend(10, PACKET);
-      if (sendto(socketFD_Client, buffer, BUFFER, 0, (struct sockaddr *)&address_server, sizeof(address_server))==-1) {
-	perror("sendto()");
-      }
-    }
-  }
-  
-  close(socketFD_Client);
+  // Socket address to be used when sending file request
+  struct sockaddr_in address_server;
+  bzero(&address_server, sizeof(address_server));
+  address_server.sin_family = AF_INET;
 
-  struct sockaddr_in si_me, si_other;
-  int s, slen=sizeof(si_other);
-  char buf[BUFFER];
-  
-  if ((s=socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP))==-1)
-    perror("socket");
-  
-  memset((char *) &si_me, 0, sizeof(si_me));
-  si_me.sin_family = AF_INET;
-  si_me.sin_port = htons(port);
-  si_me.sin_addr.s_addr = htonl(INADDR_ANY);
-  if (bind(s, (struct sockaddr *)&si_me, sizeof(si_me))==-1)
+  // Assign the address to the socket
+  if (bind(socketFD_Client, (struct sockaddr *)&client, sizeof(client))==-1)
     perror("bind");
   
-  
-  
+  /* 
+   * Loops forever, but in the end, is simply waiting for a message with
+   * recvfrom, so nothing will happen.
+   */
+  bool done_requesting = false;
   while (1) {
-    if (recvfrom(s, buf, BUFFER, 0, (struct sockaddr *)&si_other, (socklen_t *)&slen)==-1) {
+    int i;
+    for(i = 0; i < tracker_array_size && !done_requesting; i++) {
+      if(strcmp(tracker_array[i].file_name, requested_file_name) == 0) {
+	
+	address_server.sin_port = htons(tracker_array[i].sender_port);
+	if (inet_aton(SRV_IP, &address_server.sin_addr)==0) {
+	  fprintf(stderr, "inet_aton() failed\n");
+	  exit(1);
+	}
+	
+	memcpy(buffer, &tracker_array[i].file_name, sizeof(tracker_array[i].file_name));
+	printf("Sending message to sender with data: %s\n", tracker_array[i].file_name);
+	
+	// Send the request to the sender (do we want this to be a packet?)	
+	if (sendto(socketFD_Client, buffer, BUFFER, 0, (struct sockaddr *)&address_server, sizeof(address_server))==-1) {
+	  perror("sendto()");
+	}
+      }
+      
+      // Stop the application from endlessly requesting the same files
+      if (i == tracker_array_size - 1) {
+	done_requesting = true;
+      }
+    }
+    
+    // Listen for some kind of response.  If one is given, fill in info
+    if (recvfrom(socketFD_Client, buffer, BUFFER, 0, (struct sockaddr *)&server, (socklen_t *)&slen) == -1) {
       perror("recvfrom()");
     }
 
     packet PACKET;
-    memcpy(&PACKET, buf, sizeof(packet));
-    printInfoAtReceive(inet_ntoa(si_other.sin_addr), PACKET);
-    //printf("Received pkt from %s:%d\n", inet_ntoa(si_other.sin_addr), ntohs(si_other.sin_port));
+    memcpy(&PACKET, buffer, sizeof(packet));
+    printInfoAtReceive(inet_ntoa(server.sin_addr), PACKET);
   }
-  
-  close(s);
+
+  close(socketFD_Client);
   return 0;
 }
