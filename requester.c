@@ -61,14 +61,14 @@ int readTrackerFile() {
 /**
  * Should be called for each packet that is sent to the requester.  
  * Prints out the time, IP, sequence number and 4 bytes of the payload.
- * TODO: We need to print a section of the payload
+ * TODO: We need to print a section of the payload..not sure how to do that
  */
 int printInfoAtReceive(char* sender_ip, packet pkt) {
   struct timeb time;
   ftime(&time);
   char timeString[80];
   strftime(timeString, sizeof(timeString), "%H:%M:%S", localtime(&(time.time)));
-  printf("Sending packet at: %s.%d(ms).  Sender IP: %s.  Sequence number: %d.  Length: %d.  Payload: (null)\n",
+  printf("Received packet at: %s.%d(ms).  Sender IP: %s.  Sequence number: %d.  Length: %d.  Payload: (null)\n",
 	 timeString, time.millitm, sender_ip, pkt.length, pkt.sequence);
   return 0;
 }
