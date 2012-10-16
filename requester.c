@@ -96,7 +96,7 @@ int printInfoAtReceive(char* sender_ip, packet pkt) {
   char timeString[80];
   strftime(timeString, sizeof(timeString), "%H:%M:%S", localtime(&(time.time)));
   printf("Received packet at: %s.%d(ms).  Sender IP: %s.  Sequence number: %d.  Length: %d.  Payload: (null)\n",
-	 timeString, time.millitm, sender_ip, pkt.length, pkt.sequence);
+	 timeString, time.millitm, sender_ip, pkt.sequence, pkt.length);
   return 0;
 }
 

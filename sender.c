@@ -139,47 +139,50 @@ main(int argc, char *argv[])
   //printf(" Port: %i\n Requester Port: %i\n Rate: %i\n Seq_no: %i\n Length: %i\n",port, requester_port, rate, sequence_number, length);
 
   
-  struct sockaddr_in si_me, si_other;
-  int s, slen=sizeof(si_other);
+  struct sockaddr_in server, client;
+  int socketFD_Server, slen=sizeof(client);
   char buf[BUFFER];
   
-  if ((s=socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP))==-1)
+  if ((socketFD_Server=socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP))==-1) {
     perror("socket");
+    close(socketFD_Server);
+    exit(-1);
+  }
   
-  memset((char *) &si_me, 0, sizeof(si_me));
-  si_me.sin_family = AF_INET;
-  si_me.sin_port = htons(port);
-  si_me.sin_addr.s_addr = htonl(INADDR_ANY);
-  if (bind(s, (struct sockaddr *)&si_me, sizeof(si_me))==-1)
+  bzero(&server, sizeof(server));
+  server.sin_family = AF_INET;
+  server.sin_port = htons(port);
+  server.sin_addr.s_addr = htonl(INADDR_ANY);
+
+  // Bind the socket to the address
+  if (bind(socketFD_Server, (struct sockaddr *)&server, sizeof(server))==-1)
     perror("bind");
   
 
   while (1) {
-    if (recvfrom(s, buf, BUFFER, 0, (struct sockaddr *)&si_other, (socklen_t *)&slen)==-1) {
+    
+    // Endlessly wait for some kind of a request
+    if (recvfrom(socketFD_Server, buf, BUFFER, 0, (struct sockaddr *)&client, (socklen_t *)&slen)==-1) {
       perror("recvfrom()");
     }
-
-    printf("Buffer received (filename request): %s\n", buf);
     
-    int socketFD_Client;
-    socketFD_Client = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP); // 17 is UDP???
-    if(socketFD_Client == -1) {
-      perror("socket");
-      close(socketFD_Client);
+    // Once we receive something, set up info about client
+    bzero(&client, sizeof(client));
+    client.sin_family = AF_INET;
+    client.sin_port = htons(requester_port);
+    if (inet_aton(SRV_IP, &client.sin_addr) == 0) {
+      fprintf(stderr, "inte_aton() failed\n");
+      exit(-1);
     }
     
+    printf("Buffer received (filename request): %s\n", buf);
     
-    if(strcmp(buf, "split.txt") == 0) {
-      struct sockaddr_in address_server;
-      
-      memset((char *) &address_server, 0, sizeof(address_server));
-      address_server.sin_family = AF_INET;
-      address_server.sin_port = htons(requester_port);
-      if (inet_aton(SRV_IP, &address_server.sin_addr)==0) {
-	fprintf(stderr, "inet_aton() failed\n");
-	exit(1);
-      }
+    // A nack to do something when it's split.txt.  
+    // TODO: Figure out how we should know / how to get the file requested
+    if (strcmp(buf, "split.txt") == 0) {
+     
       int j;
+      // Not sure what this for loop is for
       for (j=0; j<1; j++) {
 	rate = rate;  //TODO: We have to use rate somewhere, this is for the compiler
 	packet PACKET;
@@ -187,56 +190,17 @@ main(int argc, char *argv[])
 	PACKET.sequence = sequence_number;
 	PACKET.length = length;
 	memcpy(buffer, &PACKET, sizeof(packet));
-	
-	// Wait for the requester to get set up.. not sure we want to do this but currently have to
-	//sleep(1);  
-      
+	      
 	// Print info and then send the packet to the requester
 	printInfoAtSend(requester_port, PACKET);
-	if (sendto(socketFD_Client, buffer, BUFFER, 0, (struct sockaddr *)&address_server, sizeof(address_server))==-1)
-	  perror("sendto()");
-      }
-    }
-    close(socketFD_Client);
-  }
-  
-  //close:
-  close(s);
-
-  /*int socketFD_Client;
-  socketFD_Client = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP); // 17 is UDP???
-  if(socketFD_Client == -1) {
-    perror("socket");
-    close(socketFD_Client);
-  }
-
-  for(i = 0; i < tracker_array_size; i++) {
-    if(strcmp(tracker_array[i].file_name, "split.txt") == 0) {
-      struct sockaddr_in address_server;
-      
-      memset((char *) &address_server, 0, sizeof(address_server));
-      address_server.sin_family = AF_INET;
-      address_server.sin_port = htons(tracker_array[i].sender_port);
-      if (inet_aton(SRV_IP, &address_server.sin_addr)==0) {
-	fprintf(stderr, "inet_aton() failed\n");
-	exit(1);
-      }
-      int j;
-      for (j=0; j<1; j++) {
-	packet PACKET;
-	PACKET.type = 'D';
-	PACKET.sequence = 1;
-	PACKET.length = 1;
-	memcpy(buffer, &PACKET, sizeof(packet));
-	
-	// Print info and then send the packet to the requester
-	printInfoAtSend(10, PACKET);
-	if (sendto(socketFD_Client, buffer, BUFFER, 0, (struct sockaddr *)&address_server, sizeof(address_server))==-1)
+	if (sendto(socketFD_Server, buffer, BUFFER, 0, (struct sockaddr *)&client, sizeof(client))==-1)
 	  perror("sendto()");
       }
     }
   }
-  
-  close(socketFD_Client);  */
+
+  close(socketFD_Server);
+  //close(s);
+
   return 0;
 }
