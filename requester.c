@@ -28,10 +28,10 @@ usage(char *prog) {
 }
 
 int readTrackerFile() {
-  //printf("\n-----------------------\n\nReading 'tracker.txt' into array of structs\n");
-  
+  printf("\n-----------------------\n\nReading 'tracker.txt' into array of structs\n");
+  int i, k;
   tracker_array = (tracker_entry*)malloc(sizeof(tracker_entry) * 100);  //setting max size to 100.
-  FILE *in_file = fopen("tracker.txt", "r");  //read only
+  FILE *in_file = fopen("test_tracker.txt", "r");  //read only
   tracker_array_size = 0;
   
   //test for not existing
@@ -48,11 +48,30 @@ int readTrackerFile() {
     tracker_array_size++;
   }
   
+  /**
+   * Go through the array and make sure any table entries with the same 
+   * file name are sorted by their sequence numbers.
+   */
+  for (k = 0; k < tracker_array_size - 1; k++) {
+    if (strcmp(tracker_array[k].file_name, tracker_array[k+1].file_name) == 0) {
+      
+      // If they are out of order, put them in order, restart loop
+      if (tracker_array[k].sequence_id > tracker_array[k+1].sequence_id) {
+	strcpy(entry.file_name, tracker_array[k].file_name);
+	entry.sequence_id = tracker_array[k].sequence_id;
+	strcpy(entry.sender_hostname, tracker_array[k].sender_hostname);
+	entry.sender_port = tracker_array[k].sender_port;
+	tracker_array[k] = tracker_array[k+1];
+	tracker_array[k+1] = entry;
+	k = 0;
+      }
+    }
+  }
   //printf("tracker array/table size: %d\n", tracker_array_size);
-  int i = 0;
+
   for (i = 0; i < tracker_array_size; i++) {
     //printf("Row %d: %s, %d, %s, %d\n", i, tracker_array[i].file_name, tracker_array[i].sequence_id, tracker_array[i].sender_hostname, tracker_array[i].sender_port);
-  }
+    }
   fclose(in_file);
   //printf("\n---------------------------\nDone reading from tracker file.\n");
   return 0;
