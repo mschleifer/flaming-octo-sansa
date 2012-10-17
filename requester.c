@@ -28,6 +28,29 @@ usage(char *prog) {
     exit(1);
 }
 
+/**
+ * Writes what is given to the given file name. 
+ * Overwrites what is in the file.
+ * @return 0 if there are no issues, -1 otherwise
+ */
+int writeToFile(packet pkt, char* file_name) {
+  FILE *fp; 
+  fp = fopen(file_name, "w+");
+  if (!fp) {
+    perror("fopen");
+    return -1;
+  }
+
+  fprintf(fp, "Packet info: \n\tType: %c\n\tSequence: %d\n\tLength: %d\n",
+	  pkt.type, pkt.sequence, pkt.length);
+
+  if (fclose(fp) != 0) {
+    perror("fclose");
+    return -1;
+  }
+  return 0;
+}
+
 /** 
  * Reads the tracker file and puts it into an array of structs, one for each
  * row in the table.  It also sorts the table so that any rows with the same 
@@ -186,7 +209,13 @@ main(int argc, char *argv[])
   while (1) {
     int i;
     for(i = 0; i < tracker_array_size && !done_requesting; i++) {
-      if(strcmp(tracker_array[i].file_name, requested_file_name) == 0) {
+      
+      /*
+       * I think we request all files that are in the tracker array, but
+       * we write what we receive from the sender in the file with the
+       * new file requested_file_name..
+       */
+      //if(strcmp(tracker_array[i].file_name, requested_file_name) == 0) {
 	
 	address_server.sin_port = htons(tracker_array[i].sender_port);
 	if (inet_aton(SRV_IP, &address_server.sin_addr)==0) {
@@ -201,7 +230,7 @@ main(int argc, char *argv[])
 	if (sendto(socketFD_Client, buffer, BUFFER, 0, (struct sockaddr *)&address_server, sizeof(address_server))==-1) {
 	  perror("sendto()");
 	}
-      }
+    
       
       // Stop the application from endlessly requesting the same files
       if (i == tracker_array_size - 1) {
@@ -217,6 +246,8 @@ main(int argc, char *argv[])
     packet PACKET;
     memcpy(&PACKET, buffer, sizeof(packet));
     printInfoAtReceive(inet_ntoa(server.sin_addr), PACKET);
+
+    writeToFile(PACKET, requested_file_name);
   }
 
   close(socketFD_Client);
