@@ -6,7 +6,7 @@ typedef struct packet {
   char type;
   uint32_t sequence;
   uint32_t length;
-  unsigned char* payload;
+  char* payload;
 } packet;
 
 // Each can hold a row of data from the tracker.txt file

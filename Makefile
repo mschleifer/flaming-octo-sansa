@@ -9,4 +9,3 @@ requester:
 
 clean:
 	rm -rf sender requester *.o
-	rm *~

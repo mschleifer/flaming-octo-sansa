@@ -42,7 +42,7 @@
 #include <arpa/inet.h>
 #include <stdbool.h>
 
-#define BUFFER (512)
+#define BUFFER (5120)
 #define SRV_IP "127.0.0.1"
 
 //array and array size tracker for global use
@@ -134,14 +134,10 @@ main(int argc, char *argv[])
     printError("Incorrect port number(s).  Ports should be in range (1024 - 65536)");
     return 0;
   }
-
-  
-  //printf(" Port: %i\n Requester Port: %i\n Rate: %i\n Seq_no: %i\n Length: %i\n",port, requester_port, rate, sequence_number, length);
   
   struct sockaddr_in server, client;
   int socketFD_Server, slen=sizeof(client);
-  char buf[BUFFER];
-  
+    
   if ((socketFD_Server=socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP))==-1) {
     perror("socket");
     close(socketFD_Server);
@@ -159,12 +155,12 @@ main(int argc, char *argv[])
   
 
   while (1) {
-    
+    packet request;
+    char buf[BUFFER];
     // Endlessly wait for some kind of a request
-    if (recvfrom(socketFD_Server, buf, BUFFER, 0, (struct sockaddr *)&client, (socklen_t *)&slen)==-1) {
+    if (recvfrom(socketFD_Server, &buf, BUFFER, 0, (struct sockaddr *)&client, (socklen_t *)&slen)==-1) {
       perror("recvfrom()");
     }
-    
     // Once we receive something, set up info about client
     bzero(&client, sizeof(client));
     client.sin_family = AF_INET;
@@ -174,11 +170,21 @@ main(int argc, char *argv[])
       exit(-1);
     }
     
-    printf("Buffer received (filename request): %s\n", buf);
+    memcpy(&request, &buf, sizeof(BUFFER));
     
-    // A nack to do something when it's split.txt.  
-    // TODO: Figure out how we should know / how to get the file requested
-    if (strcmp(buf, "split.txt") == 0) {
+    if (request.type == 'R') {
+      printf("packet type: %c\n", request.type);
+     
+      // TODO: Should get the file the requester says it 
+      //   wants, then chunk it and send it to the requester
+      // TODO: Figure out how to send dynamic sized char*'s 
+      //   back and forth from the sender..might be some low level stuff.
+      // TODO: Figure out how to 'chunk' the file.
+    }
+    
+  
+    // TODO: Change/Remove this, it's a hack currently
+    if (strcmp("split.txt", "split.txt") == 0) {
      
       int j;
       // Not sure what this for loop is for

@@ -12,7 +12,7 @@
 #include <stdbool.h>
 
 #define SRV_IP "127.0.0.1"
-#define BUFFER (512)
+#define BUFFER (5120)
 //array and array size tracker for global use
 tracker_entry* tracker_array; 
 int tracker_array_size;
@@ -149,6 +149,7 @@ main(int argc, char *argv[])
 {
   char *buffer;
   buffer = malloc(BUFFER);
+  bzero(buffer, sizeof(buffer));
   if(buffer == NULL) {
     printError("Buffer could not be allocated");
     return 0;
@@ -235,7 +236,7 @@ main(int argc, char *argv[])
       
       /**
        * Request the given file name only. 
-       * TODO: I'm not sure if we want to send the request as a packet.
+       * Sends the request in the form of a packet.
        */
       if(strcmp(tracker_array[i].file_name, requested_file_name) == 0) {
 	
@@ -244,12 +245,18 @@ main(int argc, char *argv[])
 	  fprintf(stderr, "inet_aton() failed\n");
 	  exit(1);
 	}
+	packet request;
+	request.type = 'R';
+	request.sequence = 0;
+	request.length = 0;
+	request.payload = requested_file_name;
 	
-	memcpy(buffer, &tracker_array[i].file_name, sizeof(tracker_array[i].file_name));
-	printf("Sending message to sender with data: %s\n", tracker_array[i].file_name);
 	
-	// Send the request to the sender (do we want this to be a packet?)	
-	if (sendto(socketFD_Client, buffer, BUFFER, 0, (struct sockaddr *)&address_server, sizeof(address_server))==-1) {
+	// Haven't gotten this to actually work yet. (a hack in sender.c)
+	printf("Requesting the given file name\n");
+		
+	// Send the request packet to the sender 	
+	if (sendto(socketFD_Client, &request, BUFFER, 0, (struct sockaddr *)&address_server, sizeof(address_server))==-1) {
 	  perror("sendto()");
 	}
       }
@@ -268,7 +275,6 @@ main(int argc, char *argv[])
     packet PACKET;
     memcpy(&PACKET, buffer, sizeof(packet));
     printInfoAtReceive(inet_ntoa(server.sin_addr), PACKET);
-
     writeToFile(PACKET, requested_file_name);
   }
 
