@@ -1,0 +1,13 @@
+The file name given to the requester is the file that it is requesting and also
+the file that it is creating with the response it receives from the sender.
+
+So before running this, you probably want to make a separate directory to run
+your requester in, separate from where the sender and the main text files are
+located.  (Otherwise they will be overwritten)
+
+THINGS TO DO/KNOW BEFORE RUNNING ANYTHING:
+-------------------------------------
+ - Pull the code from GitHub.  (New folders, Makefile, etc)
+ - Make sure you run 'make all'/'make clean' from the main project directory
+ - Make sure you run ./sender ... from the main project directory
+ - Make sure you run ./requester ... from the request_dir directory

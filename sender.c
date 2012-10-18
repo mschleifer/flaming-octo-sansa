@@ -25,7 +25,7 @@
 
     The time that the packet was sent with milisecond granularity,
     The IP of the requester,
-    The sequence number, and
+    The sequence number, and 
     The first 4 bytes of the payload
  */
 
@@ -137,7 +137,6 @@ main(int argc, char *argv[])
 
   
   //printf(" Port: %i\n Requester Port: %i\n Rate: %i\n Seq_no: %i\n Length: %i\n",port, requester_port, rate, sequence_number, length);
-
   
   struct sockaddr_in server, client;
   int socketFD_Server, slen=sizeof(client);

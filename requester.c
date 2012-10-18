@@ -28,6 +28,27 @@ usage(char *prog) {
     exit(1);
 }
 
+
+/**
+ * Clears the given file by opening it with the 'w' tag, then closing it.
+ * @return 0 if successful, -1 in the case of an error
+ */
+int clearFile(char* file_name) {
+  FILE *fp;
+  fp = fopen(file_name, "w");
+  
+  if (!fp) {
+    perror("fopen");
+    return -1;
+  }
+  if (fclose(fp) != 0) {
+    perror("fclose");
+    return -1;
+  }
+  
+  return 0;
+}
+
 /**
  * Writes what is given to the given file name. 
  * Overwrites what is in the file.
@@ -35,7 +56,7 @@ usage(char *prog) {
  */
 int writeToFile(packet pkt, char* file_name) {
   FILE *fp; 
-  fp = fopen(file_name, "w+");
+  fp = fopen(file_name, "a+"); // Append to the file
   if (!fp) {
     perror("fopen");
     return -1;
@@ -61,7 +82,7 @@ int readTrackerFile() {
   //printf("\n-----------------------\n\nReading 'tracker.txt' into array of structs\n");
   int i, k;
   tracker_array = (tracker_entry*)malloc(sizeof(tracker_entry) * 100);  //setting max size to 100.
-  FILE *in_file = fopen("test_tracker.txt", "r");  //read only
+  FILE *in_file = fopen("tracker.txt", "r");  //read only
   tracker_array_size = 0;
   
   //test for not existing
@@ -159,16 +180,18 @@ main(int argc, char *argv[])
   }
 
   if(port < 1024 || port > 65536) {
-    printError("Incorrect port number");
+    printError("Incorrect port number\n");
     return 0;
   }
   
   // Read from tracker.txt 
   if (readTrackerFile() == -1) {
-    printf("Error reading from tracker file.  Exiting.");
+    printf("Error reading from tracker file.  Exiting.\n");
     exit(-1);
   }
 
+  // Clears the file once every time the program is run
+  clearFile(requested_file_name);
   
   /* Print args */
   //printf("ARGS: \tClient Port: %i\n\tRequested filename: %s\n", port, requested_file_name);
@@ -210,12 +233,11 @@ main(int argc, char *argv[])
     int i;
     for(i = 0; i < tracker_array_size && !done_requesting; i++) {
       
-      /*
-       * I think we request all files that are in the tracker array, but
-       * we write what we receive from the sender in the file with the
-       * new file requested_file_name..
+      /**
+       * Request the given file name only. 
+       * TODO: I'm not sure if we want to send the request as a packet.
        */
-      //if(strcmp(tracker_array[i].file_name, requested_file_name) == 0) {
+      if(strcmp(tracker_array[i].file_name, requested_file_name) == 0) {
 	
 	address_server.sin_port = htons(tracker_array[i].sender_port);
 	if (inet_aton(SRV_IP, &address_server.sin_addr)==0) {
@@ -230,7 +252,7 @@ main(int argc, char *argv[])
 	if (sendto(socketFD_Client, buffer, BUFFER, 0, (struct sockaddr *)&address_server, sizeof(address_server))==-1) {
 	  perror("sendto()");
 	}
-    
+      }
       
       // Stop the application from endlessly requesting the same files
       if (i == tracker_array_size - 1) {
