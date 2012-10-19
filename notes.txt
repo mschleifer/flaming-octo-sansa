@@ -14,3 +14,12 @@ THINGS TO DO/KNOW BEFORE RUNNING ANYTHING:
 
 One thing this makes annoying is that your requester cannot be 'active' when 
 you run make, or the new executable will not be created.
+
+10/18 ----------
+I didn't push any of the code that I wrote tonight because it's still a mess. I 
+think I've figured out that we need to change the way we're sending packets a 
+bit.  We can't just send a packet struct because then we're just sending a char*
+for the payload.  We need to send the actual bytes of data via sendto(). I'm 
+trying to put all the data (type, seq, length, payload) into an allocated char[]
+and then send that.  I've got it mostly working but I'm having some problems 
+with memcpy()-ing the payload. We should discuss this.
