@@ -74,8 +74,8 @@ int printInfoAtSend(int requester_ip, packet pkt) {
   ftime(&time);
   char timeString[80];
   strftime(timeString, sizeof(timeString), "%H:%M:%S", localtime(&(time.time)));
-  printf("Sending packet at: %s.%d(ms).  Requester IP: %d.  Sequence number: %d.  Payload: (null)\n",
-	 timeString, time.millitm, requester_ip, pkt.sequence);
+  printf("Sending packet at: %s.%d(ms).  Requester IP: %d.  Sequence number: %d.  Payload: %s\n",
+	 timeString, time.millitm, requester_ip, pkt.sequence, pkt.payload);
   return 0;
 }
 
@@ -198,10 +198,27 @@ main(int argc, char *argv[])
       read(fd, (void*)&payload, BUFFER);
 
       printf("%s\n", payload);
+
+      packet response;
+      response.type = 'D';
+      response.sequence = 0;
+      response.length = BUFFER;
+      response.payload = payload;
+      
+      uint payloadSize = strlen(response.payload);
+      char* responsePacket = malloc(17+payloadSize);
+      memcpy(responsePacket, &response.type, sizeof(char));
+      memcpy(responsePacket+1, &response.sequence, sizeof(uint32_t));
+      memcpy(responsePacket+9, &payloadSize, sizeof(uint32_t));
+      memcpy(responsePacket+17, response.payload, payloadSize);
+      printf("responsePacket: %c %u %u %s\n", responsePacket[0], responsePacket[1], responsePacket[9], responsePacket+17);
       
       // should check for error here
       
-      
+      printInfoAtSend(requester_port, response);
+      if (sendto(socketFD_Server, responsePacket, 17+payloadSize, 0, (struct sockaddr *)&client, sizeof(client))==-1) {
+	perror("sendto()");
+      }
       // TODO: Should get the file the requester says it 
       //   wants, then chunk it and send it to the requester
       // TODO: Figure out how to send dynamic sized char*'s 
@@ -212,7 +229,7 @@ main(int argc, char *argv[])
     
   
     // TODO: Change/Remove this, it's a hack currently
-    if (strcmp("split.txt", "split.txt") == 0) {
+    if (strcmp("sp2lit.txt", "split.txt") == 0) {
      
       int j;
       // Not sure what this for loop is for

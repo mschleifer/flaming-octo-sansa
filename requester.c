@@ -141,8 +141,8 @@ int printInfoAtReceive(char* sender_ip, packet pkt) {
   ftime(&time);
   char timeString[80];
   strftime(timeString, sizeof(timeString), "%H:%M:%S", localtime(&(time.time)));
-  printf("Received packet at: %s.%d(ms).  Sender IP: %s.  Sequence number: %d.  Length: %d.  Payload: (null)\n",
-	 timeString, time.millitm, sender_ip, pkt.sequence, pkt.length);
+  printf("Received packet at: %s.%d(ms).  Sender IP: %s.  Sequence number: %d.  Length: %d.  Payload: %s\n",
+	 timeString, time.millitm, sender_ip, pkt.sequence, pkt.length, pkt.payload);
   return 0;
 }
 
@@ -248,13 +248,13 @@ main(int argc, char *argv[])
 	  exit(1);
 	}
 	    
-	    packet request;
-	    request.type = 'R';
-	    request.sequence = 33;
-	    request.length = 20;
-	    request.payload = requested_file_name;
-	    
-	    uint payloadSize = strlen(requested_file_name);
+	packet request;
+	request.type = 'R';
+	request.sequence = 0;
+	request.length = 20;
+	request.payload = requested_file_name;
+	
+	uint payloadSize = strlen(requested_file_name);
         char* requestPacket = malloc(17+payloadSize);
         memcpy(requestPacket, &request.type, sizeof(char));
         memcpy(requestPacket+1, &request.sequence, sizeof(uint32_t));
@@ -262,18 +262,18 @@ main(int argc, char *argv[])
         memcpy(requestPacket+17, request.payload, payloadSize);
         printf("requestPacket: %c %u %u %s\n", requestPacket[0], requestPacket[1], requestPacket[9], requestPacket+17);
 	
-	    // Haven't gotten this to actually work yet. (a hack in sender.c)
-	    printf("Requesting the given file name\n");
-		
-	    // Send the request packet to the sender 	
-	    if (sendto(socketFD_Client, requestPacket, 17+payloadSize, 0, (struct sockaddr *)&address_server, sizeof(address_server))==-1) {
-	      perror("sendto()");
-	    }
+	// Haven't gotten this to actually work yet. (a hack in sender.c)
+	printf("Requesting the given file name\n");
+	
+	// Send the request packet to the sender 	
+	if (sendto(socketFD_Client, requestPacket, 17+payloadSize, 0, (struct sockaddr *)&address_server, sizeof(address_server))==-1) {
+	  perror("sendto()");
+	}
       }
       
       // Stop the application from endlessly requesting the same files
       if (i == tracker_array_size - 1) {
-	    done_requesting = true;
+	done_requesting = true;
       }
     }
     
