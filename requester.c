@@ -242,16 +242,16 @@ main(int argc, char *argv[])
        */
       if(strcmp(tracker_array[i].file_name, requested_file_name) == 0) {
 	
-	    address_server.sin_port = htons(tracker_array[i].sender_port);
-	    if (inet_aton(SRV_IP, &address_server.sin_addr)==0) {
-	      fprintf(stderr, "inet_aton() failed\n");
-	      exit(1);
-	    }
+	address_server.sin_port = htons(tracker_array[i].sender_port);
+	if (inet_aton(SRV_IP, &address_server.sin_addr)==0) {
+	  fprintf(stderr, "inet_aton() failed\n");
+	  exit(1);
+	}
 	    
 	    packet request;
 	    request.type = 'R';
 	    request.sequence = 33;
-	    request.length = 0;
+	    request.length = 20;
 	    request.payload = requested_file_name;
 	    
 	    uint payloadSize = strlen(requested_file_name);

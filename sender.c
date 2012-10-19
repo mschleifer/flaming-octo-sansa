@@ -41,6 +41,8 @@
 #include "packets.h"
 #include <arpa/inet.h>
 #include <stdbool.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 
 #define BUFFER (5120)
 #define MAXPACKETSIZE (5137)
@@ -186,11 +188,26 @@ main(int argc, char *argv[])
       printf("packet length: %u\n", request.length);
       printf("packet payload: %s\n", request.payload);
      
+      int fd;
+      if ((fd = open(request.payload, S_IRUSR )) == -1) {
+	perror("open");
+	exit(-1);
+      }
+
+      char payload[BUFFER];
+      read(fd, (void*)&payload, BUFFER);
+
+      printf("%s\n", payload);
+      
+      // should check for error here
+      
+      
       // TODO: Should get the file the requester says it 
       //   wants, then chunk it and send it to the requester
       // TODO: Figure out how to send dynamic sized char*'s 
       //   back and forth from the sender..might be some low level stuff.
       // TODO: Figure out how to 'chunk' the file.
+      
     }
     
   
