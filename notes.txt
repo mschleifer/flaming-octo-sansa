@@ -23,3 +23,9 @@ for the payload.  We need to send the actual bytes of data via sendto(). I'm
 trying to put all the data (type, seq, length, payload) into an allocated char[]
 and then send that.  I've got it mostly working but I'm having some problems 
 with memcpy()-ing the payload. We should discuss this.
+
+
+10/19 ---------------
+I started on the part where the sender sends the data in the payload, but 
+the receiver is segfaulting when trying to read it.  Done for now.  
+Hopefully not a tough bug to find.
