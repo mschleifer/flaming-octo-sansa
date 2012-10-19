@@ -43,6 +43,8 @@
 #include <stdbool.h>
 
 #define BUFFER (5120)
+#define MAXPACKETSIZE (5137)
+#define HEADERSIZE (17)
 #define SRV_IP "127.0.0.1"
 
 //array and array size tracker for global use
@@ -79,7 +81,7 @@ int
 main(int argc, char *argv[])
 {
   char *buffer;
-  buffer = malloc(BUFFER);
+  buffer = malloc(MAXPACKETSIZE);
   if(buffer == NULL) {
     printError("Buffer could not be allocated");
     return 0;
@@ -137,13 +139,15 @@ main(int argc, char *argv[])
   
   struct sockaddr_in server, client;
   int socketFD_Server, slen=sizeof(client);
-    
+  
+  // Create a sockety
   if ((socketFD_Server=socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP))==-1) {
     perror("socket");
     close(socketFD_Server);
     exit(-1);
   }
   
+  // Zero out server socket address and set-up
   bzero(&server, sizeof(server));
   server.sin_family = AF_INET;
   server.sin_port = htons(port);
@@ -156,9 +160,8 @@ main(int argc, char *argv[])
 
   while (1) {
     packet request;
-    char buf[BUFFER];
     // Endlessly wait for some kind of a request
-    if (recvfrom(socketFD_Server, &buf, BUFFER, 0, (struct sockaddr *)&client, (socklen_t *)&slen)==-1) {
+    if (recvfrom(socketFD_Server, buffer, MAXPACKETSIZE, 0, (struct sockaddr *)&client, (socklen_t *)&slen)==-1) {
       perror("recvfrom()");
     }
     // Once we receive something, set up info about client
@@ -170,10 +173,18 @@ main(int argc, char *argv[])
       exit(-1);
     }
     
-    memcpy(&request, &buf, sizeof(BUFFER));
+    memcpy(&request.type, buffer, sizeof(char));
+    memcpy(&request.sequence, buffer + 1, sizeof(uint32_t));
+    memcpy(&request.length, buffer + 9, sizeof(uint32_t));
+    request.payload = malloc(request.length);
+    memcpy(request.payload, buffer + 17, request.length);
+    
     
     if (request.type == 'R') {
       printf("packet type: %c\n", request.type);
+      printf("packet sequence: %u\n", request.sequence);
+      printf("packet length: %u\n", request.length);
+      printf("packet payload: %s\n", request.payload);
      
       // TODO: Should get the file the requester says it 
       //   wants, then chunk it and send it to the requester

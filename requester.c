@@ -12,7 +12,9 @@
 #include <stdbool.h>
 
 #define SRV_IP "127.0.0.1"
-#define BUFFER (5120)
+#define MAXPACKETSIZE (5137)
+#define HEADERSIZE (17)
+#define MAXPAYLOADSIZE (5120)
 //array and array size tracker for global use
 tracker_entry* tracker_array; 
 int tracker_array_size;
@@ -148,7 +150,7 @@ int
 main(int argc, char *argv[])
 {
   char *buffer;
-  buffer = malloc(BUFFER);
+  buffer = malloc(MAXPACKETSIZE);
   bzero(buffer, sizeof(buffer));
   if(buffer == NULL) {
     printError("Buffer could not be allocated");
@@ -162,7 +164,7 @@ main(int argc, char *argv[])
   // Port on which the requester waits for packets
   int port  = 0;
   // The name of the file that's being requested
-  char* requested_file_name = malloc(BUFFER);
+  char* requested_file_name = malloc(MAXPAYLOADSIZE);
   
   // Deal with command-line arguments
   int c;
@@ -240,40 +242,48 @@ main(int argc, char *argv[])
        */
       if(strcmp(tracker_array[i].file_name, requested_file_name) == 0) {
 	
-	address_server.sin_port = htons(tracker_array[i].sender_port);
-	if (inet_aton(SRV_IP, &address_server.sin_addr)==0) {
-	  fprintf(stderr, "inet_aton() failed\n");
-	  exit(1);
-	}
-	packet request;
-	request.type = 'R';
-	request.sequence = 0;
-	request.length = 0;
-	request.payload = requested_file_name;
+	    address_server.sin_port = htons(tracker_array[i].sender_port);
+	    if (inet_aton(SRV_IP, &address_server.sin_addr)==0) {
+	      fprintf(stderr, "inet_aton() failed\n");
+	      exit(1);
+	    }
+	    
+	    packet request;
+	    request.type = 'R';
+	    request.sequence = 33;
+	    request.length = 0;
+	    request.payload = requested_file_name;
+	    
+	    uint payloadSize = strlen(requested_file_name);
+        char* requestPacket = malloc(17+payloadSize);
+        memcpy(requestPacket, &request.type, sizeof(char));
+        memcpy(requestPacket+1, &request.sequence, sizeof(uint32_t));
+        memcpy(requestPacket+9, &payloadSize, sizeof(uint32_t));
+        memcpy(requestPacket+17, request.payload, payloadSize);
+        printf("requestPacket: %c %u %u %s\n", requestPacket[0], requestPacket[1], requestPacket[9], requestPacket+17);
 	
-	
-	// Haven't gotten this to actually work yet. (a hack in sender.c)
-	printf("Requesting the given file name\n");
+	    // Haven't gotten this to actually work yet. (a hack in sender.c)
+	    printf("Requesting the given file name\n");
 		
-	// Send the request packet to the sender 	
-	if (sendto(socketFD_Client, &request, BUFFER, 0, (struct sockaddr *)&address_server, sizeof(address_server))==-1) {
-	  perror("sendto()");
-	}
+	    // Send the request packet to the sender 	
+	    if (sendto(socketFD_Client, requestPacket, 17+payloadSize, 0, (struct sockaddr *)&address_server, sizeof(address_server))==-1) {
+	      perror("sendto()");
+	    }
       }
       
       // Stop the application from endlessly requesting the same files
       if (i == tracker_array_size - 1) {
-	done_requesting = true;
+	    done_requesting = true;
       }
     }
     
     // Listen for some kind of response.  If one is given, fill in info
-    if (recvfrom(socketFD_Client, buffer, BUFFER, 0, (struct sockaddr *)&server, (socklen_t *)&slen) == -1) {
+    if (recvfrom(socketFD_Client, buffer, MAXPACKETSIZE, 0, (struct sockaddr *)&server, (socklen_t *)&slen) == -1) {
       perror("recvfrom()");
     }
 
     packet PACKET;
-    memcpy(&PACKET, buffer, sizeof(packet));
+    memcpy(&PACKET, buffer, sizeof(MAXPACKETSIZE));
     printInfoAtReceive(inet_ntoa(server.sin_addr), PACKET);
     writeToFile(PACKET, requested_file_name);
   }
