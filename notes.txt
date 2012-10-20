@@ -46,3 +46,9 @@ Things still todo (likely only a partial list):
 6) Handle out of order delivary of packets
 7) Increment the sequence number when sending packets (see e-mail)
 8) Send a 'no-data' data packet if file doesn't exist at sender
+
+10/20 ---------------------
+So far I've worked on 3, 4, (5 already done), and you'll have to explain
+8 to me.  When the file doesn't exist, I'm sending an END packet.  Obviously
+this can easily change.
+Some more notes may be available if you check out 'git log' in the command line.
