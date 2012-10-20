@@ -1,33 +1,33 @@
 /*
- * sender.c
- *
- *  Created on: Sep. 30 2012
- *
- *  Matthew Schleifer
- *  Adam Eggum
- *
- *
- sender -p <port> -g <requester port> -r <rate> -q <seq_no> -l <length>
+* sender.c
+*
+*  Created on: Sep. 30 2012
+*
+*  Matthew Schleifer
+*  Adam Eggum
+*
+*
+sender -p <port> -g <requester port> -r <rate> -q <seq_no> -l <length>
 
-    port is the port on which the sender waits for requests,
-    requester port is the port on which the requester is waiting,
-    rate is the number of packets to be sent per second,
-    seq_no is the initial sequence of the packet exchange, and
-    length is the length of the payload in the packets (each chunk of the file part that the sender has),
+port is the port on which the sender waits for requests,
+requester port is the port on which the requester is waiting,
+rate is the number of packets to be sent per second,
+seq_no is the initial sequence of the packet exchange, and
+length is the length of the payload in the packets (each chunk of the file part that the sender has),
 
- Additional notes for the parameters:
+Additional notes for the parameters:
 
-    sender and requester port should be in this range: 1024<port<65536
-    for implementing the rate parameter the sending interval should be evenly distributed, i.e. when rate is 10 packets per second the sender
-    has to send one packet at about every 100 milliseconds. It should not send them all in a short time and wait for the remaining time in the second.
+sender and requester port should be in this range: 1024<port<65536
+for implementing the rate parameter the sending interval should be evenly distributed, i.e. when rate is 10 packets per second the sender
+has to send one packet at about every 100 milliseconds. It should not send them all in a short time and wait for the remaining time in the second.
 
- The sender must print the following information for each packet sent to the requester, with each packet's information in a separate line.
+The sender must print the following information for each packet sent to the requester, with each packet's information in a separate line.
 
-    The time that the packet was sent with milisecond granularity,
-    The IP of the requester,
-    The sequence number, and 
-    The first 4 bytes of the payload
- */
+The time that the packet was sent with milisecond granularity,
+The IP of the requester,
+The sequence number, and
+The first 4 bytes of the payload
+*/
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -55,202 +55,187 @@
 
 void
 printError(char* errorMessage) {
-  fprintf(stderr, "An error has occured: %s\n", errorMessage);
+	fprintf(stderr, "An error has occured: %s\n", errorMessage);
 }
 
 void
 usage(char *prog) {
-  fprintf(stderr, "usage: %s -p <port> -g <requester port> -r <rate> -q <seq_no> -l <length>\n", prog);
-  exit(1);
+	fprintf(stderr, "usage: %s -p <port> -g <requester port> -r <rate> -q <seq_no> -l <length>\n", prog);
+	exit(1);
 }
 
 /**
- * Should be called for each packet that is sent to the requester.  
- * Prints out the time, IP, sequence number and 4 bytes of the payload.
- * TODO: We need to print a section of the payload
- */
+* Should be called for each packet that is sent to the requester.
+* Prints out the time, IP, sequence number and 4 bytes of the payload.
+*/
 int printInfoAtSend(int requester_ip, packet pkt) {
-  struct timeb time;
-  ftime(&time);
-  char timeString[80];
-  strftime(timeString, sizeof(timeString), "%H:%M:%S", localtime(&(time.time)));
-  printf("Sending packet at: %s.%d(ms).  Requester IP: %d.  Sequence number: %d.  Payload: %s\n",
-	 timeString, time.millitm, requester_ip, pkt.sequence, pkt.payload);
-  return 0;
+	struct timeb time;
+	ftime(&time);
+	char timeString[80];
+	strftime(timeString, sizeof(timeString), "%H:%M:%S", localtime(&(time.time)));
+	printf("Sending packet at: %s.%d(ms).\nRequester IP: %d.\nSequence number: %d.\n",
+	timeString, time.millitm, requester_ip, pkt.sequence);
+	printf("First 4 bytes of payload: %c%c%c%c\n", pkt.payload[0], pkt.payload[1], pkt.payload[2], pkt.payload[3]);
+	return 0;
 }
 
 int
 main(int argc, char *argv[])
 {
-  char *buffer;
-  buffer = malloc(MAXPACKETSIZE);
-  if(buffer == NULL) {
-    printError("Buffer could not be allocated");
-    return 0;
-  }
-  if(argc != 11) {
-    printError("Incorrect number of arguments");
-    usage(argv[0]);
-    return 0;
-  }
-  
-  // Port on which the sender waits for requests
-  int port  = 0;
+	char *buffer;
+	buffer = malloc(MAXPACKETSIZE);
+	if(buffer == NULL) {
+		printError("Buffer could not be allocated");
+		return 0;
+	}
+	if(argc != 11) {
+		printError("Incorrect number of arguments");
+		usage(argv[0]);
+		return 0;
+	}
 
-  // Port on which the requester is waiting
-  int requester_port = 0;
+	// Port on which the sender waits for requests
+	int port  = 0;
 
-  // The number of packets sent per second
-  int rate;
+	// Port on which the requester is waiting
+	int requester_port = 0;
 
-  // The initial sequence of the packet exchange
-  int sequence_number;
+	// The number of packets sent per second
+	int rate;
 
-  // The length of the payload in the packets (each chunk of the file part the sender has)
-  int length;
+	// The initial sequence of the packet exchange
+	int sequence_number;
 
-    
-  int c;
-  opterr = 0;
-  while ((c = getopt(argc, argv, "p:g:r:q:l:")) != -1) {
-    switch (c) {
-    case 'p':
-      port = atoi(optarg);
-      break;
-    case 'g':
-      requester_port = atoi(optarg);
-      break;
-    case 'r':
-      rate = atoi(optarg);
-      break;
-    case 'q':
-      sequence_number = atoi(optarg);
-      break;
-    case 'l':
-      length = atoi(optarg);
-      break;
-    default:
-      usage(argv[0]);
-    }
-  }
+	// The length of the payload in the packets (each chunk of the file part the sender has)
+	int length;
 
-  if( (port < 1024 || port > 65536) || (requester_port < 1024 || requester_port > 65536) ) {
-    printError("Incorrect port number(s).  Ports should be in range (1024 - 65536)");
-    return 0;
-  }
-  
-  struct sockaddr_in server, client;
-  int socketFD_Server, slen=sizeof(client);
-  
-  // Create a sockety
-  if ((socketFD_Server=socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP))==-1) {
-    perror("socket");
-    close(socketFD_Server);
-    exit(-1);
-  }
-  
-  // Zero out server socket address and set-up
-  bzero(&server, sizeof(server));
-  server.sin_family = AF_INET;
-  server.sin_port = htons(port);
-  server.sin_addr.s_addr = htonl(INADDR_ANY);
 
-  // Bind the socket to the address
-  if (bind(socketFD_Server, (struct sockaddr *)&server, sizeof(server))==-1)
-    perror("bind");
-  
+	int c;
+	opterr = 0;
+	while ((c = getopt(argc, argv, "p:g:r:q:l:")) != -1) {
+		switch (c) {
+		case 'p':
+			port = atoi(optarg);
+			break;
+		case 'g':
+			requester_port = atoi(optarg);
+			break;
+		case 'r':
+			rate = atoi(optarg);
+			break;
+		case 'q':
+			sequence_number = atoi(optarg);
+			break;
+		case 'l':
+			length = atoi(optarg);
+			break;
+		default:
+			usage(argv[0]);
+		}
+	}
 
-  while (1) {
-    packet request;
-    // Endlessly wait for some kind of a request
-    if (recvfrom(socketFD_Server, buffer, MAXPACKETSIZE, 0, (struct sockaddr *)&client, (socklen_t *)&slen)==-1) {
-      perror("recvfrom()");
-    }
-    // Once we receive something, set up info about client
-    bzero(&client, sizeof(client));
-    client.sin_family = AF_INET;
-    client.sin_port = htons(requester_port);
-    if (inet_aton(SRV_IP, &client.sin_addr) == 0) {
-      fprintf(stderr, "inte_aton() failed\n");
-      exit(-1);
-    }
-    
-    memcpy(&request.type, buffer, sizeof(char));
-    memcpy(&request.sequence, buffer + 1, sizeof(uint32_t));
-    memcpy(&request.length, buffer + 9, sizeof(uint32_t));
-    request.payload = malloc(request.length);
-    memcpy(request.payload, buffer + 17, request.length);
-    
-    
-    if (request.type == 'R') {
-      printf("packet type: %c\n", request.type);
-      printf("packet sequence: %u\n", request.sequence);
-      printf("packet length: %u\n", request.length);
-      printf("packet payload: %s\n", request.payload);
-     
-      int fd;
-      if ((fd = open(request.payload, S_IRUSR )) == -1) {
-	perror("open");
-	exit(-1);
-      }
+	if( (port < 1024 || port > 65536) || (requester_port < 1024 || requester_port > 65536) ) {
+		printError("Incorrect port number(s).  Ports should be in range (1024 - 65536)");
+		return 0;
+	}
 
-      char payload[BUFFER];
-      read(fd, (void*)&payload, BUFFER);
+	struct sockaddr_in server, client;
+	int socketFD_Server, slen=sizeof(client);
 
-      printf("%s\n", payload);
+	// Create a sockety
+	if ((socketFD_Server=socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP))==-1) {
+		perror("socket");
+		close(socketFD_Server);
+		exit(-1);
+	}
 
-      packet response;
-      response.type = 'D';
-      response.sequence = 0;
-      response.length = BUFFER;
-      response.payload = payload;
-      
-      uint payloadSize = strlen(response.payload);
-      char* responsePacket = malloc(17+payloadSize);
-      memcpy(responsePacket, &response.type, sizeof(char));
-      memcpy(responsePacket+1, &response.sequence, sizeof(uint32_t));
-      memcpy(responsePacket+9, &payloadSize, sizeof(uint32_t));
-      memcpy(responsePacket+17, response.payload, payloadSize);
-      printf("responsePacket: %c %u %u %s\n", responsePacket[0], responsePacket[1], responsePacket[9], responsePacket+17);
-      
-      // should check for error here
-      
-      printInfoAtSend(requester_port, response);
-      if (sendto(socketFD_Server, responsePacket, 17+payloadSize, 0, (struct sockaddr *)&client, sizeof(client))==-1) {
-	perror("sendto()");
-      }
-      // TODO: Should get the file the requester says it 
-      //   wants, then chunk it and send it to the requester
-      // TODO: Figure out how to send dynamic sized char*'s 
-      //   back and forth from the sender..might be some low level stuff.
-      // TODO: Figure out how to 'chunk' the file.
-      
-    }
-    
-  
-    // TODO: Change/Remove this, it's a hack currently
-    if (strcmp("sp2lit.txt", "split.txt") == 0) {
-     
-      int j;
-      // Not sure what this for loop is for
-      for (j=0; j<1; j++) {
-	rate = rate;  //TODO: We have to use rate somewhere, this is for the compiler
-	packet PACKET;
-	PACKET.type = 'D';
-	PACKET.sequence = sequence_number;
-	PACKET.length = length;
-	memcpy(buffer, &PACKET, sizeof(packet));
-	      
-	// Print info and then send the packet to the requester
-	printInfoAtSend(requester_port, PACKET);
-	if (sendto(socketFD_Server, buffer, BUFFER, 0, (struct sockaddr *)&client, sizeof(client))==-1)
-	  perror("sendto()");
-      }
-    }
-  }
+	// Zero out server socket address and set-up
+	bzero(&server, sizeof(server));
+	server.sin_family = AF_INET;
+	server.sin_port = htons(port);
+	server.sin_addr.s_addr = htonl(INADDR_ANY);
 
-  close(socketFD_Server);
-  //close(s);
+	// Bind the socket to the address
+	if (bind(socketFD_Server, (struct sockaddr *)&server, sizeof(server))==-1)
+		perror("bind");
 
-  return 0;
-}
+
+	packet request;
+	// Endlessly wait for some kind of a request
+	if (recvfrom(socketFD_Server, buffer, MAXPACKETSIZE, 0, (struct sockaddr *)&client, (socklen_t *)&slen)==-1) {
+		perror("recvfrom()");
+	}
+	// Once we receive something, set up info about client
+	bzero(&client, sizeof(client));
+	client.sin_family = AF_INET;
+	client.sin_port = htons(requester_port);
+	if (inet_aton(SRV_IP, &client.sin_addr) == 0) {
+		fprintf(stderr, "inte_aton() failed\n");
+		exit(-1);
+	}
+
+	// Create packet from the request
+	memcpy(&request.type, buffer, sizeof(char));
+	memcpy(&request.sequence, buffer + 1, sizeof(uint32_t));
+	memcpy(&request.length, buffer + 9, sizeof(uint32_t));
+	request.payload = malloc(request.length);
+	memcpy(request.payload, buffer + 17, request.length);
+
+
+	// Make sure the request packet is formatted correctly
+	if (request.type == 'R' && request.sequence == 0) {
+		printf("Request packet received: %c %u %u %s\n", request.type, request.sequence, request.length, request.payload);
+
+		// Open the requested file for reading
+		int fd;
+		if ((fd = open(request.payload, S_IRUSR )) == -1) {
+			//TODO: Q.  What if the sender does not have the file that is requested from it?
+			//TODO: A.  If the file does not exist in the sender's folder,
+			//TODO: it will return just an END packet and no DATA packet.
+			perror("open");
+			exit(-1);
+		}
+
+		// Read the file into the buffer
+		char filePayload[BUFFER];
+		read(fd, (void*)&filePayload, BUFFER);
+
+		// Set up a response packet
+		packet response;
+		response.type = 'D';
+		response.sequence = sequence_number;
+		response.length = strlen(filePayload);
+		response.payload = filePayload;
+
+		char* responsePacket = malloc(HEADERSIZE + response.length);
+		memcpy(responsePacket, &response.type, sizeof(char));
+		memcpy(responsePacket+1, &response.sequence, sizeof(uint32_t));
+		memcpy(responsePacket+9, &response.length, sizeof(uint32_t));
+		memcpy(responsePacket+HEADERSIZE, response.payload, response.length);
+		printf("Response packet to send: %c %u %u %s\n", responsePacket[0], responsePacket[1], responsePacket[9], responsePacket+HEADERSIZE);
+
+		// should check for error here
+
+		printInfoAtSend(requester_port, response);
+		if (sendto(socketFD_Server, responsePacket, HEADERSIZE+response.length, 0, (struct sockaddr *)&client, sizeof(client))==-1) {
+			perror("sendto()");
+		}
+
+		rate = rate;  //TODO: We have to use rate somewhere, this is for the compiler
+
+		// TODO: Should get the file the requester says it
+		//   wants, then chunk it and send it to the requester
+		// TODO: Figure out how to 'chunk' the file.
+
+	}
+	else { // Request packet didn't have type R && sequence 0
+		perror("Sender received a packet that was not a request.");
+	}
+
+	// Close when finished sending; Each send only sends one file
+	// It is the receiver's job to handle reliability, but implementing a FIN
+	// type scheme would be better
+	close(socketFD_Server);
+	return 0;
+} // End Main
+
