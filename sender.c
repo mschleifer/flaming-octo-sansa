@@ -224,13 +224,15 @@ main(int argc, char *argv[])
 		rate = rate;  //TODO: We have to use rate somewhere, this is for the compiler
 
 		// TODO: Should get the file the requester says it
-		//   wants, then chunk it and send it to the requester
+		// TODO: wants, then chunk it and send it to the requester
 		// TODO: Figure out how to 'chunk' the file.
 
 	}
 	else { // Request packet didn't have type R && sequence 0
 		perror("Sender received a packet that was not a request.");
 	}
+	
+	// TODO: Need to send an END packet to the requester
 
 	// Close when finished sending; Each send only sends one file
 	// It is the receiver's job to handle reliability, but implementing a FIN

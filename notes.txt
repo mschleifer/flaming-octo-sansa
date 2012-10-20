@@ -29,3 +29,20 @@ with memcpy()-ing the payload. We should discuss this.
 I started on the part where the sender sends the data in the payload, but 
 the receiver is segfaulting when trying to read it.  Done for now.  
 Hopefully not a tough bug to find.
+
+10/19 PM ----------------
+Sender now sends one data packet to the requester from the file requested. We'll
+need to figure out how to "chunk" files too large to fit in one packet.  The 
+requester also prints out it's data along with writing the payload to the 
+correct file.  Also, I think I fixed all the spaces to be tabs so you should see
+the source code in your preferred tab width now!
+
+Things still todo (likely only a partial list):
+1) Figure out how to "chunk" files if they're size > 1 data packet
+2) Figure out how make rate work
+3) Send an END packet when the sender is done sending its file
+4) Requester prints stats about sender upon receipt on this END packet
+5) Request files from senders in correct order (might already do this?)
+6) Handle out of order delivary of packets
+7) Increment the sequence number when sending packets (see e-mail)
+8) Send a 'no-data' data packet if file doesn't exist at sender
