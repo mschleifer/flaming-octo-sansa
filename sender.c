@@ -85,6 +85,31 @@ int printInfoAtSend(char* requester_ip, packet pkt) {
   return 0;
 }
 
+
+int sendEndPkt(struct sockaddr_in client, int socketFD_Server) {
+  // Send the end packet to the requester.  Done sending.
+  packet endPkt;
+  endPkt.type = 'E';
+  endPkt.sequence = 0;
+  endPkt.length = 0;
+  endPkt.payload = "END.";
+  endPkt.length = strlen(endPkt.payload);
+  
+  char* endPacket = malloc(HEADERSIZE + endPkt.length);
+  memcpy(endPacket, &endPkt.type, sizeof(char));
+  memcpy(endPacket+1, &endPkt.sequence, sizeof(uint32_t));
+  memcpy(endPacket+9, &endPkt.length, sizeof(uint32_t));
+  memcpy(endPacket+HEADERSIZE, endPkt.payload, endPkt.length);
+  
+  
+  printInfoAtSend(inet_ntoa(client.sin_addr), endPkt);
+  if (sendto(socketFD_Server, endPacket, HEADERSIZE+endPkt.length, 0, (struct sockaddr *)&client, sizeof(client))==-1) {
+    perror("sendto()");
+  }
+
+  return 0;
+}
+
 int
 main(int argc, char *argv[])
 {
@@ -162,9 +187,9 @@ main(int argc, char *argv[])
 	server.sin_addr.s_addr = htonl(INADDR_ANY);
 
 	// Bind the socket to the address
-	if (bind(socketFD_Server, (struct sockaddr *)&server, sizeof(server))==-1)
-		perror("bind");
-
+	if (bind(socketFD_Server, (struct sockaddr *)&server, sizeof(server))==-1) {
+	  perror("bind");
+	}
 
 	packet request;
 	// Endlessly wait for some kind of a request
@@ -195,13 +220,14 @@ main(int argc, char *argv[])
 		// Open the requested file for reading
 		int fd;
 		if ((fd = open(request.payload, S_IRUSR )) == -1) {
-			//TODO: Q.  What if the sender does not have the file that is requested from it?
-			//TODO: A.  If the file does not exist in the sender's folder,
-			//TODO: it will return just an END packet and no DATA packet.
-			perror("open");
-			exit(-1);
+		  //TODO: Q.  What if the sender does not have the file that is requested from it?
+		  //TODO: A.  If the file does not exist in the sender's folder,
+		  //TODO: it will return just an END packet and no DATA packet.
+		  perror("open");
+		  sendEndPkt(client, socketFD_Server);
+		  return -1;
 		}
-
+		
 		// Read the file into the buffer
 		char filePayload[BUFFER];
 		read(fd, (void*)&filePayload, BUFFER);
@@ -222,7 +248,6 @@ main(int argc, char *argv[])
 		
 		// should check for error here
 		printInfoAtSend(inet_ntoa(client.sin_addr), response);
-		//printInfoAtSend(requester_port, response);
 		if (sendto(socketFD_Server, responsePacket, HEADERSIZE+response.length, 0, (struct sockaddr *)&client, sizeof(client))==-1) {
 			perror("sendto()");
 		}
@@ -238,27 +263,8 @@ main(int argc, char *argv[])
 	  printf("Error: Sender received a packet that was not a request.");
 	}
 	
-
-	// Send the end packet to the requester.  Done sending.
-	packet endPkt;
-	endPkt.type = 'E';
-	endPkt.sequence = 0;
-	endPkt.length = 0;
-	endPkt.payload = "END.";
-	endPkt.length = strlen(endPkt.payload);
-	
-	char* endPacket = malloc(HEADERSIZE + endPkt.length);
-	memcpy(endPacket, &endPkt.type, sizeof(char));
-	memcpy(endPacket+1, &endPkt.sequence, sizeof(uint32_t));
-	memcpy(endPacket+9, &endPkt.length, sizeof(uint32_t));
-	memcpy(endPacket+HEADERSIZE, endPkt.payload, endPkt.length);
-
-	
-	printInfoAtSend(inet_ntoa(client.sin_addr), endPkt);
-	if (sendto(socketFD_Server, endPacket, HEADERSIZE+endPkt.length, 0, (struct sockaddr *)&client, sizeof(client))==-1) {
-	  perror("sendto()");
-	}
-	
+	sendEndPkt(client, socketFD_Server);
+		
 	// Close when finished sending; Each send only sends one file
 	// It is the receiver's job to handle reliability, but implementing a FIN
 	// type scheme would be better
