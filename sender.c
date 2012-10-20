@@ -68,7 +68,7 @@ usage(char *prog) {
 * Should be called for each packet that is sent to the requester.
 * Prints out the time, IP, sequence number and 4 bytes of the payload.
 */
-int printInfoAtSend(int requester_ip, packet pkt) {
+int printInfoAtSend(char* requester_ip, packet pkt) {
   printf("\n");
   struct timeb time;
   ftime(&time);
@@ -78,7 +78,7 @@ int printInfoAtSend(int requester_ip, packet pkt) {
     printf("Sending END packet at %s.%d(ms).\n", timeString, time.millitm);
   }
   else {
-    printf("Sending packet at: %s.%d(ms).\n\tRequester IP: %d.\n\tSequence number: %d.\n\t",
+    printf("Sending packet at: %s.%d(ms).\n\tRequester IP: %s.\n\tSequence number: %d.\n\t",
 	   timeString, time.millitm, requester_ip, pkt.sequence);
     printf("First 4 bytes of payload: %c%c%c%c\n", pkt.payload[0], pkt.payload[1], pkt.payload[2], pkt.payload[3]);
   }
@@ -219,10 +219,10 @@ main(int argc, char *argv[])
 		memcpy(responsePacket+9, &response.length, sizeof(uint32_t));
 		memcpy(responsePacket+HEADERSIZE, response.payload, response.length);
 		printf("Response packet to send: %c %u %u %s\n", responsePacket[0], responsePacket[1], responsePacket[9], responsePacket+HEADERSIZE);
-
+		
 		// should check for error here
-
-		printInfoAtSend(requester_port, response);
+		printInfoAtSend(inet_ntoa(client.sin_addr), response);
+		//printInfoAtSend(requester_port, response);
 		if (sendto(socketFD_Server, responsePacket, HEADERSIZE+response.length, 0, (struct sockaddr *)&client, sizeof(client))==-1) {
 			perror("sendto()");
 		}
@@ -254,7 +254,7 @@ main(int argc, char *argv[])
 	memcpy(endPacket+HEADERSIZE, endPkt.payload, endPkt.length);
 
 	
-	printInfoAtSend(requester_port, endPkt);
+	printInfoAtSend(inet_ntoa(client.sin_addr), endPkt);
 	if (sendto(socketFD_Server, endPacket, HEADERSIZE+endPkt.length, 0, (struct sockaddr *)&client, sizeof(client))==-1) {
 	  perror("sendto()");
 	}
