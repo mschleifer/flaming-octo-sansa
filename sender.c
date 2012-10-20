@@ -69,14 +69,20 @@ usage(char *prog) {
 * Prints out the time, IP, sequence number and 4 bytes of the payload.
 */
 int printInfoAtSend(int requester_ip, packet pkt) {
-	struct timeb time;
-	ftime(&time);
-	char timeString[80];
-	strftime(timeString, sizeof(timeString), "%H:%M:%S", localtime(&(time.time)));
-	printf("Sending packet at: %s.%d(ms).\nRequester IP: %d.\nSequence number: %d.\n",
-	timeString, time.millitm, requester_ip, pkt.sequence);
-	printf("First 4 bytes of payload: %c%c%c%c\n", pkt.payload[0], pkt.payload[1], pkt.payload[2], pkt.payload[3]);
-	return 0;
+  printf("\n");
+  struct timeb time;
+  ftime(&time);
+  char timeString[80];
+  strftime(timeString, sizeof(timeString), "%H:%M:%S", localtime(&(time.time)));
+  if (pkt.type == 'E') {
+    printf("Sending END packet at %s.%d(ms).\n", timeString, time.millitm);
+  }
+  else {
+    printf("Sending packet at: %s.%d(ms).\n\tRequester IP: %d.\n\tSequence number: %d.\n\t",
+	   timeString, time.millitm, requester_ip, pkt.sequence);
+    printf("First 4 bytes of payload: %c%c%c%c\n", pkt.payload[0], pkt.payload[1], pkt.payload[2], pkt.payload[3]);
+  }
+  return 0;
 }
 
 int
@@ -229,13 +235,11 @@ main(int argc, char *argv[])
 
 	}
 	else { // Request packet didn't have type R && sequence 0
-		perror("Sender received a packet that was not a request.");
+	  printf("Error: Sender received a packet that was not a request.");
 	}
 	
-	// TODO: Need to send an END packet to the requester
-	
 
-	// Send the end packet to the requester.  We're done sending.
+	// Send the end packet to the requester.  Done sending.
 	packet endPkt;
 	endPkt.type = 'E';
 	endPkt.sequence = 0;
