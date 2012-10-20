@@ -107,8 +107,8 @@ main(int argc, char *argv[])
 	int sequence_number;
 
 	// The length of the payload in the packets (each chunk of the file part the sender has)
-	int length;
-
+	int length = 0;
+	length = length;
 
 	int c;
 	opterr = 0;
@@ -233,7 +233,28 @@ main(int argc, char *argv[])
 	}
 	
 	// TODO: Need to send an END packet to the requester
+	
 
+	// Send the end packet to the requester.  We're done sending.
+	packet endPkt;
+	endPkt.type = 'E';
+	endPkt.sequence = 0;
+	endPkt.length = 0;
+	endPkt.payload = "END.";
+	endPkt.length = strlen(endPkt.payload);
+	
+	char* endPacket = malloc(HEADERSIZE + endPkt.length);
+	memcpy(endPacket, &endPkt.type, sizeof(char));
+	memcpy(endPacket+1, &endPkt.sequence, sizeof(uint32_t));
+	memcpy(endPacket+9, &endPkt.length, sizeof(uint32_t));
+	memcpy(endPacket+HEADERSIZE, endPkt.payload, endPkt.length);
+
+	
+	printInfoAtSend(requester_port, endPkt);
+	if (sendto(socketFD_Server, endPacket, HEADERSIZE+endPkt.length, 0, (struct sockaddr *)&client, sizeof(client))==-1) {
+	  perror("sendto()");
+	}
+	
 	// Close when finished sending; Each send only sends one file
 	// It is the receiver's job to handle reliability, but implementing a FIN
 	// type scheme would be better

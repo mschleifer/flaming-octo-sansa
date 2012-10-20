@@ -17,4 +17,15 @@ typedef struct tracker_entry {
   int sender_port;
 } tracker_entry;
 
+// Holds summary information about each sender
+typedef struct sender_summary {
+  char* sender_ip;
+  int num_data_pkts;
+  int num_bytes;
+  float packets_per_second;
+  float duration;   // this needs to be something else
+} sender_summary;
+
+
+
 #endif

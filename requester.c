@@ -19,6 +19,10 @@
 tracker_entry* tracker_array; 
 int tracker_array_size;
 
+// sender array for global use
+sender_summary* sender_array;
+int sender_array_size = 0;
+
 void
 printError(char* errorMessage) {
 	fprintf(stderr, "An error has occured: %s\n", errorMessage);
@@ -80,7 +84,7 @@ int writeToFile(char* payload, char* file_name) {
  * @return 0 if there are no issues, -1 if there is a problem
  */
 int readTrackerFile() {
-	int i, k;
+	int k;
 	tracker_array = (tracker_entry*)malloc(sizeof(tracker_entry) * 100);//setting max size to 100.
 	FILE *in_file = fopen("tracker.txt", "r");//read only
 	tracker_array_size = 0;
@@ -129,14 +133,36 @@ int readTrackerFile() {
  * TODO: We need to print a section of the payload..not sure how to do that
  */
 int printInfoAtReceive(char* sender_ip, packet pkt) {
-	struct timeb time;
-	ftime(&time);
-	char timeString[80];
-	strftime(timeString, sizeof(timeString), "%H:%M:%S", localtime(&(time.time)));
-	printf("Received packet at: %s.%d(ms).\nSender IP: %s.\nSequence number: %d.\nLength: %d.\n",
-		timeString, time.millitm, sender_ip, pkt.sequence, pkt.length);
-	printf("First 4 bytes of payload: %c%c%c%c\n", pkt.payload[0], pkt.payload[1], pkt.payload[2], pkt.payload[3]);
-	return 0;
+  printf("\n");
+  struct timeb time;
+  ftime(&time);
+  char timeString[80];
+  strftime(timeString, sizeof(timeString), "%H:%M:%S", localtime(&(time.time)));
+  if (pkt.type == 'E') {
+    printf("Received END from %s packet at: %s.%d(ms).\n", sender_ip, timeString, time.millitm);
+  }
+  else {
+    printf("Received packet at: %s.%d(ms).\n\tSender IP: %s.\n\tSequence number: %d.\n\tLength: %d.\n\t",
+	 timeString, time.millitm, sender_ip, pkt.sequence, pkt.length);
+    printf("First 4 bytes of payload: %c%c%c%c\n", pkt.payload[0], pkt.payload[1], pkt.payload[2], pkt.payload[3]);
+  }
+  return 0;
+}
+
+/**
+ * Searches through the sender array and prints out the information about each
+ * sender, one at a time. New sender info will be on its' own line.
+ * TODO: Need to have information about duration and packets per second
+ */
+int printSummaryInfo() {
+  int i;
+  for (i = 0; i < sender_array_size; i++) {
+    printf("\n");
+    printf("Info for sender %s:\n\tNum data packets: %d\n\tNum bytes received: %d\n",
+	   sender_array[i].sender_ip, sender_array[i].num_data_pkts, sender_array[i].num_bytes);
+  }
+  
+  return 0;
 }
 
 int
@@ -145,6 +171,7 @@ main(int argc, char *argv[])
 	char *buffer;
 	buffer = malloc(MAXPACKETSIZE);
 	bzero(buffer, sizeof(buffer));
+	sender_array = (sender_summary*) malloc(sizeof(sender_summary) * 20);
 	if(buffer == NULL) {
 		printError("Buffer could not be allocated");
 		return 0;
@@ -231,7 +258,7 @@ main(int argc, char *argv[])
 			 * Sends the request in the form of a packet.
 			 */
 			if(strcmp(tracker_array[i].file_name, requested_file_name) == 0) {
-				address_server.sin_port = htons(tracker_array[i].sender_port);
+			        address_server.sin_port = htons(tracker_array[i].sender_port);
 				if (inet_aton(SRV_IP, &address_server.sin_addr)==0) {
 					fprintf(stderr, "inet_aton() failed\n");
 					exit(1);
@@ -249,12 +276,18 @@ main(int argc, char *argv[])
 				memcpy(requestPacket+1, &request.sequence, sizeof(uint32_t));
 				memcpy(requestPacket+9, &payloadSize, sizeof(uint32_t));
 				memcpy(requestPacket+17, request.payload, payloadSize);
-				printf("requestPacket: %c %u %u %s\n", requestPacket[0], requestPacket[1], requestPacket[9], requestPacket+17);
+				//printf("requestPacket: %c %u %u %s\n", requestPacket[0], requestPacket[1], requestPacket[9], requestPacket+17);
 	
 				// Send the request packet to the sender 	
 				if (sendto(socketFD_Client, requestPacket, 17+payloadSize, 0, (struct sockaddr *)&address_server, sizeof(address_server))==-1) {
 					perror("sendto()");
 				}
+
+				struct timeb time;
+				ftime(&time);
+				char timeString[80];
+				strftime(timeString, sizeof(timeString), "%H:%M:%S", localtime(&(time.time)));
+				//printf("Sending packet at: %s.%d(ms).\n", timeString, time.millitm);
 			}
 
 			// Stop the application from endlessly requesting the same files
@@ -267,7 +300,8 @@ main(int argc, char *argv[])
 		if (recvfrom(socketFD_Client, buffer, MAXPACKETSIZE, 0, (struct sockaddr *)&server, (socklen_t *)&slen) == -1) {
 			perror("recvfrom()");
 		}
-	
+		
+		
 		// Create a packet from the received data
 		packet PACKET;
 		memcpy(&PACKET.type, buffer, sizeof(char));
@@ -276,7 +310,42 @@ main(int argc, char *argv[])
 		PACKET.payload = buffer+HEADERSIZE;
 
 		printInfoAtReceive(inet_ntoa(server.sin_addr), PACKET);
-		writeToFile(PACKET.payload, requested_file_name);
+		
+		if (PACKET.type == 'D') {
+		  writeToFile(PACKET.payload, requested_file_name);
+		  
+		  /*
+		   * Add the information to the sender array. If the sender is not
+		   * currently in the array, add it to the array. 
+		   * TODO: Test this functionality.  (haven't tested multiple senders yet)
+		   * TODO: Need to do something with pkts per second and duration
+		   */
+		  bool in_sender_array = false;
+		  int i;
+		  for (i = 0; i < sender_array_size; i++) {
+		    if (strcmp(sender_array[i].sender_ip, inet_ntoa(server.sin_addr)) == 0) {
+		      printf("TEST: Sender has sent something before.");
+		      in_sender_array = true;
+		      sender_array[i].num_data_pkts++;
+		      sender_array[i].num_bytes += PACKET.length;
+		    }
+		  }
+		  
+		  if (!in_sender_array) {
+		    sender_summary sender_details;
+		    sender_details.sender_ip = inet_ntoa(server.sin_addr);
+		    sender_details.num_data_pkts = 1;
+		    sender_details.num_bytes = PACKET.length;
+		    
+		    // Put into the sender array
+		    sender_array[sender_array_size] = sender_details;
+		    sender_array_size++;
+		  }
+		}
+		else if (PACKET.type == 'E') {
+		  // Print summary information, about all senders
+		  printSummaryInfo();
+		}
 	}
 
 	close(socketFD_Client);
