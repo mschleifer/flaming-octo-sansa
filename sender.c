@@ -252,6 +252,8 @@ main(int argc, char *argv[])
 		  sequence_number += response.length; // Increase sequence_number by payload bytes
   
 		  bzero(filePayload, length);
+
+		  // sleep for the given time
 		  usleep(((double)1.0 / rate) * 1000000.0);
 		}
 	}

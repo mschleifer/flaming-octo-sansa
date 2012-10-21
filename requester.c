@@ -158,22 +158,24 @@ int printInfoAtReceive(char* sender_ip, packet pkt) {
 int printSummaryInfo(struct sockaddr_in server) {
   int i;
   for (i = 0; i < sender_array_size; i++) {
-    if ((strcmp(sender_array[i].sender_ip, inet_ntoa(server.sin_addr)) == 0) &&
-	    (sender_array[i].sender_port == server.sin_port)) {
-      printf("\n");
-      //printf("Info for sender %s:\n\tNum data packets: %d\n\tNum bytes received: %d\n",
-      //sender_array[i].sender_ip, sender_array[i].num_data_pkts, sender_array[i].num_bytes);
-    }
-    double duration = difftime(sender_array[i].end_time.time, sender_array[i].start_time.time);
-    double mills = sender_array[i].end_time.millitm - sender_array[i].start_time.millitm;
- 
-    duration += (mills / 1000.0);
+    sender_summary s_info = sender_array[i];
+    if ((strcmp(s_info.sender_ip, inet_ntoa(server.sin_addr)) == 0) &&
+	    (s_info.sender_port == server.sin_port)) {
     
-    sender_array[i].duration = duration;
-    sender_array[i].packets_per_second = ((double) sender_array[i].num_data_pkts) / duration;
-    printf("Info for sender %s:\n\tNum data packets: %d\n\tNum bytes received: %d\n\tAverage pkts per second: %f\n\tDuration: %f\n",
-	   sender_array[i].sender_ip, sender_array[i].num_data_pkts, sender_array[i].num_bytes,
-	   sender_array[i].packets_per_second, sender_array[i].duration);
+      double duration = difftime(s_info.end_time.time, s_info.start_time.time);
+      double mills = s_info.end_time.millitm - s_info.start_time.millitm;
+      duration += (mills / 1000.0);
+    
+      s_info.duration = duration;
+      s_info.packets_per_second = ((double) s_info.num_data_pkts) / duration;
+      
+      printf("\n");
+      printf("Info for sender %s:\n\tNum data packets: %d\n\tNum bytes received: %d\n\tAverage pkts per second: %f\n\tDuration: %f\n",
+	     s_info.sender_ip, s_info.num_data_pkts, s_info.num_bytes,
+	     s_info.packets_per_second, s_info.duration);
+    }
+    
+    sender_array[i] = s_info; 
   }
   
   return 0;
@@ -293,8 +295,7 @@ main(int argc, char *argv[])
 	memcpy(requestPacket+1, &request.sequence, sizeof(uint32_t));
 	memcpy(requestPacket+9, &payloadSize, sizeof(uint32_t));
 	memcpy(requestPacket+HEADERSIZE, request.payload, payloadSize);
-	//printf("requestPacket: %c %u %u %s\n", requestPacket[0], requestPacket[1], requestPacket[9], requestPacket+17);
-	
+		
 	// Send the request packet to the sender 	
 	if (sendto(socketFD_Client, requestPacket, HEADERSIZE+payloadSize, 0, (struct sockaddr *)&address_server, sizeof(address_server))==-1) {
 	  perror("sendto()");
@@ -320,7 +321,7 @@ main(int argc, char *argv[])
     }
     
     
-	  // Create a packet from the received data
+    // Create a packet from the received data
     packet PACKET;
     memcpy(&PACKET.type, buffer, sizeof(char));
     memcpy(&PACKET.sequence, buffer+1, sizeof(uint32_t));
@@ -335,28 +336,32 @@ main(int argc, char *argv[])
       /*
        * Add the information to the sender array. If the sender is not
        * currently in the array, add it to the array. 
-       * TODO: Need to do something with pkts per second and duration
        */
       bool in_sender_array = false;
       int i;
       for (i = 0; i < sender_array_size; i++) {
+	
+	// If this statement succeeds, the sender has sent before
 	if ((strcmp(sender_array[i].sender_ip, inet_ntoa(server.sin_addr)) == 0) &&
 	    (sender_array[i].sender_port == server.sin_port)) {
-	  //printf("TEST: Sender has sent something before.");
 	  in_sender_array = true;
 	  sender_array[i].num_data_pkts++;
 	  sender_array[i].num_bytes += PACKET.length;
 	}
       }
       
+      // New sender; fill out info, add to sender array
       if (!in_sender_array) {
 	sender_summary sender_details;
 	sender_details.sender_ip = inet_ntoa(server.sin_addr);
 	sender_details.sender_port = server.sin_port;
 	sender_details.num_data_pkts = 1;
 	sender_details.num_bytes = PACKET.length;
+
+	// Deal with start time for the sender
 	ftime(&sender_details.start_time);
 	strftime(sender_details.start_timeString, sizeof(sender_details.start_timeString), "%H:%M:%S", localtime(&(sender_details.start_time.time)));
+	
 	printf("Start time is: %s.%d(ms).\n", sender_details.start_timeString, sender_details.start_time.millitm);
 	
 	
@@ -369,13 +374,15 @@ main(int argc, char *argv[])
       
       int i;
       for (i = 0; i < sender_array_size; i++) {
-
+	
+	// Only do this for the sender that sent the 'E' packet.
 	if ((strcmp(sender_array[i].sender_ip, inet_ntoa(server.sin_addr)) == 0) &&
 	    (sender_array[i].sender_port == server.sin_port)) {
-
 	  
+	  // Deal with end time for the sender
 	  ftime(&sender_array[i].end_time);
 	  strftime(sender_array[i].end_timeString, sizeof(sender_array[i].end_timeString), "%H:%M:%S", localtime(&(sender_array[i].end_time.time)));
+	  
 	  printf("End time is: %s.%d(ms).\n", sender_array[i].end_timeString, sender_array[i].end_time.millitm);
 	  
 	}
