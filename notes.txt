@@ -52,3 +52,15 @@ So far I've worked on 3, 4, (5 already done), and you'll have to explain
 8 to me.  When the file doesn't exist, I'm sending an END packet.  Obviously
 this can easily change.
 Some more notes may be available if you check out 'git log' in the command line.
+
+10/20---------------------
+I am 'chunking' the file now, and sending it piece by piece.  It's not completely working,
+but here is an example of commands to give where things work:
+    
+    ./sender -p 5000 -g 2000 -r 1 -q 2 -l 2  (send 2 bytes at a time)
+    ./requester -p 2000 -o split.txt
+
+This works perfectly, though the sender sends everything at once.  If the total size of the file
+you're sending is not divisible by the length given, some weird things can happen.
+Mainly, now we need to work on the 'rate' functionality.
+
