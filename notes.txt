@@ -64,3 +64,10 @@ This works perfectly, though the sender sends everything at once.  If the total 
 you're sending is not divisible by the length given, some weird things can happen.
 Mainly, now we need to work on the 'rate' functionality.
 
+10/21 -----------------------
+The second demo test doesn't work exactly correctly.  It adds a new line to the 
+end of the file when concatenating the split1 to split2.  Need to look into that.
+
+Also, we need to figure out how to actually get the real IP address rather than the 
+local host 127.0.0.1 value.  I think we should be able to run this on different computers
+at the same time, although that is not in the requirements.
