@@ -303,6 +303,7 @@ main(int argc, char *argv[])
       }
     }
     
+    bzero(buffer, MAXPACKETSIZE);
     // Listen for some kind of response.If one is given, fill in info
     if (recvfrom(socketFD_Client, buffer, MAXPACKETSIZE, 0, (struct sockaddr *)&server, (socklen_t *)&slen) == -1) {
       perror("recvfrom()");
