@@ -132,7 +132,7 @@ main(int argc, char *argv[])
 	int requester_port = 0;
 
 	// The number of packets sent per second
-	int rate;
+	double rate;
 
 	// The initial sequence of the packet exchange
 	int sequence_number;
@@ -152,7 +152,7 @@ main(int argc, char *argv[])
 			requester_port = atoi(optarg);
 			break;
 		case 'r':
-			rate = atoi(optarg);
+			rate = atof(optarg);
 			break;
 		case 'q':
 			sequence_number = atoi(optarg);
@@ -250,8 +250,9 @@ main(int argc, char *argv[])
 		  }
 		  
 		  sequence_number += response.length; // Increase sequence_number by payload bytes
-		  rate = rate;  //TODO: We have to use rate somewhere, this is for the compiler
+  
 		  bzero(filePayload, length);
+		  usleep(((double)1.0 / rate) * 1000000.0);
 		}
 	}
 	else { // Request packet didn't have type R && sequence 0
