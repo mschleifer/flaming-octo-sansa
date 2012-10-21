@@ -220,9 +220,6 @@ main(int argc, char *argv[])
 		// Open the requested file for reading
 		int fd;
 		if ((fd = open(request.payload, S_IRUSR )) == -1) {
-		  //TODO: Q.  What if the sender does not have the file that is requested from it?
-		  //TODO: A.  If the file does not exist in the sender's folder,
-		  //TODO: it will return just an END packet and no DATA packet.
 		  perror("open");
 		  sendEndPkt(client, socketFD_Server);
 		  return -1;
@@ -265,14 +262,11 @@ main(int argc, char *argv[])
 		    perror("sendto()");
 		  }
 		  
+		  sequence_number += response.length; // Increase sequence_number by payload bytes
 		  iteration_num++;
 		  remaining_length -= response.length;
 		  rate = rate;  //TODO: We have to use rate somewhere, this is for the compiler
 		}
-		// TODO: Should get the file the requester says it
-		// TODO: wants, then chunk it and send it to the requester
-		// TODO: Figure out how to 'chunk' the file.
-
 	}
 	else { // Request packet didn't have type R && sequence 0
 	  printf("Error: Sender received a packet that was not a request.");

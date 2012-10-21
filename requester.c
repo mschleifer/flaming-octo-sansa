@@ -230,7 +230,7 @@ main(int argc, char *argv[])
 		exit(-1);
 	}
 
-	socketFD_Client = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP); // 17 is UDP???
+	socketFD_Client = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
 	if(socketFD_Client == -1) {
 		perror("socket");
 		close(socketFD_Client);
@@ -272,15 +272,15 @@ main(int argc, char *argv[])
 				request.payload = requested_file_name;
 	
 				uint payloadSize = strlen(requested_file_name);
-				char* requestPacket = malloc(17+payloadSize);
+				char* requestPacket = malloc(HEADERSIZE+payloadSize);
 				memcpy(requestPacket, &request.type, sizeof(char));
 				memcpy(requestPacket+1, &request.sequence, sizeof(uint32_t));
 				memcpy(requestPacket+9, &payloadSize, sizeof(uint32_t));
-				memcpy(requestPacket+17, request.payload, payloadSize);
+				memcpy(requestPacket+HEADERSIZE, request.payload, payloadSize);
 				//printf("requestPacket: %c %u %u %s\n", requestPacket[0], requestPacket[1], requestPacket[9], requestPacket+17);
 	
 				// Send the request packet to the sender 	
-				if (sendto(socketFD_Client, requestPacket, 17+payloadSize, 0, (struct sockaddr *)&address_server, sizeof(address_server))==-1) {
+				if (sendto(socketFD_Client, requestPacket, HEADERSIZE+payloadSize, 0, (struct sockaddr *)&address_server, sizeof(address_server))==-1) {
 					perror("sendto()");
 				}
 
