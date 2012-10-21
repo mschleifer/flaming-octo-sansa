@@ -68,6 +68,7 @@ int writeToFile(char* payload, char* file_name) {
 		return -1;
 	}
 
+	//printf("%s\n", payload);
 	fprintf(fp, "%s", payload);
 
 	if (fclose(fp) != 0) {
@@ -317,14 +318,13 @@ main(int argc, char *argv[])
 		  /*
 		   * Add the information to the sender array. If the sender is not
 		   * currently in the array, add it to the array. 
-		   * TODO: Test this functionality.  (haven't tested multiple senders yet)
 		   * TODO: Need to do something with pkts per second and duration
 		   */
 		  bool in_sender_array = false;
 		  int i;
 		  for (i = 0; i < sender_array_size; i++) {
 		    if (strcmp(sender_array[i].sender_ip, inet_ntoa(server.sin_addr)) == 0) {
-		      printf("TEST: Sender has sent something before.");
+		      //printf("TEST: Sender has sent something before.");
 		      in_sender_array = true;
 		      sender_array[i].num_data_pkts++;
 		      sender_array[i].num_bytes += PACKET.length;

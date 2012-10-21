@@ -232,28 +232,43 @@ main(int argc, char *argv[])
 		char filePayload[BUFFER];
 		read(fd, (void*)&filePayload, BUFFER);
 
-		// Set up a response packet
-		packet response;
-		response.type = 'D';
-		response.sequence = sequence_number;
-		response.length = strlen(filePayload);
-		response.payload = filePayload;
-
-		char* responsePacket = malloc(HEADERSIZE + response.length);
-		memcpy(responsePacket, &response.type, sizeof(char));
-		memcpy(responsePacket+1, &response.sequence, sizeof(uint32_t));
-		memcpy(responsePacket+9, &response.length, sizeof(uint32_t));
-		memcpy(responsePacket+HEADERSIZE, response.payload, response.length);
-		printf("Response packet to send: %c %u %u %s\n", responsePacket[0], responsePacket[1], responsePacket[9], responsePacket+HEADERSIZE);
-		
-		// should check for error here
-		printInfoAtSend(inet_ntoa(client.sin_addr), response);
-		if (sendto(socketFD_Server, responsePacket, HEADERSIZE+response.length, 0, (struct sockaddr *)&client, sizeof(client))==-1) {
-			perror("sendto()");
+		// works to chunk the file so to speak
+		int remaining_length = strlen(filePayload);
+		int iteration_num = 0;
+		while (remaining_length > 0) {
+		  printf("remaining length: %d\n", remaining_length);
+		  // Set up a response packet
+		  packet response;
+		  response.type = 'D';
+		  response.sequence = sequence_number;
+		  // make the response length the smaller of the two values
+		  response.length = (length > remaining_length? remaining_length : length);
+		  char newpayload[response.length];
+		  bzero(&newpayload, sizeof(newpayload));
+		  int a;
+		  for (a = length*iteration_num; a < length*iteration_num + response.length && a < strlen(filePayload); a++) {
+		    newpayload[a-length*iteration_num] = filePayload[a];
+		  }
+		  //printf("newpayload: %s\n", newpayload);
+		  response.payload = newpayload; //filePayload;
+		  
+		  char* responsePacket = malloc(HEADERSIZE + response.length);
+		  memcpy(responsePacket, &response.type, sizeof(char));
+		  memcpy(responsePacket+1, &response.sequence, sizeof(uint32_t));
+		  memcpy(responsePacket+9, &response.length, sizeof(uint32_t));
+		  memcpy(responsePacket+HEADERSIZE, response.payload, response.length);
+		  printf("Response packet to send: %c %u %u %s\n", responsePacket[0], responsePacket[1], responsePacket[9], responsePacket+HEADERSIZE);
+		  
+		  // should check for error here
+		  printInfoAtSend(inet_ntoa(client.sin_addr), response);
+		  if (sendto(socketFD_Server, responsePacket, HEADERSIZE+response.length, 0, (struct sockaddr *)&client, sizeof(client))==-1) {
+		    perror("sendto()");
+		  }
+		  
+		  iteration_num++;
+		  remaining_length -= response.length;
+		  rate = rate;  //TODO: We have to use rate somewhere, this is for the compiler
 		}
-
-		rate = rate;  //TODO: We have to use rate somewhere, this is for the compiler
-
 		// TODO: Should get the file the requester says it
 		// TODO: wants, then chunk it and send it to the requester
 		// TODO: Figure out how to 'chunk' the file.
