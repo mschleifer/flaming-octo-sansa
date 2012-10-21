@@ -155,12 +155,15 @@ int printInfoAtReceive(char* sender_ip, packet pkt) {
  * sender, one at a time. New sender info will be on its' own line.
  * TODO: Need to have information about duration and packets per second
  */
-int printSummaryInfo() {
+int printSummaryInfo(struct sockaddr_in server) {
   int i;
   for (i = 0; i < sender_array_size; i++) {
-    printf("\n");
-    printf("Info for sender %s:\n\tNum data packets: %d\n\tNum bytes received: %d\n",
+    if ((strcmp(sender_array[i].sender_ip, inet_ntoa(server.sin_addr)) == 0) &&
+	    (sender_array[i].sender_port == server.sin_port)) {
+      printf("\n");
+      printf("Info for sender %s:\n\tNum data packets: %d\n\tNum bytes received: %d\n",
 	   sender_array[i].sender_ip, sender_array[i].num_data_pkts, sender_array[i].num_bytes);
+    }
   }
   
   return 0;
@@ -169,186 +172,191 @@ int printSummaryInfo() {
 int
 main(int argc, char *argv[])
 {
-	char *buffer;
-	buffer = malloc(MAXPACKETSIZE);
-	bzero(buffer, sizeof(buffer));
-	sender_array = (sender_summary*) malloc(sizeof(sender_summary) * 20);
-	if(buffer == NULL) {
-		printError("Buffer could not be allocated");
-		return 0;
-	}
-	if(argc != 5) {
-		printError("Incorrect number of arguments");
-		return 0;
-	}
-
-	// Port on which the requester waits for packets
-	int port= 0;
-	// The name of the file that's being requested
-	char* requested_file_name = malloc(MAXPAYLOADSIZE);
-
-	// Deal with command-line arguments
-	int c;
-	opterr = 0;
-	while ((c = getopt(argc, argv, "p:o:")) != -1) {
-		switch(c) {
-		case 'p':
-			port = atoi(optarg);
+  char *buffer;
+  buffer = malloc(MAXPACKETSIZE);
+  bzero(buffer, sizeof(buffer));
+  sender_array = (sender_summary*) malloc(sizeof(sender_summary) * 20);
+  if(buffer == NULL) {
+    printError("Buffer could not be allocated");
+    return 0;
+  }
+  if(argc != 5) {
+    printError("Incorrect number of arguments");
+    return 0;
+  }
+  
+  // Port on which the requester waits for packets
+  int port= 0;
+  // The name of the file that's being requested
+  char* requested_file_name = malloc(MAXPAYLOADSIZE);
+  
+  // Deal with command-line arguments
+  int c;
+  opterr = 0;
+  while ((c = getopt(argc, argv, "p:o:")) != -1) {
+    switch(c) {
+    case 'p':
+      port = atoi(optarg);
+      break;
+    case 'o':
+      requested_file_name = optarg;
 			break;
-		case 'o':
-			requested_file_name = optarg;
-			break;
-		default: 
-			usage(argv[0]);
-		}
-	}
+    default: 
+      usage(argv[0]);
+    }
+  }
+  
+  if(port < 1024 || port > 65536) {
+    printError("Incorrect port number\n");
+    return 0;
+  }
+  
+  // Read from tracker.txt 
+  if (readTrackerFile() == -1) {
+    printf("Error reading from tracker file.Exiting.\n");
+    exit(-1);
+  }
+  
+  // Clears the file once every time the program is run
+  clearFile(requested_file_name);
+  
+  // CREATE SOCKET
+  int socketFD_Client;
+  struct sockaddr_in client, server;
+  int slen=sizeof(server);
+  bzero(&client, sizeof(client));
+  client.sin_family = AF_INET;
+  client.sin_port = htons(port);
+  
+  if (inet_aton(SRV_IP, &client.sin_addr) == 0) {
+    fprintf(stderr, "inet_aton() failed\n");
+    exit(-1);
+  }
 
-	if(port < 1024 || port > 65536) {
-		printError("Incorrect port number\n");
-		return 0;
-	}
-
-	// Read from tracker.txt 
-	if (readTrackerFile() == -1) {
-		printf("Error reading from tracker file.Exiting.\n");
-		exit(-1);
-	}
-
-	// Clears the file once every time the program is run
-	clearFile(requested_file_name);
-
-	// CREATE SOCKET
-	int socketFD_Client;
-	struct sockaddr_in client, server;
-	int slen=sizeof(server);
-	bzero(&client, sizeof(client));
-	client.sin_family = AF_INET;
-	client.sin_port = htons(port);
-
-	if (inet_aton(SRV_IP, &client.sin_addr) == 0) {
-		fprintf(stderr, "inet_aton() failed\n");
-		exit(-1);
-	}
-
-	socketFD_Client = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
-	if(socketFD_Client == -1) {
-		perror("socket");
-		close(socketFD_Client);
-	}
-
-	// Socket address to be used when sending file request
-	struct sockaddr_in address_server;
-	bzero(&address_server, sizeof(address_server));
-	address_server.sin_family = AF_INET;
-
-	// Assign the address to the socket
-	if (bind(socketFD_Client, (struct sockaddr *)&client, sizeof(client))==-1)
-		perror("bind");
-
-	/* 
-	 * Loops forever, but in the end, is simply waiting for a message with
-	 * recvfrom, so nothing will happen.
-	 */
-	bool done_requesting = false;
-	while (1) {
-		int i;
-		for(i = 0; i < tracker_array_size && !done_requesting; i++) {
-
-			/**
-			 * Request the given file name only. 
-			 * Sends the request in the form of a packet.
-			 */
-			if(strcmp(tracker_array[i].file_name, requested_file_name) == 0) {
-			        address_server.sin_port = htons(tracker_array[i].sender_port);
-				if (inet_aton(SRV_IP, &address_server.sin_addr)==0) {
-					fprintf(stderr, "inet_aton() failed\n");
-					exit(1);
-				}
+  socketFD_Client = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+  if(socketFD_Client == -1) {
+    perror("socket");
+    close(socketFD_Client);
+  }
+  
+  // Socket address to be used when sending file request
+  struct sockaddr_in address_server;
+  bzero(&address_server, sizeof(address_server));
+  address_server.sin_family = AF_INET;
+  
+  // Assign the address to the socket
+  if (bind(socketFD_Client, (struct sockaddr *)&client, sizeof(client))==-1)
+    perror("bind");
+  
+  /* 
+   * Loops forever, but in the end, is simply waiting for a message with
+   * recvfrom, so nothing will happen.
+   */
+  bool done_requesting = false;
+  while (1) {
+    int i;
+    for(i = 0; i < tracker_array_size && !done_requesting; i++) {
+	    
+      /**
+       * Request the given file name only. 
+       * Sends the request in the form of a packet.
+       */
+      if(strcmp(tracker_array[i].file_name, requested_file_name) == 0) {
+	address_server.sin_port = htons(tracker_array[i].sender_port);
 	
-				packet request;
-				request.type = 'R';
-				request.sequence = 0;
-				request.length = 20;
-				request.payload = requested_file_name;
-	
-				uint payloadSize = strlen(requested_file_name);
-				char* requestPacket = malloc(HEADERSIZE+payloadSize);
-				memcpy(requestPacket, &request.type, sizeof(char));
-				memcpy(requestPacket+1, &request.sequence, sizeof(uint32_t));
-				memcpy(requestPacket+9, &payloadSize, sizeof(uint32_t));
-				memcpy(requestPacket+HEADERSIZE, request.payload, payloadSize);
-				//printf("requestPacket: %c %u %u %s\n", requestPacket[0], requestPacket[1], requestPacket[9], requestPacket+17);
-	
-				// Send the request packet to the sender 	
-				if (sendto(socketFD_Client, requestPacket, HEADERSIZE+payloadSize, 0, (struct sockaddr *)&address_server, sizeof(address_server))==-1) {
-					perror("sendto()");
-				}
-
-				struct timeb time;
-				ftime(&time);
-				char timeString[80];
-				strftime(timeString, sizeof(timeString), "%H:%M:%S", localtime(&(time.time)));
-				//printf("Sending packet at: %s.%d(ms).\n", timeString, time.millitm);
-			}
-
-			// Stop the application from endlessly requesting the same files
-			if (i == tracker_array_size - 1) {
-				done_requesting = true;
-			}
-		}
-
-		// Listen for some kind of response.If one is given, fill in info
-		if (recvfrom(socketFD_Client, buffer, MAXPACKETSIZE, 0, (struct sockaddr *)&server, (socklen_t *)&slen) == -1) {
-			perror("recvfrom()");
-		}
-		
-		
-		// Create a packet from the received data
-		packet PACKET;
-		memcpy(&PACKET.type, buffer, sizeof(char));
-		memcpy(&PACKET.sequence, buffer+1, sizeof(uint32_t));
-		memcpy(&PACKET.length, buffer+9, sizeof(uint32_t));
-		PACKET.payload = buffer+HEADERSIZE;
-
-		printInfoAtReceive(inet_ntoa(server.sin_addr), PACKET);
-		
-		if (PACKET.type == 'D') {
-		  writeToFile(PACKET.payload, requested_file_name);
-		  
-		  /*
-		   * Add the information to the sender array. If the sender is not
-		   * currently in the array, add it to the array. 
-		   * TODO: Need to do something with pkts per second and duration
-		   */
-		  bool in_sender_array = false;
-		  int i;
-		  for (i = 0; i < sender_array_size; i++) {
-		    if (strcmp(sender_array[i].sender_ip, inet_ntoa(server.sin_addr)) == 0) {
-		      //printf("TEST: Sender has sent something before.");
-		      in_sender_array = true;
-		      sender_array[i].num_data_pkts++;
-		      sender_array[i].num_bytes += PACKET.length;
-		    }
-		  }
-		  
-		  if (!in_sender_array) {
-		    sender_summary sender_details;
-		    sender_details.sender_ip = inet_ntoa(server.sin_addr);
-		    sender_details.num_data_pkts = 1;
-		    sender_details.num_bytes = PACKET.length;
-		    
-		    // Put into the sender array
-		    sender_array[sender_array_size] = sender_details;
-		    sender_array_size++;
-		  }
-		}
-		else if (PACKET.type == 'E') {
-		  // Print summary information, about all senders
-		  printSummaryInfo();
-		}
+	if (inet_aton(SRV_IP, &address_server.sin_addr)==0) {
+	  fprintf(stderr, "inet_aton() failed\n");
+	  exit(1);
 	}
 
-	close(socketFD_Client);
-	return 0;
+	printf("sin_addr and sin_port: %s %d\n", inet_ntoa(address_server.sin_addr), address_server.sin_port);
+	
+	packet request;
+	request.type = 'R';
+	request.sequence = 0;
+	request.length = 20;
+	request.payload = requested_file_name;
+	
+	uint payloadSize = strlen(requested_file_name);
+	char* requestPacket = malloc(HEADERSIZE+payloadSize);
+	memcpy(requestPacket, &request.type, sizeof(char));
+	memcpy(requestPacket+1, &request.sequence, sizeof(uint32_t));
+	memcpy(requestPacket+9, &payloadSize, sizeof(uint32_t));
+	memcpy(requestPacket+HEADERSIZE, request.payload, payloadSize);
+	//printf("requestPacket: %c %u %u %s\n", requestPacket[0], requestPacket[1], requestPacket[9], requestPacket+17);
+	
+	// Send the request packet to the sender 	
+	if (sendto(socketFD_Client, requestPacket, HEADERSIZE+payloadSize, 0, (struct sockaddr *)&address_server, sizeof(address_server))==-1) {
+	  perror("sendto()");
+	}
+	
+	struct timeb time;
+	ftime(&time);
+	char timeString[80];
+	strftime(timeString, sizeof(timeString), "%H:%M:%S", localtime(&(time.time)));
+	//printf("Sending packet at: %s.%d(ms).\n", timeString, time.millitm);
+      }
+      
+      // Stop the application from endlessly requesting the same files
+      if (i == tracker_array_size - 1) {
+	done_requesting = true;
+      }
+    }
+    
+    // Listen for some kind of response.If one is given, fill in info
+    if (recvfrom(socketFD_Client, buffer, MAXPACKETSIZE, 0, (struct sockaddr *)&server, (socklen_t *)&slen) == -1) {
+      perror("recvfrom()");
+    }
+    
+    
+	  // Create a packet from the received data
+    packet PACKET;
+    memcpy(&PACKET.type, buffer, sizeof(char));
+    memcpy(&PACKET.sequence, buffer+1, sizeof(uint32_t));
+    memcpy(&PACKET.length, buffer+9, sizeof(uint32_t));
+    PACKET.payload = buffer+HEADERSIZE;
+    
+    printInfoAtReceive(inet_ntoa(server.sin_addr), PACKET);
+    
+    if (PACKET.type == 'D') {
+      writeToFile(PACKET.payload, requested_file_name);
+      
+      /*
+       * Add the information to the sender array. If the sender is not
+       * currently in the array, add it to the array. 
+       * TODO: Need to do something with pkts per second and duration
+       */
+      bool in_sender_array = false;
+      int i;
+      for (i = 0; i < sender_array_size; i++) {
+	if ((strcmp(sender_array[i].sender_ip, inet_ntoa(server.sin_addr)) == 0) &&
+	    (sender_array[i].sender_port == server.sin_port)) {
+	  //printf("TEST: Sender has sent something before.");
+	  in_sender_array = true;
+	  sender_array[i].num_data_pkts++;
+	  sender_array[i].num_bytes += PACKET.length;
+	}
+      }
+      
+      if (!in_sender_array) {
+	sender_summary sender_details;
+	sender_details.sender_ip = inet_ntoa(server.sin_addr);
+	sender_details.sender_port = server.sin_port;
+	sender_details.num_data_pkts = 1;
+	sender_details.num_bytes = PACKET.length;
+	
+	// Put into the sender array
+	sender_array[sender_array_size] = sender_details;
+	sender_array_size++;
+      }
+    }
+    else if (PACKET.type == 'E') {
+      // Print summary information, about all senders
+      printSummaryInfo(server);
+    }
+  }
+  
+  close(socketFD_Client);
+  return 0;
 } // END MAIN
 
