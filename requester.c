@@ -161,9 +161,19 @@ int printSummaryInfo(struct sockaddr_in server) {
     if ((strcmp(sender_array[i].sender_ip, inet_ntoa(server.sin_addr)) == 0) &&
 	    (sender_array[i].sender_port == server.sin_port)) {
       printf("\n");
-      printf("Info for sender %s:\n\tNum data packets: %d\n\tNum bytes received: %d\n",
-	   sender_array[i].sender_ip, sender_array[i].num_data_pkts, sender_array[i].num_bytes);
+      //printf("Info for sender %s:\n\tNum data packets: %d\n\tNum bytes received: %d\n",
+      //sender_array[i].sender_ip, sender_array[i].num_data_pkts, sender_array[i].num_bytes);
     }
+    double duration = difftime(sender_array[i].end_time.time, sender_array[i].start_time.time);
+    double mills = sender_array[i].end_time.millitm - sender_array[i].start_time.millitm;
+ 
+    duration += (mills / 1000.0);
+    
+    sender_array[i].duration = duration;
+    sender_array[i].packets_per_second = ((double) sender_array[i].num_data_pkts) / duration;
+    printf("Info for sender %s:\n\tNum data packets: %d\n\tNum bytes received: %d\n\tAverage pkts per second: %f\n\tDuration: %f\n",
+	   sender_array[i].sender_ip, sender_array[i].num_data_pkts, sender_array[i].num_bytes,
+	   sender_array[i].packets_per_second, sender_array[i].duration);
   }
   
   return 0;
@@ -345,6 +355,10 @@ main(int argc, char *argv[])
 	sender_details.sender_port = server.sin_port;
 	sender_details.num_data_pkts = 1;
 	sender_details.num_bytes = PACKET.length;
+	ftime(&sender_details.start_time);
+	strftime(sender_details.start_timeString, sizeof(sender_details.start_timeString), "%H:%M:%S", localtime(&(sender_details.start_time.time)));
+	printf("Start time is: %s.%d(ms).\n", sender_details.start_timeString, sender_details.start_time.millitm);
+	
 	
 	// Put into the sender array
 	sender_array[sender_array_size] = sender_details;
@@ -352,8 +366,23 @@ main(int argc, char *argv[])
       }
     }
     else if (PACKET.type == 'E') {
-      // Print summary information, about all senders
+      
+      int i;
+      for (i = 0; i < sender_array_size; i++) {
+
+	if ((strcmp(sender_array[i].sender_ip, inet_ntoa(server.sin_addr)) == 0) &&
+	    (sender_array[i].sender_port == server.sin_port)) {
+
+	  
+	  ftime(&sender_array[i].end_time);
+	  strftime(sender_array[i].end_timeString, sizeof(sender_array[i].end_timeString), "%H:%M:%S", localtime(&(sender_array[i].end_time.time)));
+	  printf("End time is: %s.%d(ms).\n", sender_array[i].end_timeString, sender_array[i].end_time.millitm);
+	  
+	}
+      }	
+      
       printSummaryInfo(server);
+      
     }
   }
   
