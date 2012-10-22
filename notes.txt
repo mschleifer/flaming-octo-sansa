@@ -84,3 +84,13 @@ it then fseek() to EOF - 1 returns an error so I just reopened the file again
 and assume it's empty.  That might be kind of leap of faith but it seems to 
 work.
 
+As for the IP addresses I'm still stuck, but on recvfrom() we fill out 
+sockaddr_in. We can use char *ip = inet_ntoa(*thingfilledout*.sin_addr) to get 
+the IP but you might already know that since kind of already doing that with for
+printing.  I'm not sure how to *get* the IP of the machine we're on to set up 
+the request packet or data packets.  So I guess we're still stuck there.
+
+Requester still needs to exit politely when it's done but I'm still not really 
+clear on how it moves through the tracker list and when it's actually done so 
+I'm having trouble with that part. Other than that I think we're pretty much 
+finished...
