@@ -71,3 +71,16 @@ end of the file when concatenating the split1 to split2.  Need to look into that
 Also, we need to figure out how to actually get the real IP address rather than the 
 local host 127.0.0.1 value.  I think we should be able to run this on different computers
 at the same time, although that is not in the requirements.
+
+10/21 MATT--------------------
+Fixed the newline problem when concatenating two or more files.  The problem was
+each file ends with a '\n' by default even if none is typed/entered.  This is 
+some kind of convention for files I guess.  
+When we fopen() with "a+" that takes us to EOF (seemingly unalterably) which is 
+beyond the mandatory '\n' and we start appending there thus the unwanted 
+newline.
+Now open "r+" (read/write) then fseek() to EOF - 1.  If the file has nothing in 
+it then fseek() to EOF - 1 returns an error so I just reopened the file again 
+and assume it's empty.  That might be kind of leap of faith but it seems to 
+work.
+

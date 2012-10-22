@@ -49,10 +49,6 @@ The first 4 bytes of the payload
 #define HEADERSIZE (17)
 #define SRV_IP "127.0.0.1"
 
-//array and array size tracker for global use
-//tracker_entry* tracker_array;
-//int tracker_array_size;
-
 void
 printError(char* errorMessage) {
 	fprintf(stderr, "An error has occured: %s\n", errorMessage);

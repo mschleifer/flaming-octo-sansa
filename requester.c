@@ -62,13 +62,15 @@ int clearFile(char* file_name) {
  */
 int writeToFile(char* payload, char* file_name) {
 	FILE *fp; 
-	fp = fopen(file_name, "a+"); // Append to the file
+	fp = fopen(file_name, "r+"); // Open file for read/write
 	if (!fp) {
 		perror("fopen");
 		return -1;
 	}
+	if(fseek(fp, -1, SEEK_END) < 0) {
+	  fp = fopen(file_name, "r+"); // Nothing in file yet so reopen for read/write
+	}
 
-	//printf("%s\n", payload);
 	fprintf(fp, "%s", payload);
 
 	if (fclose(fp) != 0) {
@@ -341,33 +343,33 @@ main(int argc, char *argv[])
       int i;
       for (i = 0; i < sender_array_size; i++) {
 	
-	// If this statement succeeds, the sender has sent before
-	if ((strcmp(sender_array[i].sender_ip, inet_ntoa(server.sin_addr)) == 0) &&
-	    (sender_array[i].sender_port == server.sin_port)) {
-	  in_sender_array = true;
-	  sender_array[i].num_data_pkts++;
-	  sender_array[i].num_bytes += PACKET.length;
-	}
+        // If this statement succeeds, the sender has sent before
+        if ((strcmp(sender_array[i].sender_ip, inet_ntoa(server.sin_addr)) == 0) && (sender_array[i].sender_port == server.sin_port)) {
+          in_sender_array = true;
+          sender_array[i].num_data_pkts++;
+          sender_array[i].num_bytes += PACKET.length;
+        }
       }
       
       // New sender; fill out info, add to sender array
       if (!in_sender_array) {
-	sender_summary sender_details;
-	sender_details.sender_ip = inet_ntoa(server.sin_addr);
-	sender_details.sender_port = server.sin_port;
-	sender_details.num_data_pkts = 1;
-	sender_details.num_bytes = PACKET.length;
+        sender_summary sender_details;
+        sender_details.sender_ip = inet_ntoa(server.sin_addr);
+        sender_details.sender_port = server.sin_port;
+        sender_details.num_data_pkts = 1;
+        sender_details.num_bytes = PACKET.length;
 
-	// Deal with start time for the sender
-	ftime(&sender_details.start_time);
-	strftime(sender_details.start_timeString, sizeof(sender_details.start_timeString), "%H:%M:%S", localtime(&(sender_details.start_time.time)));
+        // Deal with start time for the sender
+        ftime(&sender_details.start_time);
+        strftime(sender_details.start_timeString, sizeof(sender_details.start_timeString), 
+                  "%H:%M:%S", localtime(&(sender_details.start_time.time)));
+
+        printf("Start time is: %s.%d(ms).\n", sender_details.start_timeString, sender_details.start_time.millitm);
 	
-	printf("Start time is: %s.%d(ms).\n", sender_details.start_timeString, sender_details.start_time.millitm);
 	
-	
-	// Put into the sender array
-	sender_array[sender_array_size] = sender_details;
-	sender_array_size++;
+	      // Put into the sender array
+	      sender_array[sender_array_size] = sender_details;
+	      sender_array_size++;
       }
     }
     else if (PACKET.type == 'E') {
@@ -375,17 +377,16 @@ main(int argc, char *argv[])
       int i;
       for (i = 0; i < sender_array_size; i++) {
 	
-	// Only do this for the sender that sent the 'E' packet.
-	if ((strcmp(sender_array[i].sender_ip, inet_ntoa(server.sin_addr)) == 0) &&
-	    (sender_array[i].sender_port == server.sin_port)) {
+        // Only do this for the sender that sent the 'E' packet.
+        if ((strcmp(sender_array[i].sender_ip, inet_ntoa(server.sin_addr)) == 0) && (sender_array[i].sender_port == server.sin_port)) {
 	  
-	  // Deal with end time for the sender
-	  ftime(&sender_array[i].end_time);
-	  strftime(sender_array[i].end_timeString, sizeof(sender_array[i].end_timeString), "%H:%M:%S", localtime(&(sender_array[i].end_time.time)));
+          // Deal with end time for the sender
+          ftime(&sender_array[i].end_time);
+          strftime(sender_array[i].end_timeString, sizeof(sender_array[i].end_timeString), 
+                    "%H:%M:%S", localtime(&(sender_array[i].end_time.time)));
 	  
-	  printf("End time is: %s.%d(ms).\n", sender_array[i].end_timeString, sender_array[i].end_time.millitm);
-	  
-	}
+          printf("End time is: %s.%d(ms).\n", sender_array[i].end_timeString, sender_array[i].end_time.millitm);
+        }
       }	
       
       printSummaryInfo(server);
