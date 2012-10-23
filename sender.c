@@ -43,6 +43,7 @@ The first 4 bytes of the payload
 #include <stdbool.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <netdb.h>
 
 #define BUFFER (5120)
 #define MAXPACKETSIZE (5137)
@@ -167,9 +168,18 @@ main(int argc, char *argv[])
 		printError("Incorrect port number(s).  Ports should be in range (1024 - 65536)");
 		return 0;
 	}
+	
+	char hostName[255];
+	gethostname(hostName, 255);
+	struct hostent* host_entry;
+	host_entry=gethostbyname(hostName);
+
+	char* localIP;
+	localIP = inet_ntoa (*(struct in_addr*)*host_entry->h_addr_list);
+	printf("hey %s\n", localIP);
 
 	struct sockaddr_in server, client;
-	int socketFD_Server, slen=sizeof(client);
+	int socketFD_Server, slen=sizeof(client), socketFD_Client;
 
 	// Create a socket for the sender
 	if ((socketFD_Server=socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP))==-1) {
@@ -182,13 +192,23 @@ main(int argc, char *argv[])
 	bzero(&server, sizeof(server));
 	server.sin_family = AF_INET;
 	server.sin_port = htons(port);
-	server.sin_addr.s_addr = htonl(INADDR_ANY);
+	server.sin_addr.s_addr = INADDR_ANY;//htonl(INADDR_ANY);
 
 	// Bind the socket to the address
 	if (bind(socketFD_Server, (struct sockaddr *)&server, sizeof(server))==-1) {
 	  perror("bind");
 	}
 
+	listen(socketFD_Server, 5);
+	getsockname(socketFD_Server, (struct sockaddr*)&server, (socklen_t*)&slen);
+	printf("testing: %s", inet_ntoa(server.sin_addr));
+
+	socketFD_Client = accept(socketFD_Server, (struct sockaddr *)&client, (socklen_t*)&slen);
+
+	getsockname(socketFD_Client, (struct sockaddr*)&server, (socklen_t*)&slen);
+	getsockname(socketFD_Client, (struct sockaddr*)&server, (socklen_t*)&slen);
+	printf("testing: %s", inet_ntoa(server.sin_addr));
+	//return 0;
 	packet request;
 	// Endlessly wait for some kind of a request
 	if (recvfrom(socketFD_Server, buffer, MAXPACKETSIZE, 0, (struct sockaddr *)&client, (socklen_t *)&slen)==-1) {

@@ -243,11 +243,13 @@ main(int argc, char *argv[])
   bzero(&client, sizeof(client));
   client.sin_family = AF_INET;
   client.sin_port = htons(port);
+  client.sin_addr.s_addr = INADDR_ANY;
+  printf("testing: %s", inet_ntoa(client.sin_addr));
   
-  if (inet_aton(SRV_IP, &client.sin_addr) == 0) {
-    fprintf(stderr, "inet_aton() failed\n");
-    exit(-1);
-  }
+  //if (inet_aton(/*client.sin_addr.s_addr*/SRV_IP, &client.sin_addr) == 0) {
+  //  fprintf(stderr, "inet_aton() failed\n");
+  //  exit(-1);
+  //}
 
   // CREATE REQUESTER SOCKET
   socketFD_Client = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
@@ -265,6 +267,7 @@ main(int argc, char *argv[])
   if (bind(socketFD_Client, (struct sockaddr *)&client, sizeof(client))==-1)
     perror("bind");
   
+  printf("testing: %s", inet_ntoa(client.sin_addr));
   /* 
    * Loops forever waiting for a message from recvfrom
    */
