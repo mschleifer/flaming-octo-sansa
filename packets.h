@@ -29,6 +29,7 @@ typedef struct sender_summary {
   char start_timeString[80];
   struct timeb end_time;
   char end_timeString[80];
+  int done_sending;
 } sender_summary;
 
 

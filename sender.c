@@ -63,6 +63,7 @@ usage(char *prog) {
 /**
 * Should be called for each packet that is sent to the requester.
 * Prints out the time, IP, sequence number and 4 bytes of the payload.
+* Does some things a little different if it's an END packet.
 */
 int printInfoAtSend(char* requester_ip, packet pkt) {
   printf("\n");
@@ -70,10 +71,9 @@ int printInfoAtSend(char* requester_ip, packet pkt) {
   ftime(&time);
   char timeString[80];
   strftime(timeString, sizeof(timeString), "%H:%M:%S", localtime(&(time.time)));
-  // TODO: Do we need this first if? How closely do we need to follow their print
-  //       instructions do you think?
+  
   if (pkt.type == 'E') {
-    printf("Sending END packet at %s.%d(ms).\n", timeString, time.millitm);
+    printf("Sending END packet to requester at ip %s at %s.%d(ms).\n", requester_ip, timeString, time.millitm);
   }
   else {
     printf("Sending packet at: %s.%d(ms).\n\tRequester IP: %s.\n\tSequence number: %d.\n\t",
@@ -214,8 +214,7 @@ main(int argc, char *argv[])
 
 	// Make sure the request packet is formatted correctly
 	if (request.type == 'R' && request.sequence == 0) {
-	    // TODO: Is this debug printing? Should we comment out?
-		printf("Request packet received: %c %u %u %s\n", request.type, request.sequence, request.length, request.payload);
+	  //printf("Request packet received: %c %u %u %s\n", request.type, request.sequence, request.length, request.payload);
 
 		// Open the requested file for reading
 		int fd;
