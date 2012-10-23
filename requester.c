@@ -234,7 +234,8 @@ main(int argc, char *argv[])
   // Clears the file once every time the program is run
   clearFile(requested_file_name);
   
-  // CREATE SOCKET
+  
+  // CREATE REQUESTER ADDRESS
   int socketFD_Client;
   struct sockaddr_in client, server;
   int slen=sizeof(server);
@@ -247,6 +248,7 @@ main(int argc, char *argv[])
     exit(-1);
   }
 
+  // CREATE REQUESTER SOCKET
   socketFD_Client = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
   if(socketFD_Client == -1) {
     perror("socket");
@@ -263,8 +265,7 @@ main(int argc, char *argv[])
     perror("bind");
   
   /* 
-   * Loops forever, but in the end, is simply waiting for a message with
-   * recvfrom, so nothing will happen.
+   * Loops forever waiting for a message from recvfrom
    */
   bool done_requesting = false;
   while (1) {
@@ -276,43 +277,47 @@ main(int argc, char *argv[])
        * Sends the request in the form of a packet.
        */
       if(strcmp(tracker_array[i].file_name, requested_file_name) == 0) {
-	address_server.sin_port = htons(tracker_array[i].sender_port);
+        address_server.sin_port = htons(tracker_array[i].sender_port);
 	
-	if (inet_aton(SRV_IP, &address_server.sin_addr)==0) {
-	  fprintf(stderr, "inet_aton() failed\n");
-	  exit(1);
-	}
+	      if (inet_aton(SRV_IP, &address_server.sin_addr)==0) {
+	        fprintf(stderr, "inet_aton() failed\n");
+	        exit(1);
+	      }
+  
+        // DEBUG print
+	      //printf("sin_addr and sin_port: %s %d\n", inet_ntoa(address_server.sin_addr), address_server.sin_port);
 
-	printf("sin_addr and sin_port: %s %d\n", inet_ntoa(address_server.sin_addr), address_server.sin_port);
-	
-	packet request;
-	request.type = 'R';
-	request.sequence = 0;
-	request.length = 20;
-	request.payload = requested_file_name;
-	
-	uint payloadSize = strlen(requested_file_name);
-	char* requestPacket = malloc(HEADERSIZE+payloadSize);
-	memcpy(requestPacket, &request.type, sizeof(char));
-	memcpy(requestPacket+1, &request.sequence, sizeof(uint32_t));
-	memcpy(requestPacket+9, &payloadSize, sizeof(uint32_t));
-	memcpy(requestPacket+HEADERSIZE, request.payload, payloadSize);
+        // Fill out a struct for the request packet
+	      packet request;
+	      request.type = 'R';
+	      request.sequence = 0;
+	      request.length = 20;
+      	request.payload = requested_file_name;
+
+	      // Serialize the request packet for sending
+	      uint payloadSize = strlen(requested_file_name);
+	      char* requestPacket = malloc(HEADERSIZE+payloadSize);
+	      memcpy(requestPacket, &request.type, sizeof(char));
+	      memcpy(requestPacket+1, &request.sequence, sizeof(uint32_t));
+	      memcpy(requestPacket+9, &payloadSize, sizeof(uint32_t));
+	      memcpy(requestPacket+HEADERSIZE, request.payload, payloadSize);
 		
-	// Send the request packet to the sender 	
-	if (sendto(socketFD_Client, requestPacket, HEADERSIZE+payloadSize, 0, (struct sockaddr *)&address_server, sizeof(address_server))==-1) {
-	  perror("sendto()");
-	}
-	
-	struct timeb time;
-	ftime(&time);
-	char timeString[80];
-	strftime(timeString, sizeof(timeString), "%H:%M:%S", localtime(&(time.time)));
-	//printf("Sending packet at: %s.%d(ms).\n", timeString, time.millitm);
+	      // Send the request packet to the sender 	
+	      if (sendto(socketFD_Client, requestPacket, HEADERSIZE+payloadSize, 0, (struct sockaddr *)&address_server, sizeof(address_server))==-1) {
+	        perror("sendto()");
+	      }
+
+        // TODO: Do we need this still??
+	      struct timeb time;
+	      ftime(&time);
+	      char timeString[80];
+	      strftime(timeString, sizeof(timeString), "%H:%M:%S", localtime(&(time.time)));
+	      //printf("Sending packet at: %s.%d(ms).\n", timeString, time.millitm);
       }
       
       // Stop the application from endlessly requesting the same files
       if (i == tracker_array_size - 1) {
-	done_requesting = true;
+	      done_requesting = true;
       }
     }
     
@@ -332,13 +337,12 @@ main(int argc, char *argv[])
     
     printInfoAtReceive(inet_ntoa(server.sin_addr), PACKET);
     
+    // If it's a DATA packet
     if (PACKET.type == 'D') {
       writeToFile(PACKET.payload, requested_file_name);
       
-      /*
-       * Add the information to the sender array. If the sender is not
-       * currently in the array, add it to the array. 
-       */
+      // Add the information to the sender array. If the sender is not
+      // currently in the array, add it to the array. 
       bool in_sender_array = false;
       int i;
       for (i = 0; i < sender_array_size; i++) {
@@ -372,6 +376,7 @@ main(int argc, char *argv[])
 	      sender_array_size++;
       }
     }
+    // Other it should be an END packet
     else if (PACKET.type == 'E') {
       
       int i;
@@ -389,6 +394,7 @@ main(int argc, char *argv[])
         }
       }	
       
+      // For the sender that just finished
       printSummaryInfo(server);
       
     }

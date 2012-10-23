@@ -122,10 +122,10 @@ main(int argc, char *argv[])
 	}
 
 	// Port on which the sender waits for requests
-	int port  = 0;
+	int port;
 
 	// Port on which the requester is waiting
-	int requester_port = 0;
+	int requester_port;
 
 	// The number of packets sent per second
 	double rate;
@@ -134,9 +134,9 @@ main(int argc, char *argv[])
 	int sequence_number;
 
 	// The length of the payload in the packets (each chunk of the file part the sender has)
-	int length = 0;
-	length = length;
+	int length;
 
+	// Get the commandline args
 	int c;
 	opterr = 0;
 	while ((c = getopt(argc, argv, "p:g:r:q:l:")) != -1) {
@@ -169,7 +169,7 @@ main(int argc, char *argv[])
 	struct sockaddr_in server, client;
 	int socketFD_Server, slen=sizeof(client);
 
-	// Create a sockety
+	// Create a socket for the sender
 	if ((socketFD_Server=socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP))==-1) {
 		perror("socket");
 		close(socketFD_Server);
@@ -192,6 +192,7 @@ main(int argc, char *argv[])
 	if (recvfrom(socketFD_Server, buffer, MAXPACKETSIZE, 0, (struct sockaddr *)&client, (socklen_t *)&slen)==-1) {
 		perror("recvfrom()");
 	}
+	
 	// Once we receive something, set up info about client
 	bzero(&client, sizeof(client));
 	client.sin_family = AF_INET;
@@ -221,19 +222,20 @@ main(int argc, char *argv[])
 		  return -1;
 		}
 		
-		// Read the file into the buffer
+		
 		char filePayload[length];
 		int bytesRead;
 		bzero(filePayload, length);
+		// Read through the file 'length' bytes at a time
 		while((bytesRead = read(fd, (void*)&filePayload, length)) > 0) {
-		  // Set up a response packet
+		  // Set up a response(DATA) packet
 		  packet response;
 		  response.type = 'D';
 		  response.sequence = sequence_number;
 		  response.length = bytesRead;
 		  response.payload = filePayload;
 		  
-		  //serialize response packet
+		  // serialize response packet
 		  char* responsePacket = malloc(HEADERSIZE + response.length);
 		  memcpy(responsePacket, &response.type, sizeof(char));
 		  memcpy(responsePacket+1, &response.sequence, sizeof(uint32_t));
@@ -249,7 +251,7 @@ main(int argc, char *argv[])
   
 		  bzero(filePayload, length);
 
-		  // sleep for the given time
+		  // sleep for the given time to adjust for rate
 		  usleep(((double)1.0 / rate) * 1000000.0);
 		}
 	}
@@ -257,6 +259,7 @@ main(int argc, char *argv[])
 	  printf("Error: Sender received a packet that was not a request.");
 	}
 	
+	// When finished sending all packets for file
 	sendEndPkt(client, socketFD_Server);
 		
 	// Close when finished sending; Each send only sends one file
