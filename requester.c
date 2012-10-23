@@ -142,6 +142,7 @@ int printInfoAtReceive(char* sender_ip, packet pkt) {
   char timeString[80];
   strftime(timeString, sizeof(timeString), "%H:%M:%S", localtime(&(time.time)));
   if (pkt.type == 'E') {
+    // TODO: Debug printing or should we just leave it in?
     printf("Received END from %s packet at: %s.%d(ms).\n", sender_ip, timeString, time.millitm);
   }
   else {
@@ -368,7 +369,7 @@ main(int argc, char *argv[])
         strftime(sender_details.start_timeString, sizeof(sender_details.start_timeString), 
                   "%H:%M:%S", localtime(&(sender_details.start_time.time)));
 
-        printf("Start time is: %s.%d(ms).\n", sender_details.start_timeString, sender_details.start_time.millitm);
+        //printf("Start time is: %s.%d(ms).\n", sender_details.start_timeString, sender_details.start_time.millitm);
 	
 	
 	      // Put into the sender array
@@ -390,7 +391,7 @@ main(int argc, char *argv[])
           strftime(sender_array[i].end_timeString, sizeof(sender_array[i].end_timeString), 
                     "%H:%M:%S", localtime(&(sender_array[i].end_time.time)));
 	  
-          printf("End time is: %s.%d(ms).\n", sender_array[i].end_timeString, sender_array[i].end_time.millitm);
+          //printf("End time is: %s.%d(ms).\n", sender_array[i].end_timeString, sender_array[i].end_time.millitm);
         }
       }	
       

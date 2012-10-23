@@ -70,6 +70,8 @@ int printInfoAtSend(char* requester_ip, packet pkt) {
   ftime(&time);
   char timeString[80];
   strftime(timeString, sizeof(timeString), "%H:%M:%S", localtime(&(time.time)));
+  // TODO: Do we need this first if? How closely do we need to follow their print
+  //       instructions do you think?
   if (pkt.type == 'E') {
     printf("Sending END packet at %s.%d(ms).\n", timeString, time.millitm);
   }
@@ -212,6 +214,7 @@ main(int argc, char *argv[])
 
 	// Make sure the request packet is formatted correctly
 	if (request.type == 'R' && request.sequence == 0) {
+	    // TODO: Is this debug printing? Should we comment out?
 		printf("Request packet received: %c %u %u %s\n", request.type, request.sequence, request.length, request.payload);
 
 		// Open the requested file for reading
