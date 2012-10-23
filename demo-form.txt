@@ -4,9 +4,9 @@ Genral Info
 ****************************
 Group member <first and last name, CS login>
 
-1)------------
+1) Matthew Schleifer, schleife
 
-2)------------
+2) Adam Eggum, eggum
 
 3)------------
 
@@ -37,8 +37,10 @@ Test 1:
 ./requester -p 5001 -o hello.txt (run from requester folder)
 
 1) Does your sender send at a rate of 1 per second?
+      Yes (plus of minus a couple ms)
 
 2) Are the original hello.txt and the one that the requester constructs the same?
+      Yes
 
 Test 2:
 
@@ -49,3 +51,4 @@ Test 2:
 ./requester -p 5001 -o split.txt (run from requester folder)
 
 1) Does the original split.txt (concatenation of split1.txt and split2.txt) match the split.txt that the requester has consructed?
+      Yes
