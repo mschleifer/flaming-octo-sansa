@@ -61,6 +61,15 @@ usage(char *prog) {
 	exit(1);
 }
 
+// get sockaddr, IPv4 or IPv6:
+void *get_in_addr(struct sockaddr *sa) {
+  if (sa->sa_family == AF_INET) {
+    return &(((struct sockaddr_in*)sa)->sin_addr);
+  }
+
+  return &(((struct sockaddr_in6*)sa)->sin6_addr);
+}
+
 /**
 * Should be called for each packet that is sent to the requester.
 * Prints out the time, IP, sequence number and 4 bytes of the payload.
@@ -169,95 +178,113 @@ main(int argc, char *argv[])
 		return 0;
 	}
 	
+	rate = rate;
+	sequence_number = sequence_number;
+	length = length;
 	char hostname[255];
 	gethostname(hostname, 255);
-	struct hostent* host_entry;
+	/*struct hostent* host_entry;
 	host_entry=gethostbyname(hostname);
 
 	char* localIP;
 	localIP = inet_ntoa (*(struct in_addr*)*host_entry->h_addr_list);
-	printf("hey %s\n", localIP);
+	printf("hey %s\n", localIP);*/
 
-	struct sockaddr_in server, client;
-	int socketFD_Server, slen=sizeof(client), socketFD_Client;
+	//struct sockaddr_in client;//server, client;
+	int socketFD_Server;//, socketFD_Client;  //slen=sizeof(client), socketFD_Client;
 	
-	struct addrinfo *result = NULL, *ptr = NULL, hints;
+	struct addrinfo hints, *p, *servinfo;
+	int rv, numbytes;
+	struct sockaddr_storage client_addr;
+	socklen_t addr_len;
+	char s[INET6_ADDRSTRLEN];
 	bzero(&hints, sizeof(hints));
 	hints.ai_family = AF_INET;
 	hints.ai_socktype = SOCK_DGRAM;
 	hints.ai_protocol = IPPROTO_UDP;
 	hints.ai_flags = AI_PASSIVE;
-	if ( getaddrinfo(hostname, "5000", &hints, &result) != 0) {
-	  perror("getaddrinfo");
+	if ( (rv = getaddrinfo(/*NULL*/"localhost"/*hostname*/, "5000", &hints, &servinfo)) != 0) {
+	  fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
 	  return -1;
 	}
 
-	ptr = result;
-	if ((socketFD_Server = socket(ptr->ai_family, ptr->ai_socktype, ptr->ai_protocol)) == -1) {
-	  perror("socket");
-	  close(socketFD_Server);
+	// loop through all the results and bind to the first that we can
+	for (p = servinfo; p != NULL; p = p->ai_next) {
+	  if ((socketFD_Server = socket(p->ai_family, p->ai_socktype, p->ai_protocol)) == -1) {
+	    perror("sender: socket");
+	    continue;
+	  }
+
+	  if (bind(socketFD_Server, p->ai_addr, p->ai_addrlen) == -1) {
+	    close(socketFD_Server);
+	    perror("sender: bind");
+	    continue;
+	  }
+
+	  break;
+	}
+
+	printf("sender: %s\n", inet_ntop(AF_INET,
+							   get_in_addr((struct sockaddr*)p->ai_addr),
+							   s, sizeof(s)));
+
+	if (p == NULL) {
+	  fprintf(stderr, "sender: failed to bind socket\n");
 	  return -1;
 	}
-	
 
-	if (bind(socketFD_Server, ptr->ai_addr, ptr->ai_addrlen) == -1) {
-	  perror("bind");
+	freeaddrinfo(servinfo);
+
+	printf("sender: waiting to recvfrom...\n");
+	
+	addr_len = sizeof(client_addr);
+	if ((numbytes = recvfrom(socketFD_Server, buffer, MAXPACKETSIZE, 0,
+				 (struct sockaddr*)&client_addr, &addr_len)) == -1) {
+	  perror("recvfrom");
+	  exit(1);
 	}
 
-	listen(socketFD_Server, 100);
+	printf("server: got packet from %s\n", inet_ntop(client_addr.ss_family,
+							 get_in_addr((struct sockaddr*)&client_addr),
+							 s, sizeof(s)));
+	printf("server: packet is %d bytes long\n", numbytes);
 
-	struct sockaddr_storage requester_addr;
-	addr_size = sizeof(requester_addr);
+	close(socketFD_Server);
+	return 0;
+	//ptr = result;
+	//if ((socketFD_Server = socket(ptr->ai_family, ptr->ai_socktype, ptr->ai_protocol)) == -1) {
+	//perror("socket");
+	// close(socketFD_Server);
+	//  return -1;
+	//}
 	
-	socketFD_Client = accept(socketFD_Server, (struct sockaddr*)&requester_addr, &addr_size);
-	// Create a socket for the sender
-	/*if ((socketFD_Server=socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP))==-1) {
-		perror("socket");
-		close(socketFD_Server);
-		exit(-1);
+
+	//if (bind(socketFD_Server, ptr->ai_addr, ptr->ai_addrlen) == -1) {
+	//  perror("bind");
+	//}
+
+	//listen(socketFD_Server, 100);
+
+	//struct sockaddr_storage requester_addr;
+	//socklen_t addr_size = sizeof(requester_addr);
+	
+	//socketFD_Client = accept(socketFD_Server, (struct sockaddr*)&requester_addr, &addr_size);
+	
+
+	
+	//packet request;
+	// Endlessly wait for some kind of a request
+	/*if (recvfrom(socketFD_Server, buffer, MAXPACKETSIZE, 0, (struct sockaddr *)&client, (socklen_t *)&slen)==-1) {
+		perror("recvfrom()");
 		}*/
 
-	// Zero out server socket address and set-up
-	/*bzero(&server, sizeof(server));
-	server.sin_family = AF_INET;
-	server.sin_port = htons(port);
-	server.sin_addr.s_addr = ptr->ai_addr;//INADDR_ANY;//htonl(INADDR_ANY);*/
-
+	//if (recvfrom(socketFD_Server, buffer, MAXPACKETSIZE, 0, (struct sockaddr*)&requester_addr, &addr_size) == -1) {
+	//perror("recvfrom");
+	//}
 	
-
-	// Bind the socket to the address
-	/*if (bind(socketFD_Server, (struct sockaddr *)&server, sizeof(server))==-1) {
-	  perror("bind");
-	  }*/
-
-	/*struct addrinfo *result = NULL, *ptr = NULL, hints;
-	bzero(&hints, sizeof(hints));
-	hints.ai_family = AF_UNSPEC;
-	hints.ai_socktype = SOCK_STREAM;
-	hints.ai_protocol = IPPROTO_UDP;
-	if ( getaddrinfo(hostname, port, &hints, &result) != 0) {
-	  perror("getaddrinfo");
-	  return -1;
-	  }*/
-	
-	/*listen(socketFD_Server, 5);
-	//getsockname(socketFD_Server, (struct sockaddr*)&server, (socklen_t*)&slen);
-	printf("testing: %s", inet_ntoa(server.sin_addr));
-
-	socketFD_Client = accept(socketFD_Server, (struct sockaddr *)&client, (socklen_t*)&slen);
-
-	getsockname(socketFD_Client, (struct sockaddr*)&server, (socklen_t*)&slen);
-	//getsockname(socketFD_Client, (struct sockaddr*)&server, (socklen_t*)&slen);
-	printf("testing: %s", inet_ntoa(server.sin_addr));*/
-	//return 0;
-	packet request;
-	// Endlessly wait for some kind of a request
-	if (recvfrom(socketFD_Server, buffer, MAXPACKETSIZE, 0, (struct sockaddr *)&client, (socklen_t *)&slen)==-1) {
-		perror("recvfrom()");
-	}
-	
+	//printf("foobar yooha");
 	// Once we receive something, set up info about client
-	bzero(&client, sizeof(client));
+	/*bzero(&client, sizeof(client));
 	client.sin_family = AF_INET;
 	client.sin_port = htons(requester_port);
 	if (inet_aton(SRV_IP, &client.sin_addr) == 0) {
@@ -270,11 +297,11 @@ main(int argc, char *argv[])
 	memcpy(&request.sequence, buffer + 1, sizeof(uint32_t));
 	memcpy(&request.length, buffer + 9, sizeof(uint32_t));
 	request.payload = malloc(request.length);
-	memcpy(request.payload, buffer + 17, request.length);
+	memcpy(request.payload, buffer + 17, request.length);*/
 
 
 	// Make sure the request packet is formatted correctly
-	if (request.type == 'R' && request.sequence == 0) {
+	/*if (request.type == 'R' && request.sequence == 0) {
 	  //printf("Request packet received: %c %u %u %s\n", request.type, request.sequence, request.length, request.payload);
 
 		// Open the requested file for reading
@@ -306,6 +333,7 @@ main(int argc, char *argv[])
 		  memcpy(responsePacket+HEADERSIZE, response.payload, response.length);
 		  
 		  printInfoAtSend(inet_ntoa(client.sin_addr), response);
+		  socketFD_Client = socketFD_Client;
 		  if (sendto(socketFD_Server, responsePacket, HEADERSIZE+response.length, 0, (struct sockaddr *)&client, sizeof(client))==-1) {
 		    perror("sendto()");
 		  }
@@ -320,15 +348,15 @@ main(int argc, char *argv[])
 	}
 	else { // Request packet didn't have type R && sequence 0
 	  printf("Error: Sender received a packet that was not a request.");
-	}
+	  }*/
 	
 	// When finished sending all packets for file
-	sendEndPkt(client, socketFD_Server);
+	//sendEndPkt(client, socketFD_Server);
 		
 	// Close when finished sending; Each send only sends one file
 	// It is the receiver's job to handle reliability, but implementing a FIN
 	// type scheme would be better
-	close(socketFD_Server);
-	return 0;
+	//close(socketFD_Server);
+	//return 0;
 } // End Main
 

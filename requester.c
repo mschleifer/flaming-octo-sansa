@@ -9,6 +9,7 @@
 #include <netinet/in.h>
 #include "packets.h"
 #include <arpa/inet.h>
+#include <netdb.h>
 #include <stdbool.h>
 
 #define SRV_IP "127.0.0.1"
@@ -34,6 +35,14 @@ usage(char *prog) {
   exit(1);
 }
 
+void *get_in_addr(struct sockaddr *sa)
+{
+  if (sa->sa_family == AF_INET) {
+    return &(((struct sockaddr_in*)sa)->sin_addr);
+  }
+  
+  return &(((struct sockaddr_in6*)sa)->sin6_addr);
+}
 
 /**
  * Clears the given file by opening it with the 'w' tag, then closing it.
@@ -237,55 +246,49 @@ main(int argc, char *argv[])
   
   
   // CREATE REQUESTER ADDRESS
-  int socketFD_Client;
+  int socketFD_Client;//, socketFD_Server;
   struct sockaddr_in client, server;
   int slen=sizeof(server);
   bzero(&client, sizeof(client));
   client.sin_family = AF_INET;
   client.sin_port = htons(port);
   client.sin_addr.s_addr = INADDR_ANY;
-  printf("testing: %s", inet_ntoa(client.sin_addr));
-  
-  //if (inet_aton(/*client.sin_addr.s_addr*/SRV_IP, &client.sin_addr) == 0) {
-  //  fprintf(stderr, "inet_aton() failed\n");
-  //  exit(-1);
-  //}
-  char hostname[255];
-  gethostname(hostname, 255);
-  struct hostent* host_entry;
-  host_entry=gethostbyname(hostname);
-  
-  char* localIP;
-  localIP = inet_ntoa (*(struct in_addr*)*host_entry->h_addr_list);
-  printf("hey %s\n", localIP);
+  //printf("testing: %s", inet_ntoa(client.sin_addr));
 
-  int status; 
+  int rv, numbytes;
   struct addrinfo hints;
-  struct addrinfo *servinfo;
+  struct addrinfo *servinfo, *p;
   
-  memset(&hints, 0, sizeof(hints));
+  bzero(&hints, sizeof(hints));
   hints.ai_family = AF_INET;
   hints.ai_socktype = SOCK_DGRAM;
   hints.ai_protocol = IPPROTO_UDP;
+  //hints.ai_flags = AI_PASSIVE;
   
-  status = getaddrinfo(hostname, "5000", &hints, &servinfo);
+  /*status = getaddrinfo(NULL, "5001", &hints, &servinfo);
+  status = status;
   // CREATE REQUESTER SOCKET
-  socketFD_Client = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+  socketFD_Client = socket(servinfo->ai_family, servinfo->ai_socktype, servinfo->ai_protocol);
   if(socketFD_Client == -1) {
     perror("socket");
     close(socketFD_Client);
   }
-  
+
+  bind(socketFD_Client, servinfo->ai_addr, servinfo->ai_addrlen);
+  listen(socketFD_Client, 100);
+  struct sockaddr_storage server_addr;
+  socklen_t addr_size = sizeof(server_addr);
+  socketFD_Server = accept(socketFD_Client, (struct sockaddr*)&server_addr, &addr_size);
+  socketFD_Server = socketFD_Server;
+
   // Socket address to be used when sending file request
   struct sockaddr_in address_server;
   bzero(&address_server, sizeof(address_server));
-  address_server.sin_family = AF_INET;
+  address_server.sin_family = AF_INET;*/
   
-  // Assign the address to the socket
-  if (bind(socketFD_Client, (struct sockaddr *)&client, sizeof(client))==-1)
-    perror("bind");
-  
-  printf("testing: %s", inet_ntoa(client.sin_addr));
+  char hostname[255];
+  gethostname(hostname, 255);
+  printf("requester: hostname is %s\n", hostname);
   /* 
    * Loops forever waiting for a message from recvfrom
    */
@@ -299,14 +302,29 @@ main(int argc, char *argv[])
        * Sends the request in the form of a packet.
        */
       if(strcmp(tracker_array[i].file_name, requested_file_name) == 0) {
-        address_server.sin_port = htons(tracker_array[i].sender_port);
-	
-	if (inet_aton(SRV_IP, &address_server.sin_addr)==0) {
-	  fprintf(stderr, "inet_aton() failed\n");
-	  exit(1);
+	if ((rv = getaddrinfo("localhost"/*hostname*/, "5000" /*tracker_array[i].sender_port*/, &hints, &servinfo)) != 0) {
+	  fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
+	  return -1;
 	}
+
+	// loop through all the results and make a socket
+	for(p = servinfo; p != NULL; p = p->ai_next) {
+	  if ((socketFD_Client = socket(p->ai_family, p->ai_socktype,
+			       p->ai_protocol)) == -1) {
+            perror("talker: socket");
+            continue;
+	  }
+
+	  break;
+	}
+
+	if (p == NULL) {
+	  fprintf(stderr, "requester: failed to bind socket.\n");
+	  return -1;
+	}
+        //address_server.sin_port = htons(tracker_array[i].sender_port);
 	
-        // DEBUG print
+	
 	//printf("sin_addr and sin_port: %s %d\n", inet_ntoa(address_server.sin_addr), address_server.sin_port);
 	
         // Fill out a struct for the request packet
@@ -326,9 +344,16 @@ main(int argc, char *argv[])
 	
 	usleep(100);
 	// Send the request packet to the sender 	
-	if (sendto(socketFD_Client, requestPacket, HEADERSIZE+payloadSize, 0, (struct sockaddr *)&address_server, sizeof(address_server))==-1) {
-	  perror("sendto()");
+	if ((numbytes = sendto(socketFD_Client, requestPacket, HEADERSIZE+payloadSize, 0, p->ai_addr, p->ai_addrlen))==-1) {
+	  perror("requester: sendto");
+	  return -1;
 	}
+
+	printf("talker: sent %d bytes to %s\n", numbytes, "localhost" /*hostname*/);
+	char s[INET6_ADDRSTRLEN];
+	printf("requester: sent packet to %s\n", inet_ntop(AF_INET,
+							 get_in_addr((struct sockaddr*)p->ai_addr),
+							 s, sizeof(s)));
       }
       
       // Stop the application from endlessly requesting the same files
