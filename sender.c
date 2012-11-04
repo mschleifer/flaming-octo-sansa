@@ -169,10 +169,10 @@ main(int argc, char *argv[])
 		return 0;
 	}
 	
-	char hostName[255];
-	gethostname(hostName, 255);
+	char hostname[255];
+	gethostname(hostname, 255);
 	struct hostent* host_entry;
-	host_entry=gethostbyname(hostName);
+	host_entry=gethostbyname(hostname);
 
 	char* localIP;
 	localIP = inet_ntoa (*(struct in_addr*)*host_entry->h_addr_list);
@@ -180,34 +180,75 @@ main(int argc, char *argv[])
 
 	struct sockaddr_in server, client;
 	int socketFD_Server, slen=sizeof(client), socketFD_Client;
-
-	// Create a socket for the sender
-	if ((socketFD_Server=socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP))==-1) {
-		perror("socket");
-		close(socketFD_Server);
-		exit(-1);
+	
+	struct addrinfo *result = NULL, *ptr = NULL, hints;
+	bzero(&hints, sizeof(hints));
+	hints.ai_family = AF_INET;
+	hints.ai_socktype = SOCK_DGRAM;
+	hints.ai_protocol = IPPROTO_UDP;
+	hints.ai_flags = AI_PASSIVE;
+	if ( getaddrinfo(hostname, "5000", &hints, &result) != 0) {
+	  perror("getaddrinfo");
+	  return -1;
 	}
 
-	// Zero out server socket address and set-up
-	bzero(&server, sizeof(server));
-	server.sin_family = AF_INET;
-	server.sin_port = htons(port);
-	server.sin_addr.s_addr = INADDR_ANY;//htonl(INADDR_ANY);
+	ptr = result;
+	if ((socketFD_Server = socket(ptr->ai_family, ptr->ai_socktype, ptr->ai_protocol)) == -1) {
+	  perror("socket");
+	  close(socketFD_Server);
+	  return -1;
+	}
+	
 
-	// Bind the socket to the address
-	if (bind(socketFD_Server, (struct sockaddr *)&server, sizeof(server))==-1) {
+	if (bind(socketFD_Server, ptr->ai_addr, ptr->ai_addrlen) == -1) {
 	  perror("bind");
 	}
 
-	listen(socketFD_Server, 5);
-	getsockname(socketFD_Server, (struct sockaddr*)&server, (socklen_t*)&slen);
+	listen(socketFD_Server, 100);
+
+	struct sockaddr_storage requester_addr;
+	addr_size = sizeof(requester_addr);
+	
+	socketFD_Client = accept(socketFD_Server, (struct sockaddr*)&requester_addr, &addr_size);
+	// Create a socket for the sender
+	/*if ((socketFD_Server=socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP))==-1) {
+		perror("socket");
+		close(socketFD_Server);
+		exit(-1);
+		}*/
+
+	// Zero out server socket address and set-up
+	/*bzero(&server, sizeof(server));
+	server.sin_family = AF_INET;
+	server.sin_port = htons(port);
+	server.sin_addr.s_addr = ptr->ai_addr;//INADDR_ANY;//htonl(INADDR_ANY);*/
+
+	
+
+	// Bind the socket to the address
+	/*if (bind(socketFD_Server, (struct sockaddr *)&server, sizeof(server))==-1) {
+	  perror("bind");
+	  }*/
+
+	/*struct addrinfo *result = NULL, *ptr = NULL, hints;
+	bzero(&hints, sizeof(hints));
+	hints.ai_family = AF_UNSPEC;
+	hints.ai_socktype = SOCK_STREAM;
+	hints.ai_protocol = IPPROTO_UDP;
+	if ( getaddrinfo(hostname, port, &hints, &result) != 0) {
+	  perror("getaddrinfo");
+	  return -1;
+	  }*/
+	
+	/*listen(socketFD_Server, 5);
+	//getsockname(socketFD_Server, (struct sockaddr*)&server, (socklen_t*)&slen);
 	printf("testing: %s", inet_ntoa(server.sin_addr));
 
 	socketFD_Client = accept(socketFD_Server, (struct sockaddr *)&client, (socklen_t*)&slen);
 
 	getsockname(socketFD_Client, (struct sockaddr*)&server, (socklen_t*)&slen);
-	getsockname(socketFD_Client, (struct sockaddr*)&server, (socklen_t*)&slen);
-	printf("testing: %s", inet_ntoa(server.sin_addr));
+	//getsockname(socketFD_Client, (struct sockaddr*)&server, (socklen_t*)&slen);
+	printf("testing: %s", inet_ntoa(server.sin_addr));*/
 	//return 0;
 	packet request;
 	// Endlessly wait for some kind of a request

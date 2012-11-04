@@ -250,7 +250,25 @@ main(int argc, char *argv[])
   //  fprintf(stderr, "inet_aton() failed\n");
   //  exit(-1);
   //}
+  char hostname[255];
+  gethostname(hostname, 255);
+  struct hostent* host_entry;
+  host_entry=gethostbyname(hostname);
+  
+  char* localIP;
+  localIP = inet_ntoa (*(struct in_addr*)*host_entry->h_addr_list);
+  printf("hey %s\n", localIP);
 
+  int status; 
+  struct addrinfo hints;
+  struct addrinfo *servinfo;
+  
+  memset(&hints, 0, sizeof(hints));
+  hints.ai_family = AF_INET;
+  hints.ai_socktype = SOCK_DGRAM;
+  hints.ai_protocol = IPPROTO_UDP;
+  
+  status = getaddrinfo(hostname, "5000", &hints, &servinfo);
   // CREATE REQUESTER SOCKET
   socketFD_Client = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
   if(socketFD_Client == -1) {
