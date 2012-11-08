@@ -161,7 +161,8 @@ main(int argc, char *argv[])
 			rate = atof(optarg);
 			break;
 		case 'q':
-			sequence_number = atoi(optarg);
+			//sequence_number = atoi(optarg);
+			sequence_number = 1;
 			break;
 		case 'l':
 			length = atoi(optarg);
@@ -293,7 +294,8 @@ main(int argc, char *argv[])
 		    perror("sendto()");
 		  }
 		  
-		  sequence_number += response.length; // Increase sequence_number by payload bytes
+			sequence_number++;
+		  //sequence_number += response.length; // Increase sequence_number by payload bytes
 		  bzero(filePayload, length);
 
 		  // sleep for the given time to adjust for rate
