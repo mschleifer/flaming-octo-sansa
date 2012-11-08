@@ -48,7 +48,6 @@ The first 4 bytes of the payload
 #define BUFFER (5120)
 #define MAXPACKETSIZE (5137)
 #define HEADERSIZE (17)
-#define SRV_IP "127.0.0.1"
 
 void
 printError(char* errorMessage) {
@@ -57,7 +56,7 @@ printError(char* errorMessage) {
 
 void
 usage(char *prog) {
-	fprintf(stderr, "usage: %s -p <port> -g <requester port> -r <rate> -q <seq_no> -l <length>\n", prog);
+	fprintf(stderr, "usage: %s -p <port>-g <requester port> -r <rate> -q <seq_no> -l <length>   -f <f_hostname> -h <f_port> -i <priority> -t <timeout>\n", prog);
 	exit(1);
 }
 
@@ -124,33 +123,31 @@ main(int argc, char *argv[])
 		printError("Buffer could not be allocated");
 		return 0;
 	}
-	if(argc != 11) {
+	if(argc != 19) {
 		printError("Incorrect number of arguments");
 		usage(argv[0]);
 		return 0;
 	}
-
-	// Port on which the sender waits for requests
-	int port;
+	
+	
+	int port; // Port on which the sender waits for requests
 	char* s_port;
 
-	// Port on which the requester is waiting
-	int requester_port;
+	int requester_port; // Port on which the requester is waiting
 	char* requester_port_str;
 
-	// The number of packets sent per second
-	double rate;
-
-	// The initial sequence of the packet exchange
-	int sequence_number;
-
-	// The length of the payload in the packets (each chunk of the file part the sender has)
-	int length;
-
+	double rate;  // The number of packets sent per second
+	int sequence_number; // The initial sequence of the packet exchange
+	int length;  // The length of the payload in the packets (each chunk of the file part the sender has)
+	char* f_hostname;			//hostname of emulator
+	char* f_port;					//post of emulator
+	uint8_t priority;			//priority of sent packets
+	int timeout;					//timeout for retransmission
+	
 	// Get the commandline args
 	int c;
 	opterr = 0;
-	while ((c = getopt(argc, argv, "p:g:r:q:l:")) != -1) {
+	while ((c = getopt(argc, argv, "p:g:r:q:l:f:h:i:t:")) != -1) {
 		switch (c) {
 		case 'p':
 			port = atoi(optarg);
@@ -169,11 +166,24 @@ main(int argc, char *argv[])
 		case 'l':
 			length = atoi(optarg);
 			break;
+		case 'f':
+			f_hostname = optarg;
+			break;
+		case 'h':
+			f_port = optarg;
+			break;
+		case 'i':
+			priority = atoi(optarg);
+			break;
+		case 't':
+			timeout = atoi(optarg);
+			break;
 		default:
 			usage(argv[0]);
 		}
 	}
-
+	
+	printf("%d\n", priority);
 	if( (port < 1024 || port > 65536) || (requester_port < 1024 || requester_port > 65536) ) {
 		printError("Incorrect port number(s).  Ports should be in range (1024 - 65536)");
 		return 0;

@@ -1,4 +1,4 @@
-all: sender requester
+all: sender requester emulator
 
 sender:
 	gcc -Wall -Werror -o sender sender.c
@@ -9,8 +9,11 @@ requester:
 	gcc -Wall -Werror -o requester requester.c
 	cp requester request_dir/requester
 
+emulator:
+	gcc -Wall -Werror -o emulator emulator.c
+
 clean:
-	rm -rf sender requester *.o
+	rm -rf sender requester emulator *.o
 	rm -rf sender1/*.o
 	rm -rf sender2/*.o
 	rm -rf request_dir/*.o

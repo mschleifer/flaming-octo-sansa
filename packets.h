@@ -3,6 +3,12 @@
 
 // Packets as defined in the project specifications
 typedef struct packet {
+	uint8_t priority;
+	char srcIP[32];
+	char srcPort[16];
+	char destIP[32];
+	char destPost[16];
+	uint32_t new_length;
   char type;
   uint32_t sequence;
   uint32_t length;

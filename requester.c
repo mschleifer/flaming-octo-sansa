@@ -268,7 +268,7 @@ main(int argc, char *argv[])
      * Sends the request in the form of a packet.
      */
     if(strcmp(tracker_array[i].file_name, requested_file_name) == 0) {
-			if ((rv = getaddrinfo(hostname, tracker_array[i].sender_port, &hints, &servinfo)) != 0) {
+			if ((rv = getaddrinfo(tracker_array[i].sender_hostname, tracker_array[i].sender_port, &hints, &servinfo)) != 0) {
   			fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
   			return -1;
 			}
