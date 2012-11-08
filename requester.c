@@ -338,13 +338,11 @@ main(int argc, char *argv[])
 	
 	// Serialize the request packet for sending
 	uint payloadSize = strlen(requested_file_name);
-	printf("payload size: %u\n", payloadSize);
 	char* requestPacket = malloc(HEADERSIZE+payloadSize);
 	memcpy(requestPacket, &request.type, sizeof(char));
 	memcpy(requestPacket+1, &request.sequence, sizeof(uint32_t));
 	memcpy(requestPacket+9, &payloadSize, sizeof(uint32_t));
 	memcpy(requestPacket+HEADERSIZE, request.payload, payloadSize);
-	printf("request payload: %s\n", request.payload);
 	
 	usleep(100);
 	// Send the request packet to the sender 	
