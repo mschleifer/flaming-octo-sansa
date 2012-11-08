@@ -94,7 +94,7 @@ int printInfoAtSend(char* requester_ip, packet pkt) {
 }
 
 int sendEndPkt(struct sockaddr_storage client_addr, socklen_t addr_len, int socketFD_Server) {
-  // Send the end packet to the requester.  Done sending.
+  // Send the end packet to the requester.  Sender is done sending.
   packet endPkt;
   endPkt.type = 'E';
   endPkt.sequence = 0;
@@ -108,12 +108,6 @@ int sendEndPkt(struct sockaddr_storage client_addr, socklen_t addr_len, int sock
   memcpy(endPacket+9, &endPkt.length, sizeof(uint32_t));
   memcpy(endPacket+HEADERSIZE, endPkt.payload, endPkt.length);
   
-  	//TODO
-	/*inet_ntop(AF_INET,
-							 get_in_addr((struct sockaddr*)p->ai_addr),
-							 s, sizeof(s)));*/
-  //printInfoAtSend(inet_ntoa(client.sin_addr), endPkt);
-  //if (sendto(socketFD_Server, endPacket, HEADERSIZE+endPkt.length, 0, (struct sockaddr *)&client, sizeof(client))==-1) {
 	if (sendto(socketFD_Server, endPacket, HEADERSIZE+endPkt.length, 0, (struct sockaddr*)&client_addr, addr_len) == -1) {
     perror("sendto()");
   }
@@ -286,11 +280,6 @@ main(int argc, char *argv[])
 		  memcpy(responsePacket+1, &response.sequence, sizeof(uint32_t));
 		  memcpy(responsePacket+9, &response.length, sizeof(uint32_t));
 		  memcpy(responsePacket+HEADERSIZE, response.payload, response.length);
-			/*if ((responsePacket[HEADERSIZE + response.length - 1]) == '\n') {
-				printf("test");
-			}*/
-			printf("payload: %s\n", responsePacket+HEADERSIZE);
-			printf("length: %d\n", response.length);
 		  
 		  //printInfoAtSend(inet_ntoa(client.sin_addr), response);
 		  //socketFD_Client = socketFD_Client;
@@ -306,6 +295,7 @@ main(int argc, char *argv[])
 		  usleep(((double)1.0 / rate) * 1000000.0);
 		}
 
+		printf("about to send the end packet.\n");
 		sendEndPkt(client_addr, addr_len, socketFD_Server);
 	}
 

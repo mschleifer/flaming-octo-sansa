@@ -20,10 +20,6 @@
 tracker_entry* tracker_array; 
 int tracker_array_size;
 
-// sender array for global use
-sender_summary* sender_array;
-int sender_array_size = 0;
-
 void
 printError(char* errorMessage) {
   fprintf(stderr, "An error has occured: %s\n", errorMessage);
@@ -76,7 +72,7 @@ int writeToFile(char* payload, char* file_name) {
     perror("fopen");
     return -1;
   }
-  if(fseek(fp, -1, SEEK_END) < 0) {
+  if(fseek(fp, 0, SEEK_END) < 0) {
     fp = fopen(file_name, "r+"); // Nothing in file yet so reopen for read/write
 		//perror("fseek");
 		//return -1;
@@ -169,28 +165,22 @@ int printInfoAtReceive(char* sender_ip, packet pkt) {
  * Searches through the sender array and prints out the information about each
  * sender, one at a time. New sender info will be on its' own line.
  */
-int printSummaryInfo(struct sockaddr_in server) {
-  int i;
-  for (i = 0; i < sender_array_size; i++) {
-    sender_summary s_info = sender_array[i];
-    if ((strcmp(s_info.sender_ip, inet_ntoa(server.sin_addr)) == 0) &&
-	    (s_info.sender_port == server.sin_port)) {
+int printSummaryInfo(struct sockaddr_in server, sender_summary sender) {
+    if ((strcmp(sender.sender_ip, inet_ntoa(server.sin_addr)) == 0) &&
+	    (sender.sender_port == server.sin_port)) {
     
-      double duration = difftime(s_info.end_time.time, s_info.start_time.time);
-      double mills = s_info.end_time.millitm - s_info.start_time.millitm;
+      double duration = difftime(sender.end_time.time, sender.start_time.time);
+      double mills = sender.end_time.millitm - sender.start_time.millitm;
       duration += (mills / 1000.0);
     
-      s_info.duration = duration;
-      s_info.packets_per_second = ((double) s_info.num_data_pkts) / duration;
+      sender.duration = duration;
+      sender.packets_per_second = ((double) sender.num_data_pkts) / duration;
       
       printf("\n");
       printf("Info for sender %s:\n\tNum data packets: %d\n\tNum bytes received: %d\n\tAverage pkts per second: %f\n\tDuration: %f\n",
-	     s_info.sender_ip, s_info.num_data_pkts, s_info.num_bytes,
-	     s_info.packets_per_second, s_info.duration);
+	     sender.sender_ip, sender.num_data_pkts, sender.num_bytes,
+	     sender.packets_per_second, sender.duration);
     }
-    
-    sender_array[i] = s_info; 
-  }
   
   return 0;
 }
@@ -201,7 +191,6 @@ main(int argc, char *argv[])
   char *buffer;
   buffer = malloc(MAXPACKETSIZE);
   bzero(buffer, sizeof(buffer));
-  sender_array = (sender_summary*) malloc(sizeof(sender_summary) * 20);
   if(buffer == NULL) {
     printError("Buffer could not be allocated");
     return 0;
@@ -250,14 +239,13 @@ main(int argc, char *argv[])
   
   
   // CREATE REQUESTER ADDRESS
-  int socketFD_Client;//, socketFD_Server;
+  int socketFD_Client;
   struct sockaddr_in client, server;
   int slen=sizeof(server);
   bzero(&client, sizeof(client));
   client.sin_family = AF_INET;
   client.sin_port = htons(port);
   client.sin_addr.s_addr = INADDR_ANY;
-  //printf("testing: %s", inet_ntoa(client.sin_addr));
 
   int rv, numbytes;
   struct addrinfo hints;
@@ -267,17 +255,12 @@ main(int argc, char *argv[])
   hints.ai_family = AF_INET;
   hints.ai_socktype = SOCK_DGRAM;
   hints.ai_protocol = IPPROTO_UDP;
-  //hints.ai_flags = AI_PASSIVE;
   
 
   char hostname[255];
   gethostname(hostname, 255);
   printf("requester: hostname is %s\n", hostname);
-  /* 
-   * Loops forever waiting for a message from recvfrom
-   */
-  //bool done_requesting = false;
-  //while (1) {
+
     int i;
     for(i = 0; i < tracker_array_size; i++) {
       
@@ -307,10 +290,6 @@ main(int argc, char *argv[])
 	  			fprintf(stderr, "requester: failed to bind socket.\n");
 	  			return -1;
 				}
-        //address_server.sin_port = htons(tracker_array[i].sender_port);
-	
-	
-				//printf("sin_addr and sin_port: %s %d\n", inet_ntoa(address_server.sin_addr), address_server.sin_port);
 	
         // Fill out a struct for the request packet
 				packet request;
@@ -344,7 +323,11 @@ main(int argc, char *argv[])
 				bzero(buffer, MAXPACKETSIZE);
 
 			bool done_with_sender = false;
+			bool first_packet = true;
+			sender_summary pkt_sender;
+			bzero(&pkt_sender, sizeof(sender_summary));
 			while (!done_with_sender) {
+				
 				bzero(buffer, MAXPACKETSIZE);
 		  	// Listen for some kind of response.If one is given, fill in info
 		  	if (recvfrom(socketFD_Client, buffer, MAXPACKETSIZE, 0, (struct sockaddr *)&server, (socklen_t *)&slen) == -1) {
@@ -359,72 +342,45 @@ main(int argc, char *argv[])
 				PACKET.payload = buffer+HEADERSIZE;
 	
 		  	printInfoAtReceive(inet_ntoa(server.sin_addr), PACKET);
-		  
+		  	
 		  	// If it's a DATA packet
 				if (PACKET.type == 'D') {
 		    	writeToFile(PACKET.payload, requested_file_name);
-		    
-		    	// Add the information to the sender array. If the sender is not
-		    	// currently in the array, add it to the array. 
-		    	bool in_sender_array = false;
-		    	int i;
-		    	for (i = 0; i < sender_array_size; i++) {
-	
-		      // If this statement succeeds, the sender has sent before
-		      if ((strcmp(sender_array[i].sender_ip, inet_ntoa(server.sin_addr)) == 0)) {// && ( (strcmp(sender_array[i].sender_port, server.sin_port) == 0) )) {
-		        in_sender_array = true;
-		        sender_array[i].num_data_pkts++;
-		        sender_array[i].num_bytes += PACKET.length;
-		      }
-		    }
-		    
-		    	// New sender; fill out info, add to sender array
-		    	if (!in_sender_array) {
-		      	sender_summary sender_details;
-		      	sender_details.sender_ip = inet_ntoa(server.sin_addr);
-		     		sender_details.sender_port = server.sin_port;
-		    	  sender_details.num_data_pkts = 1;
-						sender_details.done_sending = 0;
-		      	sender_details.num_bytes = PACKET.length;
+		    	
+					// The first packet from the sender
+					if (first_packet) {
+						first_packet = false;
+						pkt_sender.sender_ip = inet_ntoa(server.sin_addr);
+						pkt_sender.sender_port = server.sin_port;
+						pkt_sender.num_data_pkts = 1;
+						pkt_sender.done_sending = 0;
+						pkt_sender.num_bytes = PACKET.length;
 
-		      	// Deal with start time for the sender
-		      	ftime(&sender_details.start_time);
-		      	strftime(sender_details.start_timeString, sizeof(sender_details.start_timeString), 
-			 							"%H:%M:%S", localtime(&(sender_details.start_time.time)));
-	
-						// Put into the sender array
-						sender_array[sender_array_size] = sender_details;
-						sender_array_size++;
-		    	}
+						ftime(&pkt_sender.start_time);
+		      	strftime(pkt_sender.start_timeString, sizeof(pkt_sender.start_timeString), 
+			 							"%H:%M:%S", localtime(&(pkt_sender.start_time.time)));
+					}
+
+					else {
+						pkt_sender.num_data_pkts++;
+						pkt_sender.num_bytes += PACKET.length;
+					}
+		   
 		  	}// END IF D-Packet
 		  	else if (PACKET.type == 'E') {
 		    	done_with_sender = true;
-		    	int j;
-		    	//bool all_done = true;
-		    	for (j = 0; j < sender_array_size; j++) {
-	
-		      	// Only do this for the sender that sent the 'E' packet.
-						//bool test2 = strcmp(sender_array[j].sender_port, server.
-		      	if ((strcmp(sender_array[j].sender_ip, inet_ntoa(server.sin_addr)) == 0)) { //&& (sender_array[j].sender_port == server.sin_port)) {
-			
-							sender_array[j].done_sending = 1;
-		        	// Deal with end time for the sender
-		        	ftime(&sender_array[j].end_time);
-		        	strftime(sender_array[j].end_timeString, sizeof(sender_array[j].end_timeString), 
-				 							"%H:%M:%S", localtime(&(sender_array[j].end_time.time)));
-							
-							printSummaryInfo(server);
-		        	//printf("End time is: %s.%d(ms).\n", sender_array[j].end_timeString, sender_array[j].end_time.millitm);
-		      	}
-		    	}
+					pkt_sender.done_sending = 1;
+					ftime(&pkt_sender.end_time);
+					strftime(pkt_sender.end_timeString, sizeof(pkt_sender.end_timeString), "%H:%M:%S", 
+											localtime(&(pkt_sender.end_time.time)));
+					printSummaryInfo(server, pkt_sender);
 		  	} // END ELSE-IF E-Packet
 				
 			}
      	}
       
       
-      	
-      printf("i: %d\n", i);
+      
     } // END FOR each in tracker array
   //} // END WHILE(1)
   
