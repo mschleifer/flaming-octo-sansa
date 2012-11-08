@@ -14,7 +14,8 @@ typedef struct tracker_entry {
   char file_name[32];
   int sequence_id;
   char sender_hostname[32];
-  int sender_port;
+  //int sender_port;
+	char sender_port[32];
 } tracker_entry;
 
 // Holds summary information about each sender

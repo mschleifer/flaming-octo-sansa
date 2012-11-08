@@ -110,7 +110,7 @@ int readTrackerFile() {
   
   //read each row into struct, insert into array, increment size
   tracker_entry entry;
-  while( fscanf(in_file, "%s %d %s %d", entry.file_name, &entry.sequence_id, entry.sender_hostname, &entry.sender_port) == 4) {
+  while( fscanf(in_file, "%s %d %s %s", entry.file_name, &entry.sequence_id, entry.sender_hostname, 											entry.sender_port) == 4) {
     tracker_array[tracker_array_size] = entry;
     tracker_array_size++;
   }
@@ -124,13 +124,13 @@ int readTrackerFile() {
       
       // If they are out of order, put them in order, restart loop
       if (tracker_array[k].sequence_id > tracker_array[k+1].sequence_id) {
-	strcpy(entry.file_name, tracker_array[k].file_name);
-	entry.sequence_id = tracker_array[k].sequence_id;
-	strcpy(entry.sender_hostname, tracker_array[k].sender_hostname);
-	entry.sender_port = tracker_array[k].sender_port;
-	tracker_array[k] = tracker_array[k+1];
-	tracker_array[k+1] = entry;
-	k = 0;
+				strcpy(entry.file_name, tracker_array[k].file_name);
+				entry.sequence_id = tracker_array[k].sequence_id;
+				strcpy(entry.sender_hostname, tracker_array[k].sender_hostname);
+				strcpy(entry.sender_port, tracker_array[k].sender_port);
+				tracker_array[k] = tracker_array[k+1];
+				tracker_array[k+1] = entry;
+				k = 0;
       }
     }
   }
@@ -267,26 +267,6 @@ main(int argc, char *argv[])
   hints.ai_protocol = IPPROTO_UDP;
   //hints.ai_flags = AI_PASSIVE;
   
-  /*status = getaddrinfo(NULL, "5001", &hints, &servinfo);
-  status = status;
-  // CREATE REQUESTER SOCKET
-  socketFD_Client = socket(servinfo->ai_family, servinfo->ai_socktype, servinfo->ai_protocol);
-  if(socketFD_Client == -1) {
-    perror("socket");
-    close(socketFD_Client);
-  }
-
-  bind(socketFD_Client, servinfo->ai_addr, servinfo->ai_addrlen);
-  listen(socketFD_Client, 100);
-  struct sockaddr_storage server_addr;
-  socklen_t addr_size = sizeof(server_addr);
-  socketFD_Server = accept(socketFD_Client, (struct sockaddr*)&server_addr, &addr_size);
-  socketFD_Server = socketFD_Server;
-
-  // Socket address to be used when sending file request
-  struct sockaddr_in address_server;
-  bzero(&address_server, sizeof(address_server));
-  address_server.sin_family = AF_INET;*/
   
   char hostname[255];
   gethostname(hostname, 255);
@@ -304,7 +284,7 @@ main(int argc, char *argv[])
        * Sends the request in the form of a packet.
        */
       if(strcmp(tracker_array[i].file_name, requested_file_name) == 0) {
- 	if ((rv = getaddrinfo(hostname, "5000" /*tracker_array[i].sender_port*/, &hints, &servinfo)) != 0) {
+ 				if ((rv = getaddrinfo(hostname, tracker_array[i].sender_port, &hints, &servinfo)) != 0) {
 	  fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
 	  return -1;
 	}
@@ -391,7 +371,7 @@ main(int argc, char *argv[])
       for (i = 0; i < sender_array_size; i++) {
 	
         // If this statement succeeds, the sender has sent before
-        if ((strcmp(sender_array[i].sender_ip, inet_ntoa(server.sin_addr)) == 0) && (sender_array[i].sender_port == server.sin_port)) {
+        if ((strcmp(sender_array[i].sender_ip, inet_ntoa(server.sin_addr)) == 0)) {// && ( (strcmp(sender_array[i].sender_port, server.sin_port) == 0) )) {
           in_sender_array = true;
           sender_array[i].num_data_pkts++;
           sender_array[i].num_bytes += PACKET.length;
