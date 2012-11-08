@@ -286,6 +286,11 @@ main(int argc, char *argv[])
 		  memcpy(responsePacket+1, &response.sequence, sizeof(uint32_t));
 		  memcpy(responsePacket+9, &response.length, sizeof(uint32_t));
 		  memcpy(responsePacket+HEADERSIZE, response.payload, response.length);
+			/*if ((responsePacket[HEADERSIZE + response.length - 1]) == '\n') {
+				printf("test");
+			}*/
+			printf("payload: %s\n", responsePacket+HEADERSIZE);
+			printf("length: %d\n", response.length);
 		  
 		  //printInfoAtSend(inet_ntoa(client.sin_addr), response);
 		  //socketFD_Client = socketFD_Client;

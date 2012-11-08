@@ -78,6 +78,8 @@ int writeToFile(char* payload, char* file_name) {
   }
   if(fseek(fp, -1, SEEK_END) < 0) {
     fp = fopen(file_name, "r+"); // Nothing in file yet so reopen for read/write
+		//perror("fseek");
+		//return -1;
   }
   
   fprintf(fp, "%s", payload);
@@ -267,17 +269,17 @@ main(int argc, char *argv[])
   hints.ai_protocol = IPPROTO_UDP;
   //hints.ai_flags = AI_PASSIVE;
   
-  
+
   char hostname[255];
   gethostname(hostname, 255);
   printf("requester: hostname is %s\n", hostname);
   /* 
    * Loops forever waiting for a message from recvfrom
    */
-  bool done_requesting = false;
-  while (1) {
+  //bool done_requesting = false;
+  //while (1) {
     int i;
-    for(i = 0; i < tracker_array_size && !done_requesting; i++) {
+    for(i = 0; i < tracker_array_size; i++) {
       
       /**
        * Request the given file name only. 
@@ -285,163 +287,148 @@ main(int argc, char *argv[])
        */
       if(strcmp(tracker_array[i].file_name, requested_file_name) == 0) {
  				if ((rv = getaddrinfo(hostname, tracker_array[i].sender_port, &hints, &servinfo)) != 0) {
-	  fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
-	  return -1;
-	}
+	  			fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
+	  			return -1;
+				}
+ 				
 
-	// loop through all the results and make a socket
-	for(p = servinfo; p != NULL; p = p->ai_next) {
-	  if ((socketFD_Client = socket(p->ai_family, p->ai_socktype,
-			       p->ai_protocol)) == -1) {
-            perror("talker: socket");
-            continue;
-	  }
+				// loop through all the results and make a socket
+				for(p = servinfo; p != NULL; p = p->ai_next) {
+	  			if ((socketFD_Client = socket(p->ai_family, p->ai_socktype,
+			     	  p->ai_protocol)) == -1) {
+            	perror("talker: socket");
+           	 	continue;
+	  			}
 
-	  break;
-	}
+	 		 		break;
+				}
 
-	if (p == NULL) {
-	  fprintf(stderr, "requester: failed to bind socket.\n");
-	  return -1;
-	}
+				if (p == NULL) {
+	  			fprintf(stderr, "requester: failed to bind socket.\n");
+	  			return -1;
+				}
         //address_server.sin_port = htons(tracker_array[i].sender_port);
 	
 	
-	//printf("sin_addr and sin_port: %s %d\n", inet_ntoa(address_server.sin_addr), address_server.sin_port);
+				//printf("sin_addr and sin_port: %s %d\n", inet_ntoa(address_server.sin_addr), address_server.sin_port);
 	
         // Fill out a struct for the request packet
-	packet request;
-	request.type = 'R';
-	request.sequence = 0;
-	request.length = 20;
+				packet request;
+				request.type = 'R';
+				request.sequence = 0;
+				request.length = 20;
       	request.payload = requested_file_name;
 	
-	// Serialize the request packet for sending
-	uint payloadSize = strlen(requested_file_name);
-	char* requestPacket = malloc(HEADERSIZE+payloadSize);
-	memcpy(requestPacket, &request.type, sizeof(char));
-	memcpy(requestPacket+1, &request.sequence, sizeof(uint32_t));
-	memcpy(requestPacket+9, &payloadSize, sizeof(uint32_t));
-	memcpy(requestPacket+HEADERSIZE, request.payload, payloadSize);
+				// Serialize the request packet for sending
+				uint payloadSize = strlen(requested_file_name);
+				char* requestPacket = malloc(HEADERSIZE+payloadSize);
+				memcpy(requestPacket, &request.type, sizeof(char));
+				memcpy(requestPacket+1, &request.sequence, sizeof(uint32_t));
+				memcpy(requestPacket+9, &payloadSize, sizeof(uint32_t));
+				memcpy(requestPacket+HEADERSIZE, request.payload, payloadSize);
 	
-	usleep(100);
-	// Send the request packet to the sender 	
-	if ((numbytes = sendto(socketFD_Client, requestPacket, HEADERSIZE+payloadSize, 0, p->ai_addr, p->ai_addrlen))==-1) {
-	  perror("requester: sendto");
-	  return -1;
-	}
+				usleep(100);
+				// Send the request packet to the sender 	
+				if ((numbytes = sendto(socketFD_Client, requestPacket, HEADERSIZE+payloadSize, 0, p->ai_addr, p->ai_addrlen))==-1) {
+				  perror("requester: sendto");
+	 			 return -1;
+				}
 
-	printf("requester: sent %d bytes to %s\n", numbytes, hostname);
-	char s[INET6_ADDRSTRLEN];
-	printf("requester: sent packet to %s\n", inet_ntop(AF_INET,
+				printf("requester: sent %d bytes to %s\n", numbytes, hostname);
+				char s[INET6_ADDRSTRLEN];
+				printf("requester: sent packet to %s\n", inet_ntop(AF_INET,
 							 get_in_addr((struct sockaddr*)p->ai_addr),
 							 s, sizeof(s)));
-      }
-      
-      // Stop the application from endlessly requesting the same files
-      if (i == tracker_array_size - 1) {
-	done_requesting = true;
-      }
-    }
-    
-    bzero(buffer, MAXPACKETSIZE);
-    // Listen for some kind of response.If one is given, fill in info
-    if (recvfrom(socketFD_Client, buffer, MAXPACKETSIZE, 0, (struct sockaddr *)&server, (socklen_t *)&slen) == -1) {
-      perror("recvfrom()");
-    }
-    
-    printf("hey, something was received");
-    // Create a packet from the received data
-    packet PACKET;
-    memcpy(&PACKET.type, buffer, sizeof(char));
-    memcpy(&PACKET.sequence, buffer+1, sizeof(uint32_t));
-    memcpy(&PACKET.length, buffer+9, sizeof(uint32_t));
-    PACKET.payload = buffer+HEADERSIZE;
-    
-    printInfoAtReceive(inet_ntoa(server.sin_addr), PACKET);
-    
-    // If it's a DATA packet
-    if (PACKET.type == 'D') {
-      writeToFile(PACKET.payload, requested_file_name);
-      
-      // Add the information to the sender array. If the sender is not
-      // currently in the array, add it to the array. 
-      bool in_sender_array = false;
-      int i;
-      for (i = 0; i < sender_array_size; i++) {
-	
-        // If this statement succeeds, the sender has sent before
-        if ((strcmp(sender_array[i].sender_ip, inet_ntoa(server.sin_addr)) == 0)) {// && ( (strcmp(sender_array[i].sender_port, server.sin_port) == 0) )) {
-          in_sender_array = true;
-          sender_array[i].num_data_pkts++;
-          sender_array[i].num_bytes += PACKET.length;
-        }
-      }
-      
-      // New sender; fill out info, add to sender array
-      if (!in_sender_array) {
-        sender_summary sender_details;
-        sender_details.sender_ip = inet_ntoa(server.sin_addr);
-        sender_details.sender_port = server.sin_port;
-        sender_details.num_data_pkts = 1;
-	sender_details.done_sending = 0;
-        sender_details.num_bytes = PACKET.length;
 
-        // Deal with start time for the sender
-        ftime(&sender_details.start_time);
-        strftime(sender_details.start_timeString, sizeof(sender_details.start_timeString), 
-		 "%H:%M:%S", localtime(&(sender_details.start_time.time)));
+
+				bzero(buffer, MAXPACKETSIZE);
+
+			bool done_with_sender = false;
+			while (!done_with_sender) {
+				bzero(buffer, MAXPACKETSIZE);
+		  	// Listen for some kind of response.If one is given, fill in info
+		  	if (recvfrom(socketFD_Client, buffer, MAXPACKETSIZE, 0, (struct sockaddr *)&server, (socklen_t *)&slen) == -1) {
+		    	perror("recvfrom()");
+		  	}
+		  
+				// Create a packet from the received data
+				packet PACKET;
+				memcpy(&PACKET.type, buffer, sizeof(char));
+				memcpy(&PACKET.sequence, buffer+1, sizeof(uint32_t));
+				memcpy(&PACKET.length, buffer+9, sizeof(uint32_t));
+				PACKET.payload = buffer+HEADERSIZE;
 	
-        //printf("Start time is: %s.%d(ms).\n", sender_details.start_timeString, sender_details.start_time.millitm);
+		  	printInfoAtReceive(inet_ntoa(server.sin_addr), PACKET);
+		  
+		  	// If it's a DATA packet
+				if (PACKET.type == 'D') {
+		    	writeToFile(PACKET.payload, requested_file_name);
+		    
+		    	// Add the information to the sender array. If the sender is not
+		    	// currently in the array, add it to the array. 
+		    	bool in_sender_array = false;
+		    	int i;
+		    	for (i = 0; i < sender_array_size; i++) {
 	
+		      // If this statement succeeds, the sender has sent before
+		      if ((strcmp(sender_array[i].sender_ip, inet_ntoa(server.sin_addr)) == 0)) {// && ( (strcmp(sender_array[i].sender_port, server.sin_port) == 0) )) {
+		        in_sender_array = true;
+		        sender_array[i].num_data_pkts++;
+		        sender_array[i].num_bytes += PACKET.length;
+		      }
+		    }
+		    
+		    	// New sender; fill out info, add to sender array
+		    	if (!in_sender_array) {
+		      	sender_summary sender_details;
+		      	sender_details.sender_ip = inet_ntoa(server.sin_addr);
+		     		sender_details.sender_port = server.sin_port;
+		    	  sender_details.num_data_pkts = 1;
+						sender_details.done_sending = 0;
+		      	sender_details.num_bytes = PACKET.length;
+
+		      	// Deal with start time for the sender
+		      	ftime(&sender_details.start_time);
+		      	strftime(sender_details.start_timeString, sizeof(sender_details.start_timeString), 
+			 							"%H:%M:%S", localtime(&(sender_details.start_time.time)));
 	
-	// Put into the sender array
-	sender_array[sender_array_size] = sender_details;
-	sender_array_size++;
-      }
-    }
-    // Other it should be an END packet
-    else if (PACKET.type == 'E') {
-      
-      int i;
-      bool all_done = true;
-      for (i = 0; i < sender_array_size; i++) {
+						// Put into the sender array
+						sender_array[sender_array_size] = sender_details;
+						sender_array_size++;
+		    	}
+		  	}// END IF D-Packet
+		  	else if (PACKET.type == 'E') {
+		    	done_with_sender = true;
+		    	int j;
+		    	//bool all_done = true;
+		    	for (j = 0; j < sender_array_size; j++) {
 	
-        // Only do this for the sender that sent the 'E' packet.
-        if ((strcmp(sender_array[i].sender_ip, inet_ntoa(server.sin_addr)) == 0) && (sender_array[i].sender_port == server.sin_port)) {
-	  
-	  sender_array[i].done_sending = 1;
-          // Deal with end time for the sender
-          ftime(&sender_array[i].end_time);
-          strftime(sender_array[i].end_timeString, 
-		   sizeof(sender_array[i].end_timeString), 
-		   "%H:%M:%S", 
-		   localtime(&(sender_array[i].end_time.time)));
-	  
-          //printf("End time is: %s.%d(ms).\n", sender_array[i].end_timeString, sender_array[i].end_time.millitm);
-        }
-      }	
+		      	// Only do this for the sender that sent the 'E' packet.
+						//bool test2 = strcmp(sender_array[j].sender_port, server.
+		      	if ((strcmp(sender_array[j].sender_ip, inet_ntoa(server.sin_addr)) == 0)) { //&& (sender_array[j].sender_port == server.sin_port)) {
+			
+							sender_array[j].done_sending = 1;
+		        	// Deal with end time for the sender
+		        	ftime(&sender_array[j].end_time);
+		        	strftime(sender_array[j].end_timeString, sizeof(sender_array[j].end_timeString), 
+				 							"%H:%M:%S", localtime(&(sender_array[j].end_time.time)));
+							
+							printSummaryInfo(server);
+		        	//printf("End time is: %s.%d(ms).\n", sender_array[j].end_timeString, sender_array[j].end_time.millitm);
+		      	}
+		    	}
+		  	} // END ELSE-IF E-Packet
+				
+			}
+     	}
       
-      /*
-       * This loop checks to see if all senders are done sending.
-       * If they any is not, all_done is false (we are not done)
-       */
-      for (i = 0; i < sender_array_size; i++) {
-	if (sender_array[i].done_sending != 1) {
-	  all_done = false;
-	}
-      }
       
-      // For the sender that just finished
-      printSummaryInfo(server);
-      if (all_done) {
-	goto end;
-      }
-      
-    }
-  }
+      	
+      printf("i: %d\n", i);
+    } // END FOR each in tracker array
+  //} // END WHILE(1)
   
- end:
+  //end:
   close(socketFD_Client);
   return 0;
 } // END MAIN
