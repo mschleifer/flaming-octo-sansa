@@ -93,8 +93,7 @@ int printInfoAtSend(char* requester_ip, packet pkt) {
   return 0;
 }
 
-
-int sendEndPkt(struct sockaddr_in client, int socketFD_Server) {
+int sendEndPkt(struct sockaddr_storage client_addr, socklen_t addr_len, int socketFD_Server) {
   // Send the end packet to the requester.  Done sending.
   packet endPkt;
   endPkt.type = 'E';
@@ -109,9 +108,10 @@ int sendEndPkt(struct sockaddr_in client, int socketFD_Server) {
   memcpy(endPacket+9, &endPkt.length, sizeof(uint32_t));
   memcpy(endPacket+HEADERSIZE, endPkt.payload, endPkt.length);
   
-  
-  printInfoAtSend(inet_ntoa(client.sin_addr), endPkt);
-  if (sendto(socketFD_Server, endPacket, HEADERSIZE+endPkt.length, 0, (struct sockaddr *)&client, sizeof(client))==-1) {
+  	//TODO
+  //printInfoAtSend(inet_ntoa(client.sin_addr), endPkt);
+  //if (sendto(socketFD_Server, endPacket, HEADERSIZE+endPkt.length, 0, (struct sockaddr *)&client, sizeof(client))==-1) {
+	if (sendto(socketFD_Server, endPacket, HEADERSIZE+endPkt.length, 0, (struct sockaddr*)&client_addr, addr_len) == -1) {
     perror("sendto()");
   }
 
@@ -135,9 +135,11 @@ main(int argc, char *argv[])
 
 	// Port on which the sender waits for requests
 	int port;
+	char* s_port;
 
 	// Port on which the requester is waiting
 	int requester_port;
+	char* requester_port_str;
 
 	// The number of packets sent per second
 	double rate;
@@ -155,9 +157,11 @@ main(int argc, char *argv[])
 		switch (c) {
 		case 'p':
 			port = atoi(optarg);
+			s_port = optarg;
 			break;
 		case 'g':
 			requester_port = atoi(optarg);
+			requester_port_str = optarg;
 			break;
 		case 'r':
 			rate = atof(optarg);
@@ -178,32 +182,22 @@ main(int argc, char *argv[])
 		return 0;
 	}
 	
-	rate = rate;
-	sequence_number = sequence_number;
-	length = length;
-	char hostname[255];
-	gethostname(hostname, 255);
-	/*struct hostent* host_entry;
-	host_entry=gethostbyname(hostname);
-
-	char* localIP;
-	localIP = inet_ntoa (*(struct in_addr*)*host_entry->h_addr_list);
-	printf("hey %s\n", localIP);*/
-
-	//struct sockaddr_in client;//server, client;
-	int socketFD_Server;//, socketFD_Client;  //slen=sizeof(client), socketFD_Client;
+	//char hostname[255];
+	//gethostname(hostname, 255);
+	
+	int socketFD_Server;
 	
 	struct addrinfo hints, *p, *servinfo;
 	int rv, numbytes;
 	struct sockaddr_storage client_addr;
 	socklen_t addr_len;
-	char s[INET6_ADDRSTRLEN];
+	//char s[INET6_ADDRSTRLEN];
 	bzero(&hints, sizeof(hints));
 	hints.ai_family = AF_INET;
 	hints.ai_socktype = SOCK_DGRAM;
 	hints.ai_protocol = IPPROTO_UDP;
 	hints.ai_flags = AI_PASSIVE;
-	if ( (rv = getaddrinfo(/*NULL*/"localhost"/*hostname*/, "5000", &hints, &servinfo)) != 0) {
+	if ( (rv = getaddrinfo(NULL/*"localhost"*//*hostname*/,  s_port, &hints, &servinfo)) != 0) {
 	  fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
 	  return -1;
 	}
@@ -224,9 +218,10 @@ main(int argc, char *argv[])
 	  break;
 	}
 
-	printf("sender: %s\n", inet_ntop(AF_INET,
-							   get_in_addr((struct sockaddr*)p->ai_addr),
-							   s, sizeof(s)));
+	// Should print out 0.0.0.0
+	/*printf("sender: %s\n", inet_ntop(AF_INET,
+					get_in_addr((struct sockaddr*)p->ai_addr),
+					s, sizeof(s)));*/
 
 	if (p == NULL) {
 	  fprintf(stderr, "sender: failed to bind socket\n");
@@ -244,10 +239,65 @@ main(int argc, char *argv[])
 	  exit(1);
 	}
 
-	printf("server: got packet from %s\n", inet_ntop(client_addr.ss_family,
+	/*printf("server: got packet from %s\n", inet_ntop(client_addr.ss_family,
 							 get_in_addr((struct sockaddr*)&client_addr),
 							 s, sizeof(s)));
-	printf("server: packet is %d bytes long\n", numbytes);
+	printf("server: packet is %d bytes long\n", numbytes);*/
+
+
+	packet request;
+	memcpy(&request.type, buffer, sizeof(char));
+	memcpy(&request.sequence, buffer + 1, sizeof(uint32_t));
+	memcpy(&request.length, buffer + 9, sizeof(uint32_t));
+	request.payload = malloc(request.length);
+	memcpy(request.payload, buffer + 17, request.length);
+	
+	if (request.type == 'R' && request.sequence == 0) {
+		//printf("request payload: %s\n", request.payload);
+		// Open the requested file for reading
+		int fd;
+		if ((fd = open(request.payload, S_IRUSR )) == -1) {
+		perror("open");
+		  sendEndPkt(client_addr, addr_len, socketFD_Server);
+		  return -1;
+		}
+		
+
+		char filePayload[length];
+		int bytesRead;
+		bzero(filePayload, length);
+		// Read through the file 'length' bytes at a time
+		while((bytesRead = read(fd, (void*)&filePayload, length)) > 0) {
+		  // Set up a response(DATA) packet
+		  packet response;
+		  response.type = 'D';
+		  response.sequence = sequence_number;
+		  response.length = bytesRead;
+		  response.payload = filePayload;
+		  
+		  // serialize response packet
+		  char* responsePacket = malloc(HEADERSIZE + response.length);
+		  memcpy(responsePacket, &response.type, sizeof(char));
+		  memcpy(responsePacket+1, &response.sequence, sizeof(uint32_t));
+		  memcpy(responsePacket+9, &response.length, sizeof(uint32_t));
+		  memcpy(responsePacket+HEADERSIZE, response.payload, response.length);
+		  
+		  //printInfoAtSend(inet_ntoa(client.sin_addr), response);
+		  //socketFD_Client = socketFD_Client;
+		  if (sendto(socketFD_Server, responsePacket, HEADERSIZE+response.length, 0, (struct sockaddr*)&client_addr, addr_len)==-1) {
+		    perror("sendto()");
+		  }
+		  
+		  sequence_number += response.length; // Increase sequence_number by payload bytes
+  
+		  bzero(filePayload, length);
+
+		  // sleep for the given time to adjust for rate
+		  usleep(((double)1.0 / rate) * 1000000.0);
+		}
+
+		sendEndPkt(client_addr, addr_len, socketFD_Server);
+	}
 
 	close(socketFD_Server);
 	return 0;

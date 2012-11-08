@@ -211,6 +211,7 @@ main(int argc, char *argv[])
   
   // Port on which the requester waits for packets
   int port= 0;
+	char* port_str;
   // The name of the file that's being requested
   char* requested_file_name = malloc(MAXPAYLOADSIZE);
   
@@ -221,6 +222,7 @@ main(int argc, char *argv[])
     switch(c) {
     case 'p':
       port = atoi(optarg);
+      	port_str = optarg;
       break;
     case 'o':
       requested_file_name = optarg;
@@ -302,7 +304,7 @@ main(int argc, char *argv[])
        * Sends the request in the form of a packet.
        */
       if(strcmp(tracker_array[i].file_name, requested_file_name) == 0) {
-	if ((rv = getaddrinfo("localhost"/*hostname*/, "5000" /*tracker_array[i].sender_port*/, &hints, &servinfo)) != 0) {
+ 	if ((rv = getaddrinfo(hostname, "5000" /*tracker_array[i].sender_port*/, &hints, &servinfo)) != 0) {
 	  fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
 	  return -1;
 	}
@@ -336,11 +338,13 @@ main(int argc, char *argv[])
 	
 	// Serialize the request packet for sending
 	uint payloadSize = strlen(requested_file_name);
+	printf("payload size: %u\n", payloadSize);
 	char* requestPacket = malloc(HEADERSIZE+payloadSize);
 	memcpy(requestPacket, &request.type, sizeof(char));
 	memcpy(requestPacket+1, &request.sequence, sizeof(uint32_t));
 	memcpy(requestPacket+9, &payloadSize, sizeof(uint32_t));
 	memcpy(requestPacket+HEADERSIZE, request.payload, payloadSize);
+	printf("request payload: %s\n", request.payload);
 	
 	usleep(100);
 	// Send the request packet to the sender 	
@@ -349,7 +353,7 @@ main(int argc, char *argv[])
 	  return -1;
 	}
 
-	printf("talker: sent %d bytes to %s\n", numbytes, "localhost" /*hostname*/);
+	printf("requester: sent %d bytes to %s\n", numbytes, hostname);
 	char s[INET6_ADDRSTRLEN];
 	printf("requester: sent packet to %s\n", inet_ntop(AF_INET,
 							 get_in_addr((struct sockaddr*)p->ai_addr),
@@ -368,7 +372,7 @@ main(int argc, char *argv[])
       perror("recvfrom()");
     }
     
-    
+    printf("hey, something was received");
     // Create a packet from the received data
     packet PACKET;
     memcpy(&PACKET.type, buffer, sizeof(char));
