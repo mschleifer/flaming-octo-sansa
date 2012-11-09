@@ -21,29 +21,29 @@ int forwarding_table_size;
 
 int logger(char* log_file, char* reason, log_info info) {
 	FILE *fp; 
-  fp = fopen(log_file, "r+"); // Open file for read/write
-  if (!fp) {
-    perror("fopen");
-    return -1;
-  }
+	fp = fopen(log_file, "r+"); // Open file for read/write
+	if (!fp) {
+		perror("fopen");
+		return -1;
+	}
 	
-  if(fseek(fp, 0, SEEK_END) < 0) {
-    //fp = fopen(file_name, "r+"); // Nothing in file yet so reopen for read/write
+	if(fseek(fp, 0, SEEK_END) < 0) {
+		//fp = fopen(file_name, "r+"); // Nothing in file yet so reopen for read/write
 		perror("fseek");
 		return -1;
-  }
+	}
   
-  fprintf(fp, "%s: src::port: %s::%s, dest::port: %s::%s, time: %s.%d, priority: %d, size: %d\n", 
+	fprintf(fp, "%s: src::port: %s::%s, dest::port: %s::%s, time: %s.%d, priority: %d, size: %d\n", 
 						reason,
 						info.src_hostname, info.src_port,
 						info.destination_hostname, info.destination_port,
 						info.timeString, info.time.millitm,
 						info.priority, info.size);
   
-  if (fclose(fp) != 0) {
-    perror("fclose");
-    return -1;
-  }
+	if (fclose(fp) != 0) {
+		perror("fclose");
+		return -1;
+	}
 	return 0;
 }
 
@@ -56,25 +56,25 @@ int readForwardingTable(char* filename, char* hostname, char* port, bool debug) 
 	if (debug) {
 		printf("Reading forwarding table into array in memory.\n");
 	}
-  int k;
-  forwarding_table = (forwarding_entry*)malloc(sizeof(forwarding_entry) * 5); // size = 5..
-  FILE *in_file = fopen(filename, "r");	//read only
-  forwarding_table_size = 0;
+	int k;
+	forwarding_table = (forwarding_entry*)malloc(sizeof(forwarding_entry) * 5); // size = 5..
+	FILE *in_file = fopen(filename, "r");	//read only
+	forwarding_table_size = 0;
   
-  //test for not existing
-  if (in_file == NULL) {
-    fprintf(stderr, "error: could not open file '%s'\n", filename);
-    return -1;
-  }
+	//test for not existing
+	if (in_file == NULL) {
+		fprintf(stderr, "error: could not open file '%s'\n", filename);
+		return -1;
+	}
 
 	if (debug) {
 		printf("hostname: %s\n", hostname);
 		printf("port: %s\n", port);
 	}
   
-  //read each row into struct, insert into array, increment size
-  forwarding_entry entry;
-  while( fscanf(in_file, "%s %s %s %s %s %s %d %f", 
+	//read each row into struct, insert into array, increment size
+	forwarding_entry entry;
+	while( fscanf(in_file, "%s %s %s %s %s %s %d %f", 
 						entry.emulator_hostname, 
 						entry.emulator_port, 
 						entry.destination_hostname, 											
@@ -90,7 +90,7 @@ int readForwardingTable(char* filename, char* hostname, char* port, bool debug) 
     	forwarding_table[forwarding_table_size] = entry;
     	forwarding_table_size++;
 		}
-  }
+	}
 	
 	if (debug) {
 		printf("forwarding table:\n");
@@ -106,12 +106,12 @@ int readForwardingTable(char* filename, char* hostname, char* port, bool debug) 
 			// An example of setting up for and then calling the logger to log a problem
 						// (will not be here in general, just needed to test it)
 			log_info info;
-  		strcpy(info.src_hostname, entry.emulator_hostname);
+			strcpy(info.src_hostname, entry.emulator_hostname);
 			strcpy(info.src_port, entry.emulator_port);
 			strcpy(info.destination_hostname, entry.destination_hostname);
 			strcpy(info.destination_port, entry.destination_port);
 			ftime(&info.time);
-  		strftime(info.timeString, sizeof(info.timeString), "%H:%M:%S", localtime(&(info.time.time)));
+			strftime(info.timeString, sizeof(info.timeString), "%H:%M:%S", localtime(&(info.time.time)));
 			info.priority = 1;
 			info.size = 100;
 			logger("logger.txt", "reasoning", info);
@@ -135,7 +135,7 @@ int main(int argc, char *argv[]) {
 	}
 	if(argc != 11) {
 		printError("Incorrect number of arguments");
-		usage(argv[0]);
+		usage_Emulator(argv[0]);
 		return 0;
 	}
 
@@ -169,12 +169,12 @@ int main(int argc, char *argv[]) {
 			}
 			break;
 		default:
-			usage(argv[0]);
+			usage_Emulator(argv[0]);
 		}
 	}
 	
 	char hostname[255];
-  gethostname(hostname, 255);
+	gethostname(hostname, 255);
 	readForwardingTable(filename, hostname, port, debug);
 
 
@@ -193,44 +193,42 @@ int main(int argc, char *argv[]) {
 	hints.ai_protocol = IPPROTO_UDP;
 	hints.ai_flags = AI_PASSIVE;
 	if ( (rv = getaddrinfo(NULL, port, &hints, &servinfo)) != 0) {
-	  fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
-	  return -1;
+		fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
+		return -1;
 	}
 
 	// loop through all the results and bind to the first that we can
 	for (p = servinfo; p != NULL; p = p->ai_next) {
-	  if ((socketFD_Emulator = socket(p->ai_family, p->ai_socktype, p->ai_protocol)) == -1) {
-	    perror("sender: socket");
-	    continue;
-	  }
+		if ((socketFD_Emulator = socket(p->ai_family, p->ai_socktype, p->ai_protocol)) == -1) {
+			perror("sender: socket");
+			continue;
+		}
 
-	  if (bind(socketFD_Emulator, p->ai_addr, p->ai_addrlen) == -1) {
-	    close(socketFD_Emulator);
-	    perror("sender: bind");
-	    continue;
-	  }
-
-	  break;
+		if (bind(socketFD_Emulator, p->ai_addr, p->ai_addrlen) == -1) {
+			close(socketFD_Emulator);
+			perror("sender: bind");
+			continue;
+		}
+		break;
 	}
 
 	if (p == NULL) {
-	  fprintf(stderr, "sender: failed to bind socket\n");
-	  return -1;
+		fprintf(stderr, "sender: failed to bind socket\n");
+		return -1;
 	}
 
 	freeaddrinfo(servinfo);
 
 	addr_len = sizeof(addr);
-	if ((numbytes = recvfrom(socketFD_Emulator, buffer, MAXPACKETSIZE, 0,
-				 (struct sockaddr*)&addr, &addr_len)) == -1) {
-	  perror("recvfrom");
-	  exit(1);
+	if ((numbytes = recvfrom(socketFD_Emulator, buffer, MAXPACKETSIZE, 0, 
+			(struct sockaddr*)&addr, &addr_len)) == -1) {
+		perror("recvfrom");
+		exit(1);
 	}
 
 	
-	printf("emulator: got packet from %s\n", inet_ntop(addr.ss_family,
-							 get_in_addr((struct sockaddr*)&addr),
-							 s, sizeof(s)));
+	printf("emulator: got packet from %s\n", inet_ntop(addr.ss_family, 
+				get_in_addr((struct sockaddr*)&addr), s, sizeof(s)));
 	printf("emulator: packet is %d bytes long\n", numbytes);
 
 	

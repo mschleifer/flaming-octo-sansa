@@ -156,6 +156,7 @@ main(int argc, char *argv[])
   }
   if(argc != 11) {
     printError("Incorrect number of arguments");
+    usage_Requester(argv[0]);
     return 0;
   }
   
@@ -191,7 +192,7 @@ main(int argc, char *argv[])
 			size_window = atoi(optarg);
 			break;
     default: 
-      usage(argv[0]);
+      usage_Requester(argv[0]);
     }
   }
   

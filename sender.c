@@ -72,7 +72,7 @@ main(int argc, char *argv[])
 	}
 	if(argc != 19) {
 		printError("Incorrect number of arguments");
-		usage(argv[0]);
+		usage_Sender(argv[0]);
 		return 0;
 	}
 	
@@ -127,7 +127,7 @@ main(int argc, char *argv[])
 			timeout = atoi(optarg);
 			break;
 		default:
-			usage(argv[0]);
+			usage_Sender(argv[0]);
 		}
 	}
 	
