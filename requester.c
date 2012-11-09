@@ -20,16 +20,12 @@ int tracker_array_size;
 
 /**
  * Writes what is given to the given file name. 
- * Overwrites what is in the file.
- * @return 0 if there are no issues, -1 otherwise
  */
 int writeToFile(char* payload, FILE* fp) {
 
+fprintf(fp, "%s", payload);
 
-  
-  fprintf(fp, "%s", payload);
-  
-  return 0;
+return 0;
 }
 
 /** 
@@ -39,34 +35,34 @@ int writeToFile(char* payload, FILE* fp) {
  * @return 0 if there are no issues, -1 if there is a problem
  */
 int readTrackerFile() {
-  int k;
-  tracker_array = (tracker_entry*)malloc(sizeof(tracker_entry) * 100);//setting max size to 100.
-  FILE *in_file = fopen("tracker.txt", "r");//read only
-  tracker_array_size = 0;
-  
-  //test for not existing
-  if (in_file == NULL) {
-    printf("Error.Could not open file\n");
-    return -1;
-  }
-  
-  
-  //read each row into struct, insert into array, increment size
-  tracker_entry entry;
-  while( fscanf(in_file, "%s %d %s %s", entry.file_name, &entry.sequence_id, entry.sender_hostname, 											entry.sender_port) == 4) {
-    tracker_array[tracker_array_size] = entry;
-    tracker_array_size++;
-  }
-  
-  /**
-   * Go through the array and make sure any table entries with the same 
-   * file name are sorted by their sequence numbers.
-   */
-  for (k = 0; k < tracker_array_size - 1; k++) {
-    if (strcmp(tracker_array[k].file_name, tracker_array[k+1].file_name) == 0) {
-      
-      // If they are out of order, put them in order, restart loop
-      if (tracker_array[k].sequence_id > tracker_array[k+1].sequence_id) {
+int k;
+tracker_array = (tracker_entry*)malloc(sizeof(tracker_entry) * 100);//setting max size to 100.
+FILE *in_file = fopen("tracker.txt", "r");//read only
+tracker_array_size = 0;
+
+//test for not existing
+if (in_file == NULL) {
+printf("Error.Could not open file\n");
+return -1;
+}
+
+
+//read each row into struct, insert into array, increment size
+tracker_entry entry;
+while( fscanf(in_file, "%s %d %s %s", entry.file_name, &entry.sequence_id, entry.sender_hostname, 											entry.sender_port) == 4) {
+tracker_array[tracker_array_size] = entry;
+tracker_array_size++;
+}
+
+/**
+ * Go through the array and make sure any table entries with the same 
+ * file name are sorted by their sequence numbers.
+ */
+for (k = 0; k < tracker_array_size - 1; k++) {
+if (strcmp(tracker_array[k].file_name, tracker_array[k+1].file_name) == 0) {
+
+// If they are out of order, put them in order, restart loop
+if (tracker_array[k].sequence_id > tracker_array[k+1].sequence_id) {
 				strcpy(entry.file_name, tracker_array[k].file_name);
 				entry.sequence_id = tracker_array[k].sequence_id;
 				strcpy(entry.sender_hostname, tracker_array[k].sender_hostname);
@@ -74,12 +70,12 @@ int readTrackerFile() {
 				tracker_array[k] = tracker_array[k+1];
 				tracker_array[k+1] = entry;
 				k = 0;
-      }
-    }
-  }
-  
-  fclose(in_file);
-  return 0;
+}
+}
+}
+
+fclose(in_file);
+return 0;
 }
 
 /**
@@ -87,86 +83,86 @@ int readTrackerFile() {
  * Prints out the time, IP, sequence number and 4 bytes of the payload.
  */
 int printInfoAtReceive(char* sender_ip, packet pkt) {
-  struct timeb time;
-  ftime(&time);
-  char timeString[80];
-  strftime(timeString, sizeof(timeString), "%H:%M:%S", localtime(&(time.time)));
-  
-  // Print E pkt info if that's the case
-  if (pkt.type == 'E') {
-  	printf("Received END pkt from %s packet at: %s.%d(ms).\n", sender_ip, timeString, time.millitm);
-  }
-  // For a data pkt, print out data as required
-  else {
+struct timeb time;
+ftime(&time);
+char timeString[80];
+strftime(timeString, sizeof(timeString), "%H:%M:%S", localtime(&(time.time)));
+
+// Print E pkt info if that's the case
+if (pkt.type == 'E') {
+	printf("Received END pkt from %s packet at: %s.%d(ms).\n", sender_ip, timeString, time.millitm);
+}
+// For a data pkt, print out data as required
+else {
 		printf("Received DATA pkt from %s\n", sender_ip);
-    
+
 		/*printf("Received packet at: %s.%d(ms).\n\tSender IP: %s.\n\tSequence number: %d.\n\tLength: %d.\n\t",
 	 timeString, time.millitm, sender_ip, pkt.sequence, pkt.length);
-    printf("First 4 bytes of payload: %c%c%c%c\n", pkt.payload[0], pkt.payload[1], pkt.payload[2], pkt.payload[3]);*/
-  }
-  return 0;
+printf("First 4 bytes of payload: %c%c%c%c\n", pkt.payload[0], pkt.payload[1], pkt.payload[2], pkt.payload[3]);*/
+}
+return 0;
 }
 
 /**
  * Prints out information about the sender given.
  */
 int printSummaryInfo(struct sockaddr_in server, sender_summary sender) {
-    if ((strcmp(sender.sender_ip, inet_ntoa(server.sin_addr)) == 0) &&
-	    (sender.sender_port == server.sin_port)) {
-    
-      double duration = difftime(sender.end_time.time, sender.start_time.time);
-      double mills = sender.end_time.millitm - sender.start_time.millitm;
-      duration += (mills / 1000.0);
-    
-      sender.duration = duration;
-      sender.packets_per_second = ((double) sender.num_data_pkts) / duration;
-      
-      printf("\n");
-      printf("Info for sender %s:\n\tNum data packets: %d\n\tNum bytes received: %d\n\tAverage pkts per second: %f\n\tDuration: %f\n-------------------------------------------------\n",
-	     sender.sender_ip, sender.num_data_pkts, sender.num_bytes,
-	     sender.packets_per_second, sender.duration);
-    }
-  
-  return 0;
+if ((strcmp(sender.sender_ip, inet_ntoa(server.sin_addr)) == 0) &&
+	(sender.sender_port == server.sin_port)) {
+
+double duration = difftime(sender.end_time.time, sender.start_time.time);
+double mills = sender.end_time.millitm - sender.start_time.millitm;
+duration += (mills / 1000.0);
+
+sender.duration = duration;
+sender.packets_per_second = ((double) sender.num_data_pkts) / duration;
+
+printf("\n");
+printf("Info for sender %s:\n\tNum data packets: %d\n\tNum bytes received: %d\n\tAverage pkts per second: %f\n\tDuration: %f\n-------------------------------------------------\n",
+	 sender.sender_ip, sender.num_data_pkts, sender.num_bytes,
+	 sender.packets_per_second, sender.duration);
+}
+
+return 0;
 }
 
 int
 main(int argc, char *argv[])
 {
-  char *buffer;
-  buffer = malloc(MAXPACKETSIZE);
-  bzero(buffer, sizeof(buffer));
-  if(buffer == NULL) {
-    printError("Buffer could not be allocated");
-    return 0;
-  }
-  if(argc != 11) {
-    printError("Incorrect number of arguments");
-    usage_Requester(argv[0]);
-    return 0;
-  }
-  
-  // Port on which the requester waits for packets
-  int port = 0;
+	char *buffer;
+	buffer = malloc(MAXPACKETSIZE);
+	bzero(buffer, sizeof(buffer));
+	if(buffer == NULL) {
+		printError("Buffer could not be allocated");
+		return 0;
+	}
+	if(argc != 11) {
+		printError("Incorrect number of arguments");
+		usage_Requester(argv[0]);
+		return 0;
+	}
+
+	// Port on which the requester waits for packets
+	int port = 0;
 	char* port_str;
-  // The name of the file that's being requested
-  char* requested_file_name = malloc(MAXPAYLOADSIZE);
+	// The name of the file that's being requested
+	char* requested_file_name = malloc(MAXPAYLOADSIZE);
 	char* f_hostname;
 	char* f_port;
 	int size_window;
 	
-  
-  // Deal with command-line arguments
-  int c;
-  opterr = 0;
-  while ((c = getopt(argc, argv, "p:o:f:h:w:")) != -1) {
-    switch(c) {
-    case 'p':
-      port = atoi(optarg);
-      	port_str = optarg;
-      break;
-    case 'o':
-      requested_file_name = optarg;
+
+	// Deal with command-line arguments
+	int c;
+	opterr = 0;
+	while ((c = getopt(argc, argv, "p:o:f:h:w:")) != -1) {
+		switch(c) {
+		case 'p':
+			port = atoi(optarg);
+			port_str = optarg;
+			break;
+		case 'o':
+			requested_file_name = optarg;
 			break;
 		case 'f':
 			f_hostname = optarg;
@@ -177,74 +173,73 @@ main(int argc, char *argv[])
 		case 'w':
 			size_window = atoi(optarg);
 			break;
-    default: 
-      usage_Requester(argv[0]);
-    }
-  }
-  
-  if(port < 1024 || port > 65536) {
-    printError("Incorrect port number\n");
-    return 0;
-  }
-  
-  // Read from tracker.txt 
-  if (readTrackerFile() == -1) {
-    printf("Error reading from tracker file.Exiting.\n");
-    exit(-1);
-  }
-  
-  // Clears the file once every time the program is run
-  clearFile(requested_file_name);
-  
-  
-  int socketFD_Client;
-  struct sockaddr_in server;
-  int slen=sizeof(server);
+		default: 
+			usage_Requester(argv[0]);
+		}
+	}
 
-  int rv, numbytes;
-  struct addrinfo hints;
-  struct addrinfo *servinfo, *p;
-  
-  bzero(&hints, sizeof(hints));
-  hints.ai_family = AF_INET;
-  hints.ai_socktype = SOCK_DGRAM;
-  hints.ai_protocol = IPPROTO_UDP;
-  
-	// Hostname used for binding.  May want to bind to other hostname (tracking sheet?)
-  char hostname[255];
-  gethostname(hostname, 255);
-  printf("requester: hostname is %s\n", hostname);
-  
-  // Open file
-  FILE *fp; 
-  fp = fopen(requested_file_name, "r+"); // Open file for read/write
-  if (!fp) {
-    perror("fopen");
-    return -1;
-  }
+	if(port < 1024 || port > 65536) {
+		printError("Incorrect port number\n");
+		return 0;
+	}
 
-  int i;
-  for(i = 0; i < tracker_array_size; i++) {
-      
-    /**
-     * Request the given file name only. 
-     * Sends the request in the form of a packet.
-     */
-    if(strcmp(tracker_array[i].file_name, requested_file_name) == 0) {
+	// Read from tracker.txt 
+	if (readTrackerFile() == -1) {
+		printf("Error reading from tracker file.Exiting.\n");
+		exit(-1);
+	}
+
+	// Clears the file once every time the program is run
+	clearFile(requested_file_name);
+
+
+	int socketFD_Client;
+	struct sockaddr_in server;
+	int slen=sizeof(server);
+
+	int rv, numbytes;
+	struct addrinfo hints;
+	struct addrinfo *servinfo, *p;
+
+	bzero(&hints, sizeof(hints));
+	hints.ai_family = AF_INET;
+	hints.ai_socktype = SOCK_DGRAM;
+	hints.ai_protocol = IPPROTO_UDP;
+
+	// Hostname used for binding.May want to bind to other hostname (tracking sheet?)
+	char hostname[255];
+	gethostname(hostname, 255);
+	printf("requester: hostname is %s\n", hostname);
+
+	// Open file
+	FILE *fp; 
+	fp = fopen(requested_file_name, "r+"); // Open file for read/write
+	if (!fp) {
+		perror("fopen");
+		return -1;
+	}
+
+	// ForEach entry in the tracker_array
+	int i;
+	for(i = 0; i < tracker_array_size; i++) {
+
+	/**
+	 * Request the given file name only. 
+	 * Sends the request in the form of a packet.
+	 */
+		if(strcmp(tracker_array[i].file_name, requested_file_name) == 0) {
 			if ((rv = getaddrinfo(tracker_array[i].sender_hostname, tracker_array[i].sender_port, &hints, &servinfo)) != 0) {
-  			fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
-  			return -1;
+				fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
+				return -1;
 			}
 			
 
 			// loop through all the results and make a socket
 			for(p = servinfo; p != NULL; p = p->ai_next) {
-  			if ((socketFD_Client = socket(p->ai_family, p->ai_socktype,
-		     	  p->ai_protocol)) == -1) {
-          	perror("talker: socket");
-         	 	continue;
-  			}
-
+				if ((socketFD_Client = socket(p->ai_family, p->ai_socktype, p->ai_protocol)) == -1) {
+					perror("talker: socket");
+					continue;
+				}
  		 		break;
 			}
 
@@ -255,22 +250,25 @@ main(int argc, char *argv[])
 
 			// Fill out a struct for the request packet
 			packet request;
+			request.priority = 0x01;
+			//packet.srcIP
+			//packet.srcPort
+			//packet.destIP
+			//packet.destPort
+			//packet.new_length
+			
 			request.type = 'R';
 			request.sequence = 0;
-			request.length = 20;
+			request.length = strlen(requested_file_name);
 			request.payload = requested_file_name;
 
 			// Serialize the request packet for sending
-			uint payloadSize = strlen(requested_file_name);
-			char* requestPacket = malloc(HEADERSIZE+payloadSize);
-			memcpy(requestPacket, &request.type, sizeof(char));
-			memcpy(requestPacket+1, &request.sequence, sizeof(uint32_t));
-			memcpy(requestPacket+9, &payloadSize, sizeof(uint32_t));
-			memcpy(requestPacket+HEADERSIZE, request.payload, payloadSize);
+			char* requestPacketSerial = malloc(HEADERSIZE+request.length);
+			serializePacket(request, requestPacketSerial);
 
 			// Send the request packet to the sender 	
-			if ((numbytes = sendto(socketFD_Client, requestPacket, 
-									HEADERSIZE+payloadSize, 0, p->ai_addr, p->ai_addrlen))==-1) {
+			if ((numbytes = sendto(socketFD_Client, requestPacketSerial, 
+									HEADERSIZE+request.length, 0, p->ai_addr, p->ai_addrlen))==-1) {
 				perror("requester: sendto");
  			 	return -1;
 			}
@@ -296,7 +294,7 @@ main(int argc, char *argv[])
 						(struct sockaddr *)&server, (socklen_t *)&slen) == -1) {
 					perror("recvfrom()");
 				}
-	  
+	
 				// Create a packet from the received data
 				packet PACKET;
 				memcpy(&PACKET.type, buffer, sizeof(char));
@@ -305,11 +303,11 @@ main(int argc, char *argv[])
 				PACKET.payload = buffer+HEADERSIZE;
 
 				printInfoAtReceive(inet_ntoa(server.sin_addr), PACKET);
-	  	
+		
 				// If it's a DATA packet
 				if (PACKET.type == 'D') {
 					writeToFile(PACKET.payload, fp);
-	    	
+		
 					// The first packet from the sender
 					if (first_packet) {
 						first_packet = false;
@@ -328,7 +326,7 @@ main(int argc, char *argv[])
 						pkt_sender.num_data_pkts++;
 						pkt_sender.num_bytes += PACKET.length;
 					}
-	   
+	 
 				} // END IF D-Packet
 				else if (PACKET.type == 'E') {
 					done_with_sender = true;
@@ -340,26 +338,26 @@ main(int argc, char *argv[])
 					
 					// Roll the "file cursor" back 1 byte to avoid extra \n's
 					if(fseek(fp, -1, SEEK_END) < 0) {
-    					//fp = fopen(file_name, "r+"); // Nothing in file yet so reopen
+					//fp = fopen(file_name, "r+"); // Nothing in file yet so reopen
 						perror("fseek");
 						return -1;
 					}
 					
 				} // END ELSE-IF E-Packet
 						
-			} 	// END while not done with sender
-   	
-		}	 		// END strcmp
-        
-  } 			// END for each in tracker array
+			} // END while not done with sender
+ 	
+		} // END strcmp
 
-  // Close file
-  if (fclose(fp) != 0) {
-    perror("fclose");
-    return -1;
-  }
-  
-  close(socketFD_Client);
-  return 0;
+	} // END for each in tracker array
+
+	// Close file
+	if (fclose(fp) != 0) {
+		perror("fclose");
+		return -1;
+	}
+
+	close(socketFD_Client);
+	return 0;
 } // END MAIN
 

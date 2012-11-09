@@ -2,9 +2,13 @@
 #define HELPERS_H
 
 #define BUFFER (5120)
-#define MAXPACKETSIZE (5137)
+
 #define HEADERSIZE (17)
+#define MAXPACKETSIZE (5137)
 #define MAXPAYLOADSIZE (5120)
+
+#define P2_MAXPACKETSIZE (5273)
+#define P2_HEADERSIZE (136)
 
 // get sockaddr, IPv4 or IPv6:
 void 
@@ -21,6 +25,21 @@ printError(char* errorMessage) {
 	fprintf(stderr, "An error has occured: %s\n", errorMessage);
 }
 
+/*
+ * Places data from pkt into buffer in a form that can be sent over the network
+ * Expects buffer to point to the max packet-size worth of freespace
+ */
+void
+serializePacket(packet pkt, char* buffer) {
+	memcpy(buffer, &pkt.type, sizeof(char));
+	memcpy(buffer+1, &pkt.sequence, sizeof(uint32_t));
+	memcpy(buffer+9, &pkt.length, sizeof(uint32_t));
+	memcpy(buffer+HEADERSIZE, pkt.payload, pkt.length);
+}
+
+/*
+ * Usage for each program
+ */
 void
 usage_Emulator(char *prog) {
 	fprintf(stderr, "usage: %s -p <port> -q <queue_size> -f <filename> -l <log> -d <debug>\n", prog);
