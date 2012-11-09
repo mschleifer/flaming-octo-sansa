@@ -27,7 +27,7 @@ printError(char* errorMessage) {
 
 void
 usage(char *prog) {
-  fprintf(stderr, "usage: %s -p <port> -o <file option>\n", prog);
+  fprintf(stderr, "usage: %s -p <port> -o <file option> -f <f_hostname> -h <f_port> -w <window>\n", prog);
   exit(1);
 }
 
@@ -199,21 +199,25 @@ main(int argc, char *argv[])
     printError("Buffer could not be allocated");
     return 0;
   }
-  if(argc != 5) {
+  if(argc != 11) {
     printError("Incorrect number of arguments");
     return 0;
   }
   
   // Port on which the requester waits for packets
-  int port= 0;
+  int port = 0;
 	char* port_str;
   // The name of the file that's being requested
   char* requested_file_name = malloc(MAXPAYLOADSIZE);
+	char* f_hostname;
+	char* f_port;
+	int size_window;
+	
   
   // Deal with command-line arguments
   int c;
   opterr = 0;
-  while ((c = getopt(argc, argv, "p:o:")) != -1) {
+  while ((c = getopt(argc, argv, "p:o:f:h:w:")) != -1) {
     switch(c) {
     case 'p':
       port = atoi(optarg);
@@ -221,6 +225,15 @@ main(int argc, char *argv[])
       break;
     case 'o':
       requested_file_name = optarg;
+			break;
+		case 'f':
+			f_hostname = optarg;
+			break;
+		case 'h':
+			f_port = optarg;
+			break;
+		case 'w':
+			size_window = atoi(optarg);
 			break;
     default: 
       usage(argv[0]);
