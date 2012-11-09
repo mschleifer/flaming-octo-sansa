@@ -2,6 +2,8 @@ Update 11/9 - When you run the program, you'll have to modify the tracker.txt fi
 requester reads from so that it says the id of the correct mumble machine.  I think an
 example of that is committed, but if not basically you change the '-x' to '-#' with the # being 
 what mumble machine you are on (basically the hostname of your computer)
+
+Call/text me for questions.  I have to go can't write any notes.
 ----------------------------------------------
 HIGH LEVEL DESCRIPTION
 
