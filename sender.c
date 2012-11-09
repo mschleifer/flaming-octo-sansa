@@ -1,34 +1,3 @@
-/*
-* sender.c
-*
-*  Created on: Sep. 30 2012
-*
-*  Matthew Schleifer
-*  Adam Eggum
-*
-*
-sender -p <port> -g <requester port> -r <rate> -q <seq_no> -l <length>
-
-port is the port on which the sender waits for requests,
-requester port is the port on which the requester is waiting,
-rate is the number of packets to be sent per second,
-seq_no is the initial sequence of the packet exchange, and
-length is the length of the payload in the packets (each chunk of the file part that the sender has),
-
-Additional notes for the parameters:
-
-sender and requester port should be in this range: 1024<port<65536
-for implementing the rate parameter the sending interval should be evenly distributed, i.e. when rate is 10 packets per second the sender
-has to send one packet at about every 100 milliseconds. It should not send them all in a short time and wait for the remaining time in the second.
-
-The sender must print the following information for each packet sent to the requester, with each packet's information in a separate line.
-
-The time that the packet was sent with milisecond granularity,
-The IP of the requester,
-The sequence number, and
-The first 4 bytes of the payload
-*/
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -38,7 +7,7 @@ The first 4 bytes of the payload
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
-#include "packets.h"
+#include "structs.h"
 #include <arpa/inet.h>
 #include <stdbool.h>
 #include <sys/stat.h>
@@ -184,7 +153,7 @@ main(int argc, char *argv[])
 		}
 	}
 	
-	printf("%d\n", priority);
+	// Checking for valid port numbers; not doing this for new additions
 	if( (port < 1024 || port > 65536) || (requester_port < 1024 || requester_port > 65536) ) {
 		printError("Incorrect port number(s).  Ports should be in range (1024 - 65536)");
 		return 0;

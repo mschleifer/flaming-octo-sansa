@@ -7,7 +7,7 @@
 #include <sys/types.h>
 #include <sys/socket.h> 
 #include <netinet/in.h>
-#include "packets.h"
+#include "structs.h"
 #include <arpa/inet.h>
 #include <netdb.h>
 #include <stdbool.h>
@@ -147,7 +147,6 @@ int readTrackerFile() {
  * Prints out the time, IP, sequence number and 4 bytes of the payload.
  */
 int printInfoAtReceive(char* sender_ip, packet pkt) {
-  printf("\n");
   struct timeb time;
   ftime(&time);
   char timeString[80];
@@ -155,13 +154,15 @@ int printInfoAtReceive(char* sender_ip, packet pkt) {
   
   // Print E pkt info if that's the case
   if (pkt.type == 'E') {
-  	printf("Received END from %s packet at: %s.%d(ms).\n", sender_ip, timeString, time.millitm);
+  	printf("Received END pkt from %s packet at: %s.%d(ms).\n", sender_ip, timeString, time.millitm);
   }
   // For a data pkt, print out data as required
   else {
-    printf("Received packet at: %s.%d(ms).\n\tSender IP: %s.\n\tSequence number: %d.\n\tLength: %d.\n\t",
+		printf("Received DATA pkt from %s\n", sender_ip);
+    
+		/*printf("Received packet at: %s.%d(ms).\n\tSender IP: %s.\n\tSequence number: %d.\n\tLength: %d.\n\t",
 	 timeString, time.millitm, sender_ip, pkt.sequence, pkt.length);
-    printf("First 4 bytes of payload: %c%c%c%c\n", pkt.payload[0], pkt.payload[1], pkt.payload[2], pkt.payload[3]);
+    printf("First 4 bytes of payload: %c%c%c%c\n", pkt.payload[0], pkt.payload[1], pkt.payload[2], pkt.payload[3]);*/
   }
   return 0;
 }
