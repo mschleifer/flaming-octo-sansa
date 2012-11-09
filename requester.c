@@ -24,25 +24,12 @@ int tracker_array_size;
  * Overwrites what is in the file.
  * @return 0 if there are no issues, -1 otherwise
  */
-int writeToFile(char* payload, char* file_name) {
-  FILE *fp; 
-  fp = fopen(file_name, "r+"); // Open file for read/write
-  if (!fp) {
-    perror("fopen");
-    return -1;
-  }
-  if(fseek(fp, 0, SEEK_END) < 0) {
-    fp = fopen(file_name, "r+"); // Nothing in file yet so reopen for read/write
-		//perror("fseek");
-		//return -1;
-  }
+int writeToFile(char* payload, FILE* fp) {
+
+
   
   fprintf(fp, "%s", payload);
   
-  if (fclose(fp) != 0) {
-    perror("fclose");
-    return -1;
-  }
   return 0;
 }
 
@@ -228,6 +215,14 @@ main(int argc, char *argv[])
   char hostname[255];
   gethostname(hostname, 255);
   printf("requester: hostname is %s\n", hostname);
+  
+  // Open file
+  FILE *fp; 
+  fp = fopen(requested_file_name, "r+"); // Open file for read/write
+  if (!fp) {
+    perror("fopen");
+    return -1;
+  }
 
   int i;
   for(i = 0; i < tracker_array_size; i++) {
@@ -255,16 +250,16 @@ main(int argc, char *argv[])
 			}
 
 			if (p == NULL) {
-  			fprintf(stderr, "requester: failed to bind socket.\n");
-  			return -1;
+				fprintf(stderr, "requester: failed to bind socket.\n");
+				return -1;
 			}
 
-      // Fill out a struct for the request packet
+			// Fill out a struct for the request packet
 			packet request;
 			request.type = 'R';
 			request.sequence = 0;
 			request.length = 20;
-    	request.payload = requested_file_name;
+			request.payload = requested_file_name;
 
 			// Serialize the request packet for sending
 			uint payloadSize = strlen(requested_file_name);
@@ -277,7 +272,7 @@ main(int argc, char *argv[])
 			// Send the request packet to the sender 	
 			if ((numbytes = sendto(socketFD_Client, requestPacket, 
 									HEADERSIZE+payloadSize, 0, p->ai_addr, p->ai_addrlen))==-1) {
-			  perror("requester: sendto");
+				perror("requester: sendto");
  			 	return -1;
 			}
 
@@ -297,11 +292,11 @@ main(int argc, char *argv[])
 			// We go until we get an 'E' packet
 			while (!done_with_sender) {
 				bzero(buffer, MAXPACKETSIZE);
-	  		// Listen for some kind of response. If one is given, fill in info
-	  		if (recvfrom(socketFD_Client, buffer, MAXPACKETSIZE, 0, 
-								(struct sockaddr *)&server, (socklen_t *)&slen) == -1) {
-	    		perror("recvfrom()");
-	  		}
+				// Listen for some kind of response. If one is given, fill in info
+				if (recvfrom(socketFD_Client, buffer, MAXPACKETSIZE, 0, 
+						(struct sockaddr *)&server, (socklen_t *)&slen) == -1) {
+					perror("recvfrom()");
+				}
 	  
 				// Create a packet from the received data
 				packet PACKET;
@@ -310,11 +305,11 @@ main(int argc, char *argv[])
 				memcpy(&PACKET.length, buffer+9, sizeof(uint32_t));
 				PACKET.payload = buffer+HEADERSIZE;
 
-	  		printInfoAtReceive(inet_ntoa(server.sin_addr), PACKET);
+				printInfoAtReceive(inet_ntoa(server.sin_addr), PACKET);
 	  	
-	  		// If it's a DATA packet
+				// If it's a DATA packet
 				if (PACKET.type == 'D') {
-	    		writeToFile(PACKET.payload, requested_file_name);
+					writeToFile(PACKET.payload, fp);
 	    	
 					// The first packet from the sender
 					if (first_packet) {
@@ -326,7 +321,7 @@ main(int argc, char *argv[])
 						pkt_sender.num_bytes = PACKET.length;
 
 						ftime(&pkt_sender.start_time);
-	      		strftime(pkt_sender.start_timeString, sizeof(pkt_sender.start_timeString), 
+						strftime(pkt_sender.start_timeString, sizeof(pkt_sender.start_timeString), 
 		 							"%H:%M:%S", localtime(&(pkt_sender.start_time.time)));
 					}
 
@@ -335,15 +330,23 @@ main(int argc, char *argv[])
 						pkt_sender.num_bytes += PACKET.length;
 					}
 	   
-	  		} // END IF D-Packet
-	  		else if (PACKET.type == 'E') {
-	    		done_with_sender = true;
+				} // END IF D-Packet
+				else if (PACKET.type == 'E') {
+					done_with_sender = true;
 					pkt_sender.done_sending = 1;
 					ftime(&pkt_sender.end_time);
 					strftime(pkt_sender.end_timeString, sizeof(pkt_sender.end_timeString), "%H:%M:%S", 
 										localtime(&(pkt_sender.end_time.time)));
 					printSummaryInfo(server, pkt_sender);
-	  		} // END ELSE-IF E-Packet
+					
+					// Roll the "file cursor" back 1 byte to avoid extra \n's
+					if(fseek(fp, -1, SEEK_END) < 0) {
+    					//fp = fopen(file_name, "r+"); // Nothing in file yet so reopen
+						perror("fseek");
+						return -1;
+					}
+					
+				} // END ELSE-IF E-Packet
 						
 			} 	// END while not done with sender
    	
@@ -351,6 +354,12 @@ main(int argc, char *argv[])
         
   } 			// END for each in tracker array
 
+  // Close file
+  if (fclose(fp) != 0) {
+    perror("fclose");
+    return -1;
+  }
+  
   close(socketFD_Client);
   return 0;
 } // END MAIN
