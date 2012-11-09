@@ -18,6 +18,35 @@
 forwarding_entry* forwarding_table;
 int forwarding_table_size;
 
+
+int logger(char* log_file, char* reason, log_info info) {
+	FILE *fp; 
+  fp = fopen(log_file, "r+"); // Open file for read/write
+  if (!fp) {
+    perror("fopen");
+    return -1;
+  }
+	
+  if(fseek(fp, 0, SEEK_END) < 0) {
+    //fp = fopen(file_name, "r+"); // Nothing in file yet so reopen for read/write
+		perror("fseek");
+		return -1;
+  }
+  
+  fprintf(fp, "%s: src::port: %s::%s, dest::port: %s::%s, time: %s.%d, priority: %d, size: %d\n", 
+						reason,
+						info.src_hostname, info.src_port,
+						info.destination_hostname, info.destination_port,
+						info.timeString, info.time.millitm,
+						info.priority, info.size);
+  
+  if (fclose(fp) != 0) {
+    perror("fclose");
+    return -1;
+  }
+	return 0;
+}
+
 /**
  * Reads the contents of the given file (assumed to hold the forwarding table)
  * into an array in memory.  
@@ -72,12 +101,28 @@ int readForwardingTable(char* filename, char* hostname, char* port, bool debug) 
 							entry.destination_hostname, entry.destination_port,
 							entry.next_hostname, entry.next_port,
 							entry.delay, entry.loss_prob);
+
+
+			// An example of setting up for and then calling the logger to log a problem
+						// (will not be here in general, just needed to test it)
+			log_info info;
+  		strcpy(info.src_hostname, entry.emulator_hostname);
+			strcpy(info.src_port, entry.emulator_port);
+			strcpy(info.destination_hostname, entry.destination_hostname);
+			strcpy(info.destination_port, entry.destination_port);
+			ftime(&info.time);
+  		strftime(info.timeString, sizeof(info.timeString), "%H:%M:%S", localtime(&(info.time.time)));
+			info.priority = 1;
+			info.size = 100;
+			logger("logger.txt", "reasoning", info);
 		}
 	}
 	
 	fclose(in_file);
 	return 0;
 }
+
+
 
 
 
@@ -116,6 +161,7 @@ int main(int argc, char *argv[]) {
 			break;
 		case 'l':
 			log_file = optarg;
+			clearFile(log_file);
 			break;
 		case 'd':
 			if (atoi(optarg) == 1) {

@@ -17,25 +17,7 @@
 tracker_entry* tracker_array; 
 int tracker_array_size;
 
-/**
- * Clears the given file by opening it with the 'w' tag, then closing it.
- * @return 0 if successful, -1 in the case of an error
- */
-int clearFile(char* file_name) {
-  FILE *fp;
-  fp = fopen(file_name, "w");
-  
-  if (!fp) {
-    perror("fopen");
-    return -1;
-  }
-  if (fclose(fp) != 0) {
-    perror("fclose");
-    return -1;
-  }
-  
-  return 0;
-}
+
 
 /**
  * Writes what is given to the given file name. 
