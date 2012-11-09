@@ -8,42 +8,14 @@
 #include <sys/socket.h> 
 #include <netinet/in.h>
 #include "structs.h"
+#include "helpers.h"
 #include <arpa/inet.h>
 #include <netdb.h>
 #include <stdbool.h>
 
-#define SRV_IP "127.0.0.1"
-#define MAXPACKETSIZE (5137)
-#define HEADERSIZE (17)
-#define MAXPAYLOADSIZE (5120)
 //array and array size tracker for global use
 tracker_entry* tracker_array; 
 int tracker_array_size;
-
-void
-printError(char* errorMessage) {
-  fprintf(stderr, "An error has occured: %s\n", errorMessage);
-}
-
-void
-usage(char *prog) {
-  fprintf(stderr, "usage: %s -p <port> -o <file option> -f <f_hostname> -h <f_port> -w <window>\n", prog);
-  exit(1);
-}
-
-
-/**
- * Helps to get the IP address of a given sockaddr. 
- * Search in file for example usage (with inet_ntop)
- */
-void *get_in_addr(struct sockaddr *sa)
-{
-  if (sa->sa_family == AF_INET) {
-    return &(((struct sockaddr_in*)sa)->sin_addr);
-  }
-  
-  return &(((struct sockaddr_in6*)sa)->sin6_addr);
-}
 
 /**
  * Clears the given file by opening it with the 'w' tag, then closing it.

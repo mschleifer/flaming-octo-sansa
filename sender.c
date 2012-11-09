@@ -8,35 +8,13 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include "structs.h"
+#include "helpers.h"
 #include <arpa/inet.h>
 #include <stdbool.h>
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <netdb.h>
 
-#define BUFFER (5120)
-#define MAXPACKETSIZE (5137)
-#define HEADERSIZE (17)
-
-void
-printError(char* errorMessage) {
-	fprintf(stderr, "An error has occured: %s\n", errorMessage);
-}
-
-void
-usage(char *prog) {
-	fprintf(stderr, "usage: %s -p <port>-g <requester port> -r <rate> -q <seq_no> -l <length>   -f <f_hostname> -h <f_port> -i <priority> -t <timeout>\n", prog);
-	exit(1);
-}
-
-// get sockaddr, IPv4 or IPv6:
-void *get_in_addr(struct sockaddr *sa) {
-  if (sa->sa_family == AF_INET) {
-    return &(((struct sockaddr_in*)sa)->sin_addr);
-  }
-
-  return &(((struct sockaddr_in6*)sa)->sin6_addr);
-}
 
 /**
 * Should be called for each packet that is sent to the requester.

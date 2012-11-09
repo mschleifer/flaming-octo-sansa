@@ -8,6 +8,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include "structs.h"
+#include "helpers.h"
 #include <arpa/inet.h>
 #include <stdbool.h>
 #include <sys/stat.h>
@@ -17,6 +18,11 @@
 forwarding_entry* forwarding_table;
 int forwarding_table_size;
 
+/**
+ * Reads the contents of the given file (assumed to hold the forwarding table)
+ * into an array in memory.  
+ * Table will consider only options in table with same <hostname, port> combo.
+ */
 int readForwardingTable(char* filename, char* hostname, char* port, bool debug) {
 	if (debug) {
 		printf("Reading forwarding table into array in memory.\n");
@@ -73,18 +79,15 @@ int readForwardingTable(char* filename, char* hostname, char* port, bool debug) 
 	return 0;
 }
 
-void
-printError(char* errorMessage) {
-	fprintf(stderr, "An error has occured: %s\n", errorMessage);
-}
 
-void
-usage(char *prog) {
-	fprintf(stderr, "usage: %s -p <port> -q <queue_size> -f <filename> -l <log> -d <debug>\n", prog);
-	exit(1);
-}
 
 int main(int argc, char *argv[]) {
+	char *buffer;
+	buffer = malloc(MAXPACKETSIZE);
+	if(buffer == NULL) {
+		printError("Buffer could not be allocated");
+		return 0;
+	}
 	if(argc != 11) {
 		printError("Incorrect number of arguments");
 		usage(argv[0]);
@@ -127,5 +130,63 @@ int main(int argc, char *argv[]) {
 	char hostname[255];
   gethostname(hostname, 255);
 	readForwardingTable(filename, hostname, port, debug);
+
+
+	int socketFD_Emulator;
+
+	struct addrinfo hints, *p, *servinfo;
+	int rv, numbytes;
+	struct sockaddr_storage addr;
+	socklen_t addr_len;
+	char s[INET6_ADDRSTRLEN];
+	
+	// Used to bind to the port on this host as a 'server'
+	bzero(&hints, sizeof(hints));
+	hints.ai_family = AF_INET;
+	hints.ai_socktype = SOCK_DGRAM;
+	hints.ai_protocol = IPPROTO_UDP;
+	hints.ai_flags = AI_PASSIVE;
+	if ( (rv = getaddrinfo(NULL, port, &hints, &servinfo)) != 0) {
+	  fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
+	  return -1;
+	}
+
+	// loop through all the results and bind to the first that we can
+	for (p = servinfo; p != NULL; p = p->ai_next) {
+	  if ((socketFD_Emulator = socket(p->ai_family, p->ai_socktype, p->ai_protocol)) == -1) {
+	    perror("sender: socket");
+	    continue;
+	  }
+
+	  if (bind(socketFD_Emulator, p->ai_addr, p->ai_addrlen) == -1) {
+	    close(socketFD_Emulator);
+	    perror("sender: bind");
+	    continue;
+	  }
+
+	  break;
+	}
+
+	if (p == NULL) {
+	  fprintf(stderr, "sender: failed to bind socket\n");
+	  return -1;
+	}
+
+	freeaddrinfo(servinfo);
+
+	addr_len = sizeof(addr);
+	if ((numbytes = recvfrom(socketFD_Emulator, buffer, MAXPACKETSIZE, 0,
+				 (struct sockaddr*)&addr, &addr_len)) == -1) {
+	  perror("recvfrom");
+	  exit(1);
+	}
+
+	
+	printf("emulator: got packet from %s\n", inet_ntop(addr.ss_family,
+							 get_in_addr((struct sockaddr*)&addr),
+							 s, sizeof(s)));
+	printf("emulator: packet is %d bytes long\n", numbytes);
+
+	
 	return 0;
 }	// end main
