@@ -3,25 +3,26 @@
 
 // Packets as defined in the project specifications
 typedef struct packet {
+	char type;
+	uint32_t sequence;
+	uint32_t length;
+	char* payload;
+	
 	uint8_t priority;
 	char srcIP[32];
 	char srcPort[16];
 	char destIP[32];
-	char destPost[16];
+	char destPort[16];
 	uint32_t new_length;
-  char type;
-  uint32_t sequence;
-  uint32_t length;
-  char* payload;
 } packet;
 
 // Each can hold a row of data from the tracker.txt file
 typedef struct tracker_entry {
-  char file_name[32];
-  int sequence_id;
-  char sender_hostname[32];
-  //int sender_port;
-	char sender_port[32];
+	char file_name[32];
+	int sequence_id;
+	char sender_hostname[32];
+	//int sender_port;
+	char sender_port[16];
 } tracker_entry;
 
 // Holds summary information about each sender
