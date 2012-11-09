@@ -197,13 +197,17 @@ int main(int argc, char *argv[]) {
 		return -1;
 	}
 
+	
+
+	
 	// loop through all the results and bind to the first that we can
 	for (p = servinfo; p != NULL; p = p->ai_next) {
 		if ((socketFD_Emulator = socket(p->ai_family, p->ai_socktype, p->ai_protocol)) == -1) {
 			perror("sender: socket");
 			continue;
 		}
-
+		
+		fcntl(socketFD_Emulator, F_SETFL, O_NONBLOCK);
 		if (bind(socketFD_Emulator, p->ai_addr, p->ai_addrlen) == -1) {
 			close(socketFD_Emulator);
 			perror("sender: bind");
@@ -219,12 +223,49 @@ int main(int argc, char *argv[]) {
 
 	freeaddrinfo(servinfo);
 
-	addr_len = sizeof(addr);
-	if ((numbytes = recvfrom(socketFD_Emulator, buffer, MAXPACKETSIZE, 0, 
+	fd_set readfds;
+  FD_ZERO(&readfds);
+	FD_SET(socketFD_Emulator, &readfds);
+
+	while (true) {
+		//printf("foo");
+		/*if (select(socketFD_Emulator + 1, &readfds, NULL, NULL, NULL) == -1) {
+			perror("select");
+			exit(-1);
+		}*/
+
+		
+		addr_len = sizeof(addr);
+		if ((numbytes = recvfrom(socketFD_Emulator, buffer, MAXPACKETSIZE, 0, 
+						(struct sockaddr*)&addr, &addr_len)) == -1) {
+				//perror("recvfrom");
+				//exit(1);
+		}
+		else {
+			printf("emulator: got packet from %s\n", inet_ntop(addr.ss_family, 
+				get_in_addr((struct sockaddr*)&addr), s, sizeof(s)));
+			printf("emulator: packet is %d bytes long\n", numbytes);
+		}
+		/*if ( FD_ISSET(socketFD_Emulator, &readfds) ) {
+			if ((numbytes = recvfrom(socketFD_Emulator, buffer, MAXPACKETSIZE, 0, 
+						(struct sockaddr*)&addr, &addr_len)) == -1) {
+				perror("recvfrom");
+				exit(1);
+			}
+
+			else {
+				printf("got data from something");
+			}
+		}*/
+	}		// end while(true)
+	
+
+	
+	/*if ((numbytes = recvfrom(socketFD_Emulator, buffer, MAXPACKETSIZE, 0, 
 			(struct sockaddr*)&addr, &addr_len)) == -1) {
 		perror("recvfrom");
 		exit(1);
-	}
+	}*/
 
 	
 	printf("emulator: got packet from %s\n", inet_ntop(addr.ss_family, 

@@ -18,7 +18,6 @@ tracker_entry* tracker_array;
 int tracker_array_size;
 
 
-
 /**
  * Writes what is given to the given file name. 
  * Overwrites what is in the file.
