@@ -82,14 +82,14 @@ int readForwardingTable(char* filename, char* hostname, char* port, bool debug) 
 	//read each row into struct, insert into array, increment size
 	forwarding_entry entry;
 	while( fscanf(in_file, "%s %s %s %s %s %s %d %f", 
-						entry.emulator_hostname, 
-						entry.emulator_port, 
-						entry.destination_hostname, 											
-						entry.destination_port,
-						entry.next_hostname,
-						entry.next_port,
-						&entry.delay,
-						&entry.loss_prob) == 8) {
+			entry.emulator_hostname, 
+			entry.emulator_port, 
+			entry.destination_hostname, 											
+			entry.destination_port,
+			entry.next_hostname,
+			entry.next_port,
+			&entry.delay,
+			&entry.loss_prob) == 8) {
 
 		// Only add rows that correspond to this host and port
 		if ( (strncmp(entry.emulator_hostname, hostname, 9) == 0)
@@ -146,7 +146,7 @@ int main(int argc, char *argv[]) {
 		return 0;
 	}
 
-	char* port;						//port of emulator
+	char* port;					//port of emulator
 	int queue_size;				//length of esch queue
 	char* filename;				//name of file with forwarding table
 	char* log_file;				//name of the log file
@@ -231,7 +231,7 @@ int main(int argc, char *argv[]) {
 	freeaddrinfo(servinfo);
 
 	fd_set readfds;
-  FD_ZERO(&readfds);
+	FD_ZERO(&readfds);
 	FD_SET(socketFD_Emulator, &readfds);
 
 	while (true) {
@@ -244,12 +244,9 @@ int main(int argc, char *argv[]) {
 		else {
 			printf("emulator: got packet from %s\n", get_ip_address( (struct sockaddr*) &addr )); 
 			printf("emulator: packet is %d bytes long\n", numbytes);
-			
-			packet pkt;
-			memcpy(&pkt.type, buffer+P2_HEADERSIZE, sizeof(char));
-			memcpy(&pkt.sequence, buffer+P2_HEADERSIZE+1, sizeof(uint32_t));
-			memcpy(&pkt.length, buffer+P2_HEADERSIZE+9, sizeof(uint32_t));
-			pkt.payload = buffer+P2_HEADERSIZE+HEADERSIZE;
+
+			packet pkt = getPktFromBuffer(buffer);
+			print_packet(pkt);
 		}
 	}
 

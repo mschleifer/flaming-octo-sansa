@@ -28,8 +28,8 @@ void print_packet(packet pkt) {
 void
 print_packetBuffer(char* buffer) {
 	printf("\nPACKET BUFFER\n\tpriority: %d\n\tsrcIP: %s\n\tsrcPort: %s\n\tdestIP: %s\n\tdestPort: %s\n\tnew_length: %d\n\ttype: %c\n\tsequence: %d\n\tlength: %d\n\tpayload: %s\n",
-			(uint8_t)*buffer, buffer+1, buffer+33, buffer+49, buffer+81, (int)*buffer+97,
-			(uint32_t)*buffer+P2_HEADERSIZE, (int)*buffer+P2_HEADERSIZE+1, (int)*buffer+P2_HEADERSIZE+9,
+			(uint8_t)*buffer, buffer+1, buffer+33, buffer+49, buffer+81, (int)*(buffer+97),
+			(uint32_t)*(buffer+P2_HEADERSIZE), (int)*(buffer+P2_HEADERSIZE+1), (int)*(buffer+P2_HEADERSIZE+9),
 			buffer+P2_HEADERSIZE+HEADERSIZE);
 }
 
@@ -42,13 +42,34 @@ printError(char* errorMessage) {
  * Places data from pkt into buffer in a form that can be sent over the network
  * Expects buffer to point to the max packet-size worth of freespace
  */
- // TODO: Add code to fill in the P2HEADER part of the packet buffer
 void
 serializePacket(packet pkt, char* buffer) {
 	memcpy(buffer+P2_HEADERSIZE, &pkt.type, sizeof(char));
 	memcpy(buffer+P2_HEADERSIZE+1, &pkt.sequence, sizeof(uint32_t));
 	memcpy(buffer+P2_HEADERSIZE+9, &pkt.length, sizeof(uint32_t));
 	memcpy(buffer+P2_HEADERSIZE+HEADERSIZE, pkt.payload, pkt.length);
+	memcpy(buffer, &pkt.priority, sizeof(uint8_t));
+	memcpy(buffer+1, pkt.srcIP, 32);
+	memcpy(buffer+33, pkt.srcPort, 16);
+	memcpy(buffer+49, pkt.destIP, 32);
+	memcpy(buffer+81, pkt.destPort, 16);
+	memcpy(buffer+97, &pkt.new_length, sizeof(uint32_t));
+}
+
+
+packet getPktFromBuffer(char* buffer) {
+	packet pkt;
+	memcpy(&pkt.priority, buffer, sizeof(uint8_t));
+	memcpy(&pkt.srcIP, buffer+1, 32);
+	memcpy(&pkt.srcPort, buffer+33, 16);
+	memcpy(&pkt.destIP, buffer+49, 32);
+	memcpy(&pkt.destPort, buffer+81, 16);
+	memcpy(&pkt.new_length, buffer+97, 4);
+	memcpy(&pkt.type, buffer+P2_HEADERSIZE, sizeof(char));
+	memcpy(&pkt.sequence, buffer+P2_HEADERSIZE+1, sizeof(uint32_t));
+	memcpy(&pkt.length, buffer+P2_HEADERSIZE+9, sizeof(uint32_t));
+	pkt.payload = buffer+P2_HEADERSIZE+HEADERSIZE;
+	return pkt;
 }
 
 /*
