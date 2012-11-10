@@ -17,7 +17,13 @@
 tracker_entry* tracker_array; 
 int tracker_array_size;
 
-
+const char*
+get_ip_address(struct sockaddr* addr) {
+	char s[INET6_ADDRSTRLEN];
+	char* n = "";
+	printf("%s", n);
+	return inet_ntop( AF_INET, get_in_addr(addr), s, sizeof(s) ); 
+}
 
 /**
  * Writes what is given to the given file name. 

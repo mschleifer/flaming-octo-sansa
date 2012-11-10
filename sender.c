@@ -16,6 +16,14 @@
 #include <netdb.h>
 
 
+const char*
+get_ip_address(struct sockaddr* addr) {
+	char s[INET6_ADDRSTRLEN];
+	char* n = "";
+	printf("%s", n);
+	return inet_ntop( AF_INET, get_in_addr(addr), s, sizeof(s) ); 
+}
+
 /**
 * Should be called for each packet that is sent to the requester.
 * Prints out the time, IP, sequence number and 4 bytes of the payload.
@@ -187,12 +195,13 @@ main(int argc, char *argv[])
 	  exit(1);
 	}
 
-	
+	//printf("test: %d\n", client_addr.ss_family);
+	printf( "server: got packet from %s\n", get_ip_address((struct sockaddr*) &client_addr) ); 
 	printf("server: got packet from %s\n", inet_ntop(client_addr.ss_family,
 							 get_in_addr((struct sockaddr*)&client_addr),
 							 s, sizeof(s)));
-	//printf("server: packet is %d bytes long\n", numbytes);
-
+	printf("server: packet is %d bytes long\n", numbytes);
+	
 
 	packet request;
 	memcpy(&request.type, buffer+P2_HEADERSIZE, sizeof(char));
