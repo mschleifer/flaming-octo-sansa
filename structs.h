@@ -68,4 +68,12 @@ typedef struct log_info {
 	uint32_t size;
 } log_info;
 
+// Holds information needed to send a delayed packet to next hop
+typedef struct delayed_info {
+	packet pkt;
+	char sendto_hostname[32];
+	char sendto_port[16];
+	char sendto_ip[32];
+	float delay;
+} delayed_info;
 #endif

@@ -357,13 +357,34 @@ int main(int argc, char *argv[]) {
 	packet delayed_pkt;
 	struct timeb delay_start;
 	char delay_timeString[80];
+	delayed_info delayed_pkt_info;
 	
 	
 	while (true) {
 		addr_len = sizeof(addr);
 		if ((numbytes = recvfrom(socketFD_Emulator, buffer, MAXPACKETSIZE, 0, 
 						(struct sockaddr*)&addr, &addr_len)) <= -1) {
-			// Nothing was received; an error happened
+			if (packet_delayed) {
+				// do something
+				struct timeb cur_time;
+				char cur_timeString[80];
+				ftime(&cur_time);
+				strftime(cur_timeString, sizeof(cur_timeString), "%H:%M:%S", localtime(&(cur_time.time)));
+				double duration = difftime(cur_time.time, delay_start.time);
+				double mills = cur_time.millitm - delay_start.millitm;
+				duration += (mills / 1000.0);
+				
+				bool end_delay = (duration >= delayed_pkt_info.delay);
+				
+				if (end_delay) {
+					if (debug) {
+						printf("Should be ending the delay, sending packet to %s\n", delayed_pkt_info.sendto_ip);
+					}
+					
+					//TODO: Send or drop packet
+					packet_delayed = false;
+				}
+			}
 		}
 		else {
 			if (debug) {
@@ -399,6 +420,7 @@ int main(int argc, char *argv[]) {
 						double mills = cur_time.millitm - delay_start.millitm;
 						duration += (mills / 1000.0);
 						
+						// delay should probably not ever be 'over' in here
 						bool delay_over = (duration >= entry.delay);
 						if (debug) {
 						  printf("duration of delay so far: %f seconds.\n", duration);
@@ -427,6 +449,11 @@ int main(int argc, char *argv[]) {
 						
 						// If we got a delayed packet, set the start time
 						if (packet_delayed) {
+							delayed_pkt_info.pkt = delayed_pkt;
+							delayed_pkt_info.delay = entry.delay;
+							strcpy(delayed_pkt_info.sendto_hostname, entry.next_hostname);
+							strcpy(delayed_pkt_info.sendto_port, entry.next_port);
+							strcpy(delayed_pkt_info.sendto_ip, entry.next_IP);
 							ftime(&delay_start);
 							strftime(delay_timeString, sizeof(delay_timeString), "%H:%M:%S", localtime(&(delay_start.time)));
 						}
