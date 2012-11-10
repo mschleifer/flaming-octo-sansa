@@ -195,11 +195,7 @@ main(int argc, char *argv[])
 	  exit(1);
 	}
 
-	//printf("test: %d\n", client_addr.ss_family);
 	printf( "server: got packet from %s\n", get_ip_address((struct sockaddr*) &client_addr) ); 
-	printf("server: got packet from %s\n", inet_ntop(client_addr.ss_family,
-							 get_in_addr((struct sockaddr*)&client_addr),
-							 s, sizeof(s)));
 	printf("server: packet is %d bytes long\n", numbytes);
 	
 
