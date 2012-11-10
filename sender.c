@@ -19,8 +19,9 @@
 const char*
 get_ip_address(struct sockaddr* addr) {
 	char s[INET6_ADDRSTRLEN];
-	const char* ip = inet_ntop( AF_INET, get_in_addr(addr), s, sizeof(s) ); 
-	return ip;
+	char* n = "";
+	printf("%s", n);
+	return inet_ntop( AF_INET, get_in_addr(addr), s, sizeof(s) ); 
 }
 
 /**
@@ -194,8 +195,8 @@ main(int argc, char *argv[])
 	  exit(1);
 	}
 
-	
-	//printf( "server: got packet from %s\n", get_ip_address((struct sockaddr*) &client_addr) ); 
+	//printf("test: %d\n", client_addr.ss_family);
+	printf( "server: got packet from %s\n", get_ip_address((struct sockaddr*) &client_addr) ); 
 	printf("server: got packet from %s\n", inet_ntop(client_addr.ss_family,
 							 get_in_addr((struct sockaddr*)&client_addr),
 							 s, sizeof(s)));

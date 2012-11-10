@@ -17,6 +17,13 @@
 tracker_entry* tracker_array; 
 int tracker_array_size;
 
+const char*
+get_ip_address(struct sockaddr* addr) {
+	char s[INET6_ADDRSTRLEN];
+	char* n = "";
+	printf("%s", n);
+	return inet_ntop( AF_INET, get_in_addr(addr), s, sizeof(s) ); 
+}
 
 /**
  * Writes what is given to the given file name. 
@@ -301,7 +308,7 @@ main(int argc, char *argv[])
 				memcpy(&PACKET.sequence, buffer+1, sizeof(uint32_t));
 				memcpy(&PACKET.length, buffer+9, sizeof(uint32_t));
 				PACKET.payload = buffer+HEADERSIZE;
-
+				
 				printInfoAtReceive(inet_ntoa(server.sin_addr), PACKET);
 		
 				// If it's a DATA packet

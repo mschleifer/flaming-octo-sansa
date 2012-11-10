@@ -18,6 +18,13 @@
 forwarding_entry* forwarding_table;
 int forwarding_table_size;
 
+const char*
+get_ip_address(struct sockaddr* addr) {
+	char s[INET6_ADDRSTRLEN];
+	char* n = "";
+	printf("%s", n);
+	return inet_ntop( AF_INET, get_in_addr(addr), s, sizeof(s) ); 
+}
 
 int logger(char* log_file, char* reason, log_info info) {
 	FILE *fp; 
