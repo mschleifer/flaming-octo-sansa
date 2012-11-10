@@ -7,8 +7,8 @@
 #define MAXPACKETSIZE (5137)
 #define MAXPAYLOADSIZE (5120)
 
-#define P2_MAXPACKETSIZE (5273)
-#define P2_HEADERSIZE (136)
+#define P2_MAXPACKETSIZE (5238)
+#define P2_HEADERSIZE (101)
 
 // get sockaddr, IPv4 or IPv6:
 void 
@@ -28,8 +28,8 @@ void print_packet(packet pkt) {
 void
 print_packetBuffer(char* buffer) {
 	printf("\nPACKET BUFFER\n\tpriority: %d\n\tsrcIP: %s\n\tsrcPort: %s\n\tdestIP: %s\n\tdestPort: %s\n\tnew_length: %d\n\ttype: %c\n\tsequence: %d\n\tlength: %d\n\tpayload: %s\n",
-			(int)*buffer, buffer+8, buffer+40, buffer+56, buffer+88, (int)*buffer+104,
-			(int)*buffer+P2_HEADERSIZE, (int)*buffer+P2_HEADERSIZE+1, (int)*buffer+P2_HEADERSIZE+9,
+			(uint8_t)*buffer, buffer+1, buffer+33, buffer+49, buffer+81, (int)*buffer+97,
+			(uint32_t)*buffer+P2_HEADERSIZE, (int)*buffer+P2_HEADERSIZE+1, (int)*buffer+P2_HEADERSIZE+9,
 			buffer+P2_HEADERSIZE+HEADERSIZE);
 }
 
