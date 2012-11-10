@@ -17,6 +17,17 @@ typedef struct Queue {
 	packet *elements;
 } Queue;
 
+/**
+ * Returns true if the Queue is empty, false otherwise
+ * @return true if the Queue is empty, false otherwise
+ */
+bool isEmpty(Queue *Q) {
+	if (Q->size == 0) {
+		return true;
+	}
+	
+	return false;
+}
 
 /**
  * Returns the size of the Queue.
