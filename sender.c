@@ -30,43 +30,44 @@ get_ip_address(struct sockaddr* addr) {
 * Does some things a little different if it's an END packet.
 */
 int printInfoAtSend(char* requester_ip, packet pkt) {
-  printf("\n");
-  struct timeb time;
-  ftime(&time);
-  char timeString[80];
-  strftime(timeString, sizeof(timeString), "%H:%M:%S", localtime(&(time.time)));
-  
-  if (pkt.type == 'E') {
-    printf("Sending END packet to requester at ip %s at %s.%d(ms).\n", requester_ip, timeString, time.millitm);
-  }
-  else {
-    printf("Sending packet at: %s.%d(ms).\n\tRequester IP: %s.\n\tSequence number: %d.\n\t",
-	   timeString, time.millitm, requester_ip, pkt.sequence);
-    printf("First 4 bytes of payload: %c%c%c%c\n", pkt.payload[0], pkt.payload[1], pkt.payload[2], pkt.payload[3]);
-  }
-  return 0;
+	printf("\n");
+	struct timeb time;
+	ftime(&time);
+	char timeString[80];
+	strftime(timeString, sizeof(timeString), "%H:%M:%S", localtime(&(time.time)));
+
+	if (pkt.type == 'E') {
+		printf("Sending END packet to requester at ip %s at %s.%d(ms).\n", requester_ip, timeString, time.millitm);
+	}
+	else {
+		printf("Sending packet at: %s.%d(ms).\n\tRequester IP: %s.\n\tSequence number: %d.\n\t",
+		timeString, time.millitm, requester_ip, pkt.sequence);
+		printf("First 4 bytes of payload: %c%c%c%c\n", pkt.payload[0], pkt.payload[1], pkt.payload[2], pkt.payload[3]);
+	}
+	return 0;
 }
 
 int sendEndPkt(struct sockaddr_storage client_addr, socklen_t addr_len, int socketFD_Server) {
-  // Send the end packet to the requester.  Sender is done sending.
-  packet endPkt;
-  endPkt.type = 'E';
-  endPkt.sequence = 0;
-  endPkt.length = 0;
-  endPkt.payload = "END.";
-  endPkt.length = strlen(endPkt.payload);
+	// Send the end packet to the requester.  Sender is done sending.
+	packet endPkt;
+	endPkt.type = 'E';
+	endPkt.sequence = 0;
+	endPkt.length = 0;
+	endPkt.payload = "END.";
+	endPkt.length = strlen(endPkt.payload);
   
-  char* endPacket = malloc(P2_HEADERSIZE + HEADERSIZE + endPkt.length);
-  memcpy(endPacket+P2_HEADERSIZE, &endPkt.type, sizeof(char));
-  memcpy(endPacket+P2_HEADERSIZE+1, &endPkt.sequence, sizeof(uint32_t));
-  memcpy(endPacket+P2_HEADERSIZE+9, &endPkt.length, sizeof(uint32_t));
-  memcpy(endPacket+P2_HEADERSIZE+HEADERSIZE, endPkt.payload, endPkt.length);
+	char* endPacket = malloc(P2_HEADERSIZE + HEADERSIZE + endPkt.length);
+	memcpy(endPacket+P2_HEADERSIZE, &endPkt.type, sizeof(char));
+	memcpy(endPacket+P2_HEADERSIZE+1, &endPkt.sequence, sizeof(uint32_t));
+	memcpy(endPacket+P2_HEADERSIZE+9, &endPkt.length, sizeof(uint32_t));
+	memcpy(endPacket+P2_HEADERSIZE+HEADERSIZE, endPkt.payload, endPkt.length);
   
-	if (sendto(socketFD_Server, endPacket, P2_HEADERSIZE+HEADERSIZE+endPkt.length, 0, (struct sockaddr*)&client_addr, addr_len) == -1) {
-    perror("sendto()");
-  }
+	if (sendto(socketFD_Server, endPacket, P2_HEADERSIZE+HEADERSIZE+endPkt.length,
+			0, (struct sockaddr*)&client_addr, addr_len) == -1) {
+		perror("sendto()");
+	}
 
-  return 0;
+	return 0;
 }
 
 int

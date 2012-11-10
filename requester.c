@@ -72,34 +72,34 @@ return 0;
  * @return 0 if there are no issues, -1 if there is a problem
  */
 int readTrackerFile() {
-int k;
-tracker_array = (tracker_entry*)malloc(sizeof(tracker_entry) * 100);//setting max size to 100.
-FILE *in_file = fopen("tracker.txt", "r");//read only
-tracker_array_size = 0;
+	int k;
+	tracker_array = (tracker_entry*)malloc(sizeof(tracker_entry) * 100);//setting max size to 100.
+	FILE *in_file = fopen("tracker.txt", "r");//read only
+	tracker_array_size = 0;
 
-//test for not existing
-if (in_file == NULL) {
-printf("Error.Could not open file\n");
-return -1;
-}
+	//test for not existing
+	if (in_file == NULL) {
+		printf("Error.Could not open file\n");
+		return -1;
+	}
 
 
-//read each row into struct, insert into array, increment size
-tracker_entry entry;
-while( fscanf(in_file, "%s %d %s %s", entry.file_name, &entry.sequence_id, entry.sender_hostname, 											entry.sender_port) == 4) {
-tracker_array[tracker_array_size] = entry;
-tracker_array_size++;
-}
+	//read each row into struct, insert into array, increment size
+	tracker_entry entry;
+	while( fscanf(in_file, "%s %d %s %s", entry.file_name, &entry.sequence_id, entry.sender_hostname, 											entry.sender_port) == 4) {
+		tracker_array[tracker_array_size] = entry;
+		tracker_array_size++;
+	}
 
-/**
- * Go through the array and make sure any table entries with the same 
- * file name are sorted by their sequence numbers.
- */
-for (k = 0; k < tracker_array_size - 1; k++) {
-if (strcmp(tracker_array[k].file_name, tracker_array[k+1].file_name) == 0) {
+	/**
+	 * Go through the array and make sure any table entries with the same 
+	 * file name are sorted by their sequence numbers.
+	 */
+	for (k = 0; k < tracker_array_size - 1; k++) {
+		if (strcmp(tracker_array[k].file_name, tracker_array[k+1].file_name) == 0) {
 
-// If they are out of order, put them in order, restart loop
-if (tracker_array[k].sequence_id > tracker_array[k+1].sequence_id) {
+			// If they are out of order, put them in order, restart loop
+			if (tracker_array[k].sequence_id > tracker_array[k+1].sequence_id) {
 				strcpy(entry.file_name, tracker_array[k].file_name);
 				entry.sequence_id = tracker_array[k].sequence_id;
 				strcpy(entry.sender_hostname, tracker_array[k].sender_hostname);
@@ -107,12 +107,12 @@ if (tracker_array[k].sequence_id > tracker_array[k+1].sequence_id) {
 				tracker_array[k] = tracker_array[k+1];
 				tracker_array[k+1] = entry;
 				k = 0;
-}
-}
-}
+			}
+		}
+	}
 
-fclose(in_file);
-return 0;
+	fclose(in_file);
+	return 0;
 }
 
 /**
@@ -120,47 +120,47 @@ return 0;
  * Prints out the time, IP, sequence number and 4 bytes of the payload.
  */
 int printInfoAtReceive(char* sender_ip, packet pkt) {
-struct timeb time;
-ftime(&time);
-char timeString[80];
-strftime(timeString, sizeof(timeString), "%H:%M:%S", localtime(&(time.time)));
+	struct timeb time;
+	ftime(&time);
+	char timeString[80];
+	strftime(timeString, sizeof(timeString), "%H:%M:%S", localtime(&(time.time)));
 
-// Print E pkt info if that's the case
-if (pkt.type == 'E') {
-	printf("Received END pkt from %s packet at: %s.%d(ms).\n", sender_ip, timeString, time.millitm);
-}
-// For a data pkt, print out data as required
-else {
+	// Print E pkt info if that's the case
+	if (pkt.type == 'E') {
+		printf("Received END pkt from %s packet at: %s.%d(ms).\n", sender_ip, timeString, time.millitm);
+	}
+	// For a data pkt, print out data as required
+	else {
 		printf("Received DATA pkt from %s\n", sender_ip);
 
 		/*printf("Received packet at: %s.%d(ms).\n\tSender IP: %s.\n\tSequence number: %d.\n\tLength: %d.\n\t",
-	 timeString, time.millitm, sender_ip, pkt.sequence, pkt.length);
-printf("First 4 bytes of payload: %c%c%c%c\n", pkt.payload[0], pkt.payload[1], pkt.payload[2], pkt.payload[3]);*/
-}
-return 0;
+		timeString, time.millitm, sender_ip, pkt.sequence, pkt.length);
+		printf("First 4 bytes of payload: %c%c%c%c\n", pkt.payload[0], pkt.payload[1], pkt.payload[2], pkt.payload[3]);*/
+	}
+	return 0;
 }
 
 /**
  * Prints out information about the sender given.
  */
 int printSummaryInfo(struct sockaddr_in server, sender_summary sender) {
-if ((strcmp(sender.sender_ip, inet_ntoa(server.sin_addr)) == 0) &&
-	(sender.sender_port == server.sin_port)) {
+	if ((strcmp(sender.sender_ip, inet_ntoa(server.sin_addr)) == 0) &&
+			(sender.sender_port == server.sin_port)) {
 
-double duration = difftime(sender.end_time.time, sender.start_time.time);
-double mills = sender.end_time.millitm - sender.start_time.millitm;
-duration += (mills / 1000.0);
+		double duration = difftime(sender.end_time.time, sender.start_time.time);
+		double mills = sender.end_time.millitm - sender.start_time.millitm;
+		duration += (mills / 1000.0);
 
-sender.duration = duration;
-sender.packets_per_second = ((double) sender.num_data_pkts) / duration;
+		sender.duration = duration;
+		sender.packets_per_second = ((double) sender.num_data_pkts) / duration;
 
-printf("\n");
-printf("Info for sender %s:\n\tNum data packets: %d\n\tNum bytes received: %d\n\tAverage pkts per second: %f\n\tDuration: %f\n-------------------------------------------------\n",
-	 sender.sender_ip, sender.num_data_pkts, sender.num_bytes,
-	 sender.packets_per_second, sender.duration);
-}
+		printf("\n");
+		printf("Info for sender %s:\n\tNum data packets: %d\n\tNum bytes received: %d\n\tAverage pkts per second: %f\n\tDuration: %f\n-------------------------------------------------\n",
+		 sender.sender_ip, sender.num_data_pkts, sender.num_bytes,
+		 sender.packets_per_second, sender.duration);
+	}
 
-return 0;
+	return 0;
 }
 
 int

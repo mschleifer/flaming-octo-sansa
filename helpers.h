@@ -25,6 +25,13 @@ void print_packet(packet pkt) {
 			pkt.priority, pkt.srcIP, pkt.srcPort, pkt.destIP, pkt.destPort, pkt.new_length,
 			pkt.type, pkt.sequence, pkt.length, pkt.payload);
 }
+void
+print_packetBuffer(char* buffer) {
+	printf("\nPACKET BUFFER\n\tpriority: %d\n\tsrcIP: %s\n\tsrcPort: %s\n\tdestIP: %s\n\tdestPort: %s\n\tnew_length: %d\n\ttype: %c\n\tsequence: %d\n\tlength: %d\n\tpayload: %s\n",
+			(int)*buffer, buffer+8, buffer+40, buffer+56, buffer+88, (int)*buffer+104,
+			(int)*buffer+P2_HEADERSIZE, (int)*buffer+P2_HEADERSIZE+1, (int)*buffer+P2_HEADERSIZE+9,
+			buffer+P2_HEADERSIZE+HEADERSIZE);
+}
 
 void
 printError(char* errorMessage) {
