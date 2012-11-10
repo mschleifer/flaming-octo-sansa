@@ -42,10 +42,10 @@ int capacity(Queue *Q) {
  * @param maxElements The max number of elements in the Queue
  * @return A pointer to the Queue
  */
-Queue * createQueue(int capacity) {
+Queue * newQueue(int capacity) {
 	// Create the Queue
 	Queue *Q;
-	Q = (Queue *)malloc(sizeof(Queue));
+	Q = (Queue *) malloc( sizeof(Queue) );
 	
 	// Initialize the properties of the Queue
 	Q->elements = (packet *) malloc( sizeof(packet) * capacity);
@@ -64,11 +64,11 @@ Queue * createQueue(int capacity) {
  * prints out that it is empty and returns.
  * @param Q The pointer to the Queue you want to dequeue
  */
-void dequeue(Queue *Q) {
+int dequeue(Queue *Q) {
 	// Can't pop an empty Queue
 	if (Q->size==0) {
-		printf("Queue is empty\n");
-		return;
+		//printf("Queue is empty\n");
+		return -1;
 	}
 	
 	// Dequeueing === front++
@@ -77,11 +77,11 @@ void dequeue(Queue *Q) {
 		Q->front++;
 		
 		/* As we fill elements in circular fashion */
-		if (Q->front==Q->capacity) {
-			Q->front=0;
+		if (Q->front == Q->capacity) {
+			Q->front = 0;
 		}
 	}
-	return;
+	return 0;
 }
 
 /**
@@ -90,9 +90,9 @@ void dequeue(Queue *Q) {
  * @return The packet at the front of the queue
  */
 packet first(Queue *Q) {
-	if(Q->size==0) {
-		printf("Queue is empty\n");
-		exit(0);
+	if(Q->size == 0) {
+		printf("Queue is empty. Exiting.\n");
+		exit(-1);
 	}
 	
 	return Q->elements[Q->front];
@@ -102,11 +102,13 @@ packet first(Queue *Q) {
  * Adds an element to the back of the Queue
  * @param A pointer to the Queue to add to
  * @param element A packet struct to add to the Queue
+ * @return 0 if successful, -1 if Queue is full
  */
-void enqueue(Queue *Q, packet element) {
+int enqueue(Queue *Q, packet element) {
 	// Can't push onto full Queue
 	if(Q->size == Q->capacity) {
-		printf("Queue is full\n");
+		//printf("Queue is full\n");
+		return -1;
 	}
 	else {
 		Q->size++;
@@ -119,5 +121,5 @@ void enqueue(Queue *Q, packet element) {
 		// Insert to the back of the Queue
 		Q->elements[Q->rear] = element;
 	}
-	return;
+	return 0;
 }
