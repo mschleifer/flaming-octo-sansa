@@ -1,6 +1,19 @@
 #ifndef HELPERS_H
 #define HELPERS_H
 
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <time.h>
+#include <sys/timeb.h>
+#include <sys/types.h>
+#include <sys/socket.h> 
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <netdb.h>
+#include <stdbool.h>
+
 #define BUFFER (5120)
 
 #define HEADERSIZE (17)
@@ -56,7 +69,11 @@ serializePacket(packet pkt, char* buffer) {
 	memcpy(buffer+97, &pkt.new_length, sizeof(uint32_t));
 }
 
-
+/**
+ * Takes in a buffer that is assumed to contain everything that a packet
+ * would contain, and it returns the packet with all information filled
+ * out. 
+ */
 packet getPktFromBuffer(char* buffer) {
 	packet pkt;
 	memcpy(&pkt.priority, buffer, sizeof(uint8_t));
@@ -70,6 +87,41 @@ packet getPktFromBuffer(char* buffer) {
 	memcpy(&pkt.length, buffer+P2_HEADERSIZE+9, sizeof(uint32_t));
 	pkt.payload = buffer+P2_HEADERSIZE+HEADERSIZE;
 	return pkt;
+}
+
+
+/**
+ * Takes in a hostname and an ip, both strings, and gets the ip
+ * address related to the hostname and puts it into the ip string.
+ * @param hostname The hostname of the ip address you want
+ * @param ip The ip address associated with the given hostname (returned)
+ */
+int hostname_to_ip(char *hostname , char *ip)
+{
+	struct addrinfo hints, *servinfo, *p;
+	struct sockaddr_in *h;
+	int rv;
+
+	memset(&hints, 0, sizeof hints);
+	hints.ai_family = AF_INET; // use AF_INET6 to force IPv6
+	hints.ai_socktype = SOCK_DGRAM;
+	hints.ai_protocol = IPPROTO_UDP;
+
+	if ( (rv = getaddrinfo( hostname , "http" , &hints , &servinfo)) != 0) 
+	{
+		fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
+		return 1;
+	}
+
+	// loop through all the results and connect to the first we can
+	for(p = servinfo; p != NULL; p = p->ai_next) 
+	{
+		h = (struct sockaddr_in *) p->ai_addr;
+		strcpy(ip , inet_ntoa( h->sin_addr ) );
+	}
+	
+	freeaddrinfo(servinfo); // all done with this structure
+	return 0;
 }
 
 /*

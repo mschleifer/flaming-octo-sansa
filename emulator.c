@@ -26,6 +26,15 @@ get_ip_address(struct sockaddr* addr) {
 	return inet_ntop( AF_INET, get_in_addr(addr), s, sizeof(s) ); 
 }
 
+
+/**
+ * Appends to the logger file (given) and adds the information given from
+ * the two other parameters passed in to write to the log file.
+ * @param log_file The name of the log file_name
+ * @param reason The reason we are logging 
+ * @param info A 'log_info' struct filled out with information required
+ * @return 0 unless the case of an error
+ */
 int logger(char* log_file, char* reason, log_info info) {
 	FILE *fp; 
 	fp = fopen(log_file, "r+"); // Open file for read/write
@@ -40,7 +49,7 @@ int logger(char* log_file, char* reason, log_info info) {
 		return -1;
 	}
   
-	fprintf(fp, "%s: src::port: %s::%s, dest::port: %s::%s, time: %s.%d, priority: %d, size: %d\n", 
+	fprintf(fp, "%s: (src): %s::%s, (dest): %s::%s, (time): %s.%d, (priority): %d, (size): %d\n", 
 						reason,
 						info.src_hostname, info.src_port,
 						info.destination_hostname, info.destination_port,
@@ -55,9 +64,48 @@ int logger(char* log_file, char* reason, log_info info) {
 }
 
 /**
+ * Fills out the logger entry for the case when the packet must be dropped because
+ * there is not an entry found in the forwarding table.
+ * The parameters are used to fill out the log entry with.
+ * @param log_file The name of the log file to write to
+ * @return 0 if there are no problems in logging to the file
+ */
+int log_no_entry_found(char* log_file, char* destIP, char* destPort, char* srcIP, char* srcPort, uint8_t priority, uint32_t length) {
+	struct hostent *he;
+	struct in_addr ipv4addr;
+	char srcName[32], destName[32];
+	
+	// Get the destination hostname
+	inet_pton(AF_INET, destIP, &ipv4addr);
+	he = gethostbyaddr(&ipv4addr, sizeof ipv4addr, AF_INET);
+	strcpy(destName, he->h_name);
+	
+	// Get the source hostname
+	inet_pton(AF_INET, srcIP, &ipv4addr);
+	he = gethostbyaddr(&ipv4addr, sizeof ipv4addr, AF_INET);
+	strcpy(srcName, he->h_name);
+	
+	// Fill out the log structure and call the logger function.
+	log_info info;
+	strcpy(info.src_hostname, srcName);
+	strcpy(info.src_port, srcPort);
+	strcpy(info.destination_hostname, destName);
+	strcpy(info.destination_port, destPort);
+	ftime(&info.time);
+	strftime(info.timeString, sizeof(info.timeString), "%H:%M:%S", localtime(&(info.time.time)));
+	info.priority = priority;
+	info.size = length;
+	return logger(log_file, "no forwarding entry was found", info);
+}
+
+/**
  * Reads the contents of the given file (assumed to hold the forwarding table)
  * into an array in memory.  
  * Table will consider only options in table with same <hostname, port> combo.
+ * @param filename The filename of the file with the forwarding table
+ * @param hostname The hostname that we care about in the forwarding table (our hostname)
+ * @param port The port that we care about (our port)
+ * @param debug true if we want to print debug information (the table)
  */
 int readForwardingTable(char* filename, char* hostname, char* port, bool debug) {
 	if (debug) {
@@ -94,6 +142,10 @@ int readForwardingTable(char* filename, char* hostname, char* port, bool debug) 
 		// Only add rows that correspond to this host and port
 		if ( (strncmp(entry.emulator_hostname, hostname, 9) == 0)
 					&& (strcmp(entry.emulator_port, port) == 0) ) {
+		
+		//char destIP[32];
+		hostname_to_ip(entry.destination_hostname, entry.destination_IP);
+		hostname_to_ip(entry.next_hostname, entry.next_IP);
     	forwarding_table[forwarding_table_size] = entry;
     	forwarding_table_size++;
 		}
@@ -103,25 +155,11 @@ int readForwardingTable(char* filename, char* hostname, char* port, bool debug) 
 		printf("forwarding table:\n");
 		for (k = 0; k < forwarding_table_size; k++) {
 			entry = forwarding_table[k];
-			printf("\temulator: %s, %s\n\tdestination: %s, %s\n\tnext hop: %s, %s\n\tdelay: %d, loss: %f\n\n", 
+			printf("\temulator: %s, %s\n\tdestination: %s, %s, %s\n\tnext hop: %s, %s, %s\n\tdelay: %d, loss: %f\n\n", 
 							entry.emulator_hostname, entry.emulator_port,
-							entry.destination_hostname, entry.destination_port,
-							entry.next_hostname, entry.next_port,
+							entry.destination_hostname, entry.destination_port, entry.destination_IP,
+							entry.next_hostname, entry.next_port, entry.next_IP,
 							entry.delay, entry.loss_prob);
-
-
-			// An example of setting up for and then calling the logger to log a problem
-						// (will not be here in general, just needed to test it)
-			log_info info;
-			strcpy(info.src_hostname, entry.emulator_hostname);
-			strcpy(info.src_port, entry.emulator_port);
-			strcpy(info.destination_hostname, entry.destination_hostname);
-			strcpy(info.destination_port, entry.destination_port);
-			ftime(&info.time);
-			strftime(info.timeString, sizeof(info.timeString), "%H:%M:%S", localtime(&(info.time.time)));
-			info.priority = 1;
-			info.size = 100;
-			logger("logger.txt", "reasoning", info);
 		}
 	}
 	
@@ -242,11 +280,29 @@ int main(int argc, char *argv[]) {
 			// Nothing was received; an error happened
 		}
 		else {
+			if (debug) {
 			printf("emulator: got packet from %s\n", get_ip_address( (struct sockaddr*) &addr )); 
 			printf("emulator: packet is %d bytes long\n", numbytes);
-
+			}
 			packet pkt = getPktFromBuffer(buffer);
 			print_packet(pkt);
+			
+			int i;
+			for (i = 0; i < forwarding_table_size; i++) {
+				forwarding_entry entry = forwarding_table[i];
+				
+				// The destinations do not line up; drop packet and log issue.
+				if ( (strcmp(entry.destination_IP, pkt.destIP) != 0) || 
+					  (strcmp(entry.destination_port, pkt.destPort) != 0) ) {
+					log_no_entry_found(log_file, pkt.destIP, pkt.destPort, pkt.srcIP, pkt.srcPort, pkt.priority, pkt.length);
+				}
+				else {
+				  if (debug) {
+					printf("A match was found.\n");
+				  }
+				}
+				
+			}
 		}
 	}
 

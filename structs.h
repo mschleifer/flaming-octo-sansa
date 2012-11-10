@@ -47,8 +47,10 @@ typedef struct forwarding_entry {
 	char emulator_port[32];
 	char destination_hostname[32];
 	char destination_port[32];
+	char destination_IP[32];
 	char next_hostname[32];
 	char next_port[32];
+	char next_IP[32];
 	uint32_t delay;
 	float loss_prob;
 } forwarding_entry;
