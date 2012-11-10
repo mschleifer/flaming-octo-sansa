@@ -29,12 +29,13 @@ printError(char* errorMessage) {
  * Places data from pkt into buffer in a form that can be sent over the network
  * Expects buffer to point to the max packet-size worth of freespace
  */
+ // TODO: Add code to fill in the P2HEADER part of the packet buffer
 void
 serializePacket(packet pkt, char* buffer) {
-	memcpy(buffer, &pkt.type, sizeof(char));
-	memcpy(buffer+1, &pkt.sequence, sizeof(uint32_t));
-	memcpy(buffer+9, &pkt.length, sizeof(uint32_t));
-	memcpy(buffer+HEADERSIZE, pkt.payload, pkt.length);
+	memcpy(buffer+P2_HEADERSIZE, &pkt.type, sizeof(char));
+	memcpy(buffer+P2_HEADERSIZE+1, &pkt.sequence, sizeof(uint32_t));
+	memcpy(buffer+P2_HEADERSIZE+9, &pkt.length, sizeof(uint32_t));
+	memcpy(buffer+P2_HEADERSIZE+HEADERSIZE, pkt.payload, pkt.length);
 }
 
 /*

@@ -56,13 +56,13 @@ int sendEndPkt(struct sockaddr_storage client_addr, socklen_t addr_len, int sock
   endPkt.payload = "END.";
   endPkt.length = strlen(endPkt.payload);
   
-  char* endPacket = malloc(HEADERSIZE + endPkt.length);
-  memcpy(endPacket, &endPkt.type, sizeof(char));
-  memcpy(endPacket+1, &endPkt.sequence, sizeof(uint32_t));
-  memcpy(endPacket+9, &endPkt.length, sizeof(uint32_t));
-  memcpy(endPacket+HEADERSIZE, endPkt.payload, endPkt.length);
+  char* endPacket = malloc(P2_HEADERSIZE + HEADERSIZE + endPkt.length);
+  memcpy(endPacket+P2_HEADERSIZE, &endPkt.type, sizeof(char));
+  memcpy(endPacket+P2_HEADERSIZE+1, &endPkt.sequence, sizeof(uint32_t));
+  memcpy(endPacket+P2_HEADERSIZE+9, &endPkt.length, sizeof(uint32_t));
+  memcpy(endPacket+P2_HEADERSIZE+HEADERSIZE, endPkt.payload, endPkt.length);
   
-	if (sendto(socketFD_Server, endPacket, HEADERSIZE+endPkt.length, 0, (struct sockaddr*)&client_addr, addr_len) == -1) {
+	if (sendto(socketFD_Server, endPacket, P2_HEADERSIZE+HEADERSIZE+endPkt.length, 0, (struct sockaddr*)&client_addr, addr_len) == -1) {
     perror("sendto()");
   }
 
@@ -73,7 +73,7 @@ int
 main(int argc, char *argv[])
 {
 	char *buffer;
-	buffer = malloc(MAXPACKETSIZE);
+	buffer = malloc(P2_MAXPACKETSIZE);
 	if(buffer == NULL) {
 		printError("Buffer could not be allocated");
 		return 0;
@@ -187,9 +187,9 @@ main(int argc, char *argv[])
 
 	freeaddrinfo(servinfo);
 
-	
+	// Wait to receive a request
 	addr_len = sizeof(client_addr);
-	if ((numbytes = recvfrom(socketFD_Server, buffer, MAXPACKETSIZE, 0,
+	if ((numbytes = recvfrom(socketFD_Server, buffer, P2_MAXPACKETSIZE, 0,
 				 (struct sockaddr*)&client_addr, &addr_len)) == -1) {
 	  perror("recvfrom");
 	  exit(1);
@@ -200,11 +200,11 @@ main(int argc, char *argv[])
 	
 
 	packet request;
-	memcpy(&request.type, buffer, sizeof(char));
-	memcpy(&request.sequence, buffer + 1, sizeof(uint32_t));
-	memcpy(&request.length, buffer + 9, sizeof(uint32_t));
+	memcpy(&request.type, buffer+P2_HEADERSIZE, sizeof(char));
+	memcpy(&request.sequence, buffer+P2_HEADERSIZE+1, sizeof(uint32_t));
+	memcpy(&request.length, buffer+P2_HEADERSIZE+9, sizeof(uint32_t));
 	request.payload = malloc(request.length);
-	memcpy(request.payload, buffer + 17, request.length);
+	memcpy(request.payload, buffer+P2_HEADERSIZE+HEADERSIZE, request.length);
 	
 	if (request.type == 'R' && request.sequence == 0) {
 		// Open the requested file for reading
@@ -229,11 +229,8 @@ main(int argc, char *argv[])
 		  response.payload = filePayload;
 		  
 		  // serialize response packet
-		  char* responsePacket = malloc(HEADERSIZE + response.length);
-		  memcpy(responsePacket, &response.type, sizeof(char));
-		  memcpy(responsePacket+1, &response.sequence, sizeof(uint32_t));
-		  memcpy(responsePacket+9, &response.length, sizeof(uint32_t));
-		  memcpy(responsePacket+HEADERSIZE, response.payload, response.length);
+		  char* responsePacket = malloc(P2_HEADERSIZE + HEADERSIZE + response.length);
+		  serializePacket(response, responsePacket);
 		  
 	
 			//printf("port: %d\n", ntohs( ((struct sockaddr_in*)&client_addr)->sin_port ));
@@ -241,7 +238,7 @@ main(int argc, char *argv[])
 
 
 			// Send data to the requester
-		  if ( sendto(socketFD_Server, responsePacket, HEADERSIZE+response.length, 0, 
+		  if ( sendto(socketFD_Server, responsePacket, P2_HEADERSIZE+HEADERSIZE+response.length, 0, 
 								(struct sockaddr*) &client_addr, addr_len) ==-1 ) {
 		    perror("sendto()");
 		  }
