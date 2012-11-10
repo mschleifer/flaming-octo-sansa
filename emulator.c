@@ -174,7 +174,7 @@ int readForwardingTable(char* filename, char* hostname, char* port) {
   
 	//read each row into struct, insert into array, increment size
 	forwarding_entry entry;
-	while( fscanf(in_file, "%s %s %s %s %s %s %d %f", 
+	while( fscanf(in_file, "%s %s %s %s %s %s %f %f", 
 			entry.emulator_hostname, 
 			entry.emulator_port, 
 			entry.destination_hostname, 											
@@ -188,11 +188,11 @@ int readForwardingTable(char* filename, char* hostname, char* port) {
 		if ( (strncmp(entry.emulator_hostname, hostname, 9) == 0)
 					&& (strcmp(entry.emulator_port, port) == 0) ) {
 		
-		//char destIP[32];
-		hostname_to_ip(entry.destination_hostname, entry.destination_IP);
-		hostname_to_ip(entry.next_hostname, entry.next_IP);
-    	forwarding_table[forwarding_table_size] = entry;
-    	forwarding_table_size++;
+			hostname_to_ip(entry.destination_hostname, entry.destination_IP);
+			hostname_to_ip(entry.next_hostname, entry.next_IP);
+			entry.delay /= 1000.0;
+			forwarding_table[forwarding_table_size] = entry;
+			forwarding_table_size++;
 		}
 	}
 	
@@ -200,7 +200,7 @@ int readForwardingTable(char* filename, char* hostname, char* port) {
 		printf("forwarding table:\n");
 		for (k = 0; k < forwarding_table_size; k++) {
 			entry = forwarding_table[k];
-			printf("\temulator: %s, %s\n\tdestination: %s, %s, %s\n\tnext hop: %s, %s, %s\n\tdelay: %d, loss: %f\n\n", 
+			printf("\temulator: %s, %s\n\tdestination: %s, %s, %s\n\tnext hop: %s, %s, %s\n\tdelay: %f, loss: %f\n\n", 
 							entry.emulator_hostname, entry.emulator_port,
 							entry.destination_hostname, entry.destination_port, entry.destination_IP,
 							entry.next_hostname, entry.next_port, entry.next_IP,
@@ -399,8 +399,10 @@ int main(int argc, char *argv[]) {
 						double mills = cur_time.millitm - delay_start.millitm;
 						duration += (mills / 1000.0);
 						
+						bool delay_over = (duration >= entry.delay);
 						if (debug) {
-						  printf("duration of delay so far: %f\n", duration);
+						  printf("duration of delay so far: %f seconds.\n", duration);
+						  printf("should the delay be over? %d\n", delay_over);
 						}
 					}
 					else {

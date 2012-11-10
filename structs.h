@@ -51,7 +51,7 @@ typedef struct forwarding_entry {
 	char next_hostname[32];
 	char next_port[32];
 	char next_IP[32];
-	uint32_t delay;
+	float delay;
 	float loss_prob;
 } forwarding_entry;
 
