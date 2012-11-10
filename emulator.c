@@ -9,6 +9,7 @@
 #include <netinet/in.h>
 #include "structs.h"
 #include "helpers.h"
+#include "queue.h"
 #include <arpa/inet.h>
 #include <stdbool.h>
 #include <sys/stat.h>
@@ -300,6 +301,26 @@ int main(int argc, char *argv[]) {
 				  if (debug) {
 					printf("A match was found.\n");
 				  }
+				  
+				  
+				  // Example Queue usage
+				  Queue *Q = createQueue(2);
+				  Enqueue(Q,pkt);
+				  packet pkt2;
+				  pkt2 = getPktFromBuffer(buffer);
+				  pkt2.type = 'F';
+				  Enqueue(Q,pkt2);
+				  packet pkt3 = getPktFromBuffer(buffer);
+				  pkt3.type = 'Z';
+				  Enqueue(Q,pkt3);
+				  print_packet(first(Q));
+				  Dequeue(Q);
+				  Enqueue(Q, pkt3);
+				  print_packet(first(Q));
+				  Dequeue(Q);
+				  print_packet(first(Q));
+				  Dequeue(Q);
+				  Dequeue(Q);
 				}
 				
 			}
