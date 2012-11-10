@@ -76,4 +76,10 @@ typedef struct delayed_info {
 	char sendto_ip[32];
 	float delay;
 } delayed_info;
+
+
+typedef struct packet_plus {
+	packet pkt;
+	int fwd_table_index;
+} packet_plus;
 #endif
