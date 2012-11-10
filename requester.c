@@ -300,7 +300,7 @@ main(int argc, char *argv[])
 			strcpy(request.destIP, emulator_ip);
 			strcpy(request.destPort, f_port);
 		
-			request.new_length = 100; //testing
+			request.new_length = size_window;
 			
 			request.type = 'R';
 			request.sequence = 0;

@@ -50,19 +50,18 @@ int printInfoAtSend(char* requester_ip, packet pkt) {
 int sendEndPkt(struct sockaddr_storage client_addr, socklen_t addr_len, int socketFD_Server) {
 	// Send the end packet to the requester.  Sender is done sending.
 	packet endPkt;
+	// TODO: fill in other members of packet
+	
 	endPkt.type = 'E';
 	endPkt.sequence = 0;
 	endPkt.length = 0;
 	endPkt.payload = "END.";
 	endPkt.length = strlen(endPkt.payload);
   
-	char* endPacket = malloc(P2_HEADERSIZE + HEADERSIZE + endPkt.length);
-	memcpy(endPacket+P2_HEADERSIZE, &endPkt.type, sizeof(char));
-	memcpy(endPacket+P2_HEADERSIZE+1, &endPkt.sequence, sizeof(uint32_t));
-	memcpy(endPacket+P2_HEADERSIZE+9, &endPkt.length, sizeof(uint32_t));
-	memcpy(endPacket+P2_HEADERSIZE+HEADERSIZE, endPkt.payload, endPkt.length);
+	char* endPacketBuffer = malloc(P2_HEADERSIZE + HEADERSIZE + endPkt.length);
+	serializePacket(endPkt, endPacketBuffer);
   
-	if (sendto(socketFD_Server, endPacket, P2_HEADERSIZE+HEADERSIZE+endPkt.length,
+	if (sendto(socketFD_Server, endPacketBuffer, P2_HEADERSIZE+HEADERSIZE+endPkt.length,
 			0, (struct sockaddr*)&client_addr, addr_len) == -1) {
 		perror("sendto()");
 	}
@@ -199,13 +198,9 @@ main(int argc, char *argv[])
 	printf( "server: got packet from %s\n", get_ip_address((struct sockaddr*) &client_addr) ); 
 	printf("server: packet is %d bytes long\n", numbytes);
 	
-
+	// Construct a packet from the data recv'd
 	packet request;
-	memcpy(&request.type, buffer+P2_HEADERSIZE, sizeof(char));
-	memcpy(&request.sequence, buffer+P2_HEADERSIZE+1, sizeof(uint32_t));
-	memcpy(&request.length, buffer+P2_HEADERSIZE+9, sizeof(uint32_t));
-	request.payload = malloc(request.length);
-	memcpy(request.payload, buffer+P2_HEADERSIZE+HEADERSIZE, request.length);
+	request = getPktFromBuffer(buffer);
 	
 	if (request.type == 'R' && request.sequence == 0) {
 		// Open the requested file for reading
