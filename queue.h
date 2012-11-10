@@ -64,7 +64,7 @@ Queue * createQueue(int capacity) {
  * prints out that it is empty and returns.
  * @param Q The pointer to the Queue you want to dequeue
  */
-void Dequeue(Queue *Q) {
+void dequeue(Queue *Q) {
 	// Can't pop an empty Queue
 	if (Q->size==0) {
 		printf("Queue is empty\n");
@@ -103,7 +103,7 @@ packet first(Queue *Q) {
  * @param A pointer to the Queue to add to
  * @param element A packet struct to add to the Queue
  */
-void Enqueue(Queue *Q, packet element) {
+void enqueue(Queue *Q, packet element) {
 	// Can't push onto full Queue
 	if(Q->size == Q->capacity) {
 		printf("Queue is full\n");
