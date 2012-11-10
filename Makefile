@@ -8,6 +8,7 @@ sender:
 requester:
 	gcc -Wall -Werror -o requester requester.c
 	cp requester request_dir/requester
+	rm requester
 
 emulator:
 	gcc -Wall -Werror -o emulator emulator.c
