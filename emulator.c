@@ -16,12 +16,22 @@
 #include <fcntl.h>
 #include <netdb.h>
 
+// Global variables:
 forwarding_entry* forwarding_table;
 int forwarding_table_size;
+
+// Queues for each of the three priorities
+Queue* p1_queue;
+Queue* p2_queue;
+Queue* p3_queue;
+
+char* log_file; 		// Log file name
+bool debug = false;		// Debug flag
 
 const char*
 get_ip_address(struct sockaddr* addr) {
 	char s[INET6_ADDRSTRLEN];
+	// A hack that makes absolutely no sense whatsoever
 	char* n = "";
 	printf("%s", n);
 	return inet_ntop( AF_INET, get_in_addr(addr), s, sizeof(s) ); 
@@ -36,7 +46,7 @@ get_ip_address(struct sockaddr* addr) {
  * @param info A 'log_info' struct filled out with information required
  * @return 0 unless the case of an error
  */
-int logger(char* log_file, char* reason, log_info info) {
+int logger(char* reason, log_info info) {
 	FILE *fp; 
 	fp = fopen(log_file, "r+"); // Open file for read/write
 	if (!fp) {
@@ -68,10 +78,9 @@ int logger(char* log_file, char* reason, log_info info) {
  * Fills out the logger entry for the case when the packet must be dropped because
  * there is not an entry found in the forwarding table.
  * The parameters are used to fill out the log entry with.
- * @param log_file The name of the log file to write to
  * @return 0 if there are no problems in logging to the file
  */
-int log_no_entry_found(char* log_file, char* destIP, char* destPort, char* srcIP, char* srcPort, uint8_t priority, uint32_t length) {
+int log_no_entry_found(char* destIP, char* destPort, char* srcIP, char* srcPort, uint8_t priority, uint32_t length) {
 	struct hostent *he;
 	struct in_addr ipv4addr;
 	char srcName[32], destName[32];
@@ -96,7 +105,43 @@ int log_no_entry_found(char* log_file, char* destIP, char* destPort, char* srcIP
 	strftime(info.timeString, sizeof(info.timeString), "%H:%M:%S", localtime(&(info.time.time)));
 	info.priority = priority;
 	info.size = length;
-	return logger(log_file, "no forwarding entry was found", info);
+	return logger("no forwarding entry was found", info);
+}
+
+
+/**
+ * Logs the given log message to the given log file, given the packet with
+ * details required.
+ * @param log_message The message to put the error into the log file with
+ * @param pkt The packet full of information to log
+ * @return 0 if no issues logging
+ */
+int log_entry(char* log_message, packet pkt) {
+	struct hostent *he;
+	struct in_addr ipv4addr;
+	char srcName[32], destName[32];
+	
+	// Get the destination hostname
+	inet_pton(AF_INET, pkt.destIP, &ipv4addr);
+	he = gethostbyaddr(&ipv4addr, sizeof ipv4addr, AF_INET);
+	strcpy(destName, he->h_name);
+	
+	// Get the source hostname
+	inet_pton(AF_INET, pkt.srcIP, &ipv4addr);
+	he = gethostbyaddr(&ipv4addr, sizeof ipv4addr, AF_INET);
+	strcpy(srcName, he->h_name);
+	
+	// Fill out the log structure and call the logger function.
+	log_info info;
+	strcpy(info.src_hostname, srcName);
+	strcpy(info.src_port, pkt.srcPort);
+	strcpy(info.destination_hostname, destName);
+	strcpy(info.destination_port, pkt.destPort);
+	ftime(&info.time);
+	strftime(info.timeString, sizeof(info.timeString), "%H:%M:%S", localtime(&(info.time.time)));
+	info.priority = pkt.priority;
+	info.size = pkt.length;
+	return logger(/*log_file, */log_message, info);
 }
 
 /**
@@ -106,9 +151,8 @@ int log_no_entry_found(char* log_file, char* destIP, char* destPort, char* srcIP
  * @param filename The filename of the file with the forwarding table
  * @param hostname The hostname that we care about in the forwarding table (our hostname)
  * @param port The port that we care about (our port)
- * @param debug true if we want to print debug information (the table)
  */
-int readForwardingTable(char* filename, char* hostname, char* port, bool debug) {
+int readForwardingTable(char* filename, char* hostname, char* port) {
 	if (debug) {
 		printf("Reading forwarding table into array in memory.\n");
 	}
@@ -130,7 +174,7 @@ int readForwardingTable(char* filename, char* hostname, char* port, bool debug) 
   
 	//read each row into struct, insert into array, increment size
 	forwarding_entry entry;
-	while( fscanf(in_file, "%s %s %s %s %s %s %d %f", 
+	while( fscanf(in_file, "%s %s %s %s %s %s %f %f", 
 			entry.emulator_hostname, 
 			entry.emulator_port, 
 			entry.destination_hostname, 											
@@ -144,11 +188,11 @@ int readForwardingTable(char* filename, char* hostname, char* port, bool debug) 
 		if ( (strncmp(entry.emulator_hostname, hostname, 9) == 0)
 					&& (strcmp(entry.emulator_port, port) == 0) ) {
 		
-		//char destIP[32];
-		hostname_to_ip(entry.destination_hostname, entry.destination_IP);
-		hostname_to_ip(entry.next_hostname, entry.next_IP);
-    	forwarding_table[forwarding_table_size] = entry;
-    	forwarding_table_size++;
+			hostname_to_ip(entry.destination_hostname, entry.destination_IP);
+			hostname_to_ip(entry.next_hostname, entry.next_IP);
+			entry.delay /= 1000.0;
+			forwarding_table[forwarding_table_size] = entry;
+			forwarding_table_size++;
 		}
 	}
 	
@@ -156,7 +200,7 @@ int readForwardingTable(char* filename, char* hostname, char* port, bool debug) 
 		printf("forwarding table:\n");
 		for (k = 0; k < forwarding_table_size; k++) {
 			entry = forwarding_table[k];
-			printf("\temulator: %s, %s\n\tdestination: %s, %s, %s\n\tnext hop: %s, %s, %s\n\tdelay: %d, loss: %f\n\n", 
+			printf("\temulator: %s, %s\n\tdestination: %s, %s, %s\n\tnext hop: %s, %s, %s\n\tdelay: %f, loss: %f\n\n", 
 							entry.emulator_hostname, entry.emulator_port,
 							entry.destination_hostname, entry.destination_port, entry.destination_IP,
 							entry.next_hostname, entry.next_port, entry.next_IP,
@@ -169,7 +213,41 @@ int readForwardingTable(char* filename, char* hostname, char* port, bool debug) 
 }
 
 
-
+/**
+ * Checks the priority of the packet and either puts the packet into the
+ * specified queue or drops the packet and returns an error.
+ * @param pkt The packet to add to a Queue
+ */
+void queue_packet(packet pkt) {
+	/*
+	 * Check the priority of the packet. Add to the queues. 
+	 * If a queue is full, log the message.  If the packet priority 
+	 * is invalid, log the message
+	 */
+	switch(pkt.priority) {
+	  case 1:
+		if ( enqueue(p1_queue, pkt) == -1) {
+			if (debug) printf("P1 queue was full. Logging.\n");
+			log_entry("P1 Queue was full", pkt);
+		}
+		break;
+	  case 2:
+		if ( enqueue(p2_queue, pkt) == -1) {
+			if (debug) printf("P2 queue was full. Logging.\n");
+			log_entry("P2 Queue was full", pkt);
+		}
+		break;
+	  case 3:
+		if ( enqueue(p3_queue, pkt) == -1) {
+			if (debug) printf("P3 queue was full. Logging.\n");
+			log_entry("P3 Queue was full", pkt);
+		}
+		break;
+	  default:
+		if (debug) printf("Packet priority was invalid. Logging.\n");
+		log_entry("Packet priority was invalid", pkt);
+	}
+}
 
 
 int main(int argc, char *argv[]) {
@@ -188,8 +266,8 @@ int main(int argc, char *argv[]) {
 	char* port;					//port of emulator
 	int queue_size;				//length of esch queue
 	char* filename;				//name of file with forwarding table
-	char* log_file;				//name of the log file
-	bool debug = false;
+	//char* log_file;				
+	//bool debug = false;
 
 	// Get the commandline args
 	int c;
@@ -201,6 +279,9 @@ int main(int argc, char *argv[]) {
 			break;
 		case 'q':
 			queue_size = atoi(optarg);
+			p1_queue = newQueue(queue_size);
+			p2_queue = newQueue(queue_size);
+			p3_queue = newQueue(queue_size);
 			break;
 		case 'f':
 			filename = optarg;
@@ -221,7 +302,7 @@ int main(int argc, char *argv[]) {
 	
 	char hostname[255];
 	gethostname(hostname, 255);
-	readForwardingTable(filename, hostname, port, debug);
+	readForwardingTable(filename, hostname, port);
 
 
 	int socketFD_Emulator;
@@ -272,18 +353,43 @@ int main(int argc, char *argv[]) {
 	fd_set readfds;
 	FD_ZERO(&readfds);
 	FD_SET(socketFD_Emulator, &readfds);
-
+	bool packet_delayed = false;
+	packet delayed_pkt;
+	struct timeb delay_start;
+	char delay_timeString[80];
+	delayed_info delayed_pkt_info;
+	
+	
 	while (true) {
-		
 		addr_len = sizeof(addr);
 		if ((numbytes = recvfrom(socketFD_Emulator, buffer, MAXPACKETSIZE, 0, 
-						(struct sockaddr*)&addr, &addr_len)) == -1) {
-			// Nothing was received; an error happened
+						(struct sockaddr*)&addr, &addr_len)) <= -1) {
+			if (packet_delayed) {
+				// do something
+				struct timeb cur_time;
+				char cur_timeString[80];
+				ftime(&cur_time);
+				strftime(cur_timeString, sizeof(cur_timeString), "%H:%M:%S", localtime(&(cur_time.time)));
+				double duration = difftime(cur_time.time, delay_start.time);
+				double mills = cur_time.millitm - delay_start.millitm;
+				duration += (mills / 1000.0);
+				
+				bool end_delay = (duration >= delayed_pkt_info.delay);
+				
+				if (end_delay) {
+					if (debug) {
+						printf("Should be ending the delay, sending packet to %s\n", delayed_pkt_info.sendto_ip);
+					}
+					
+					//TODO: Send or drop packet
+					packet_delayed = false;
+				}
+			}
 		}
 		else {
 			if (debug) {
-			printf("emulator: got packet from %s\n", get_ip_address( (struct sockaddr*) &addr )); 
-			printf("emulator: packet is %d bytes long\n", numbytes);
+				printf("emulator: got packet from %s\n", get_ip_address( (struct sockaddr*) &addr )); 
+				printf("emulator: packet is %d bytes long\n", numbytes);
 			}
 			packet pkt = getPktFromBuffer(buffer);
 			print_packet(pkt);
@@ -295,32 +401,63 @@ int main(int argc, char *argv[]) {
 				// The destinations do not line up; drop packet and log issue.
 				if ( (strcmp(entry.destination_IP, pkt.destIP) != 0) || 
 					  (strcmp(entry.destination_port, pkt.destPort) != 0) ) {
-					log_no_entry_found(log_file, pkt.destIP, pkt.destPort, pkt.srcIP, pkt.srcPort, pkt.priority, pkt.length);
+					log_no_entry_found(pkt.destIP, pkt.destPort, pkt.srcIP, pkt.srcPort, pkt.priority, pkt.length);
 				}
 				else {
-				  if (debug) {
-					printf("A match was found.\n");
-				  }
+					if (debug) {
+						printf("A forwarding table-packet destination match was found.\n");
+					}
 				  
-				  
-				  // Example Queue usage
-				  Queue *Q = createQueue(2);
-				  enqueue(Q,pkt);
-				  packet pkt2;
-				  pkt2 = getPktFromBuffer(buffer);
-				  pkt2.type = 'F';
-				  enqueue(Q,pkt2);
-				  packet pkt3 = getPktFromBuffer(buffer);
-				  pkt3.type = 'Z';
-				  enqueue(Q,pkt3);
-				  print_packet(first(Q));
-				  dequeue(Q);
-				  enqueue(Q, pkt3);
-				  print_packet(first(Q));
-				  dequeue(Q);
-				  print_packet(first(Q));
-				  dequeue(Q);
-				  dequeue(Q);
+					queue_packet(pkt);
+					
+					if (packet_delayed) {
+						// do something
+						struct timeb cur_time;
+						char cur_timeString[80];
+						ftime(&cur_time);
+						strftime(cur_timeString, sizeof(cur_timeString), "%H:%M:%S", localtime(&(cur_time.time)));
+						double duration = difftime(cur_time.time, delay_start.time);
+						double mills = cur_time.millitm - delay_start.millitm;
+						duration += (mills / 1000.0);
+						
+						// delay should probably not ever be 'over' in here
+						bool delay_over = (duration >= entry.delay);
+						if (debug) {
+						  printf("duration of delay so far: %f seconds.\n", duration);
+						  printf("should the delay be over? %d\n", delay_over);
+						}
+					}
+					else {
+						if ( !isEmpty(p1_queue) ) {
+							if (debug) printf("Delaying packet from p1 queue.\n");
+							delayed_pkt = first(p1_queue);
+							dequeue(p1_queue);
+							packet_delayed = true;
+						}
+						else if ( !isEmpty(p2_queue) ) {
+							if (debug) printf("Delaying packet from p2 queue.\n");
+							delayed_pkt = first(p2_queue);
+							dequeue(p2_queue);
+							packet_delayed = true;
+						}
+						else if ( !isEmpty(p3_queue) ) {
+							if (debug) printf("Delaying packet from p3 queue.\n");
+							delayed_pkt = first(p3_queue);
+							dequeue(p3_queue);
+							packet_delayed = true;
+						}
+						
+						// If we got a delayed packet, set the start time
+						if (packet_delayed) {
+							delayed_pkt_info.pkt = delayed_pkt;
+							delayed_pkt_info.delay = entry.delay;
+							strcpy(delayed_pkt_info.sendto_hostname, entry.next_hostname);
+							strcpy(delayed_pkt_info.sendto_port, entry.next_port);
+							strcpy(delayed_pkt_info.sendto_ip, entry.next_IP);
+							ftime(&delay_start);
+							strftime(delay_timeString, sizeof(delay_timeString), "%H:%M:%S", localtime(&(delay_start.time)));
+						}
+					}
 				}
 				
 			}
