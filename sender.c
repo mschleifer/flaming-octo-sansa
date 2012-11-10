@@ -151,7 +151,7 @@ main(int argc, char *argv[])
 	int rv, numbytes;
 	struct sockaddr_storage client_addr;
 	socklen_t addr_len;
-	char s[INET6_ADDRSTRLEN];
+	//char s[INET6_ADDRSTRLEN];
 	
 	// Used to bind to the port on this host as a 'server'
 	bzero(&hints, sizeof(hints));
