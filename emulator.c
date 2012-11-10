@@ -191,7 +191,7 @@ int main(int argc, char *argv[]) {
 	int rv, numbytes;
 	struct sockaddr_storage addr;
 	socklen_t addr_len;
-	char s[INET6_ADDRSTRLEN];
+	// char s[INET6_ADDRSTRLEN];
 	
 	// Used to bind to the port on this host as a 'server'
 	bzero(&hints, sizeof(hints));
@@ -235,49 +235,28 @@ int main(int argc, char *argv[]) {
 	FD_SET(socketFD_Emulator, &readfds);
 
 	while (true) {
-		//printf("foo");
-		/*if (select(socketFD_Emulator + 1, &readfds, NULL, NULL, NULL) == -1) {
-			perror("select");
-			exit(-1);
-		}*/
-
 		
 		addr_len = sizeof(addr);
 		if ((numbytes = recvfrom(socketFD_Emulator, buffer, MAXPACKETSIZE, 0, 
 						(struct sockaddr*)&addr, &addr_len)) == -1) {
-				//perror("recvfrom");
-				//exit(1);
+			// Nothing was received; an error happened
 		}
 		else {
-			printf("emulator: got packet from %s\n", inet_ntop(addr.ss_family, 
-				get_in_addr((struct sockaddr*)&addr), s, sizeof(s)));
+			printf("emulator: got packet from %s\n", get_ip_address( (struct sockaddr*) &addr )); 
 			printf("emulator: packet is %d bytes long\n", numbytes);
+			
+			packet pkt;
+			memcpy(&pkt.type, buffer+P2_HEADERSIZE, sizeof(char));
+			memcpy(&pkt.sequence, buffer+P2_HEADERSIZE+1, sizeof(uint32_t));
+			memcpy(&pkt.length, buffer+P2_HEADERSIZE+9, sizeof(uint32_t));
+			pkt.payload = buffer+P2_HEADERSIZE+HEADERSIZE;
 		}
-		/*if ( FD_ISSET(socketFD_Emulator, &readfds) ) {
-			if ((numbytes = recvfrom(socketFD_Emulator, buffer, MAXPACKETSIZE, 0, 
-						(struct sockaddr*)&addr, &addr_len)) == -1) {
-				perror("recvfrom");
-				exit(1);
-			}
-
-			else {
-				printf("got data from something");
-			}
-		}*/
-	}		// end while(true)
-	
+	}
 
 	
-	/*if ((numbytes = recvfrom(socketFD_Emulator, buffer, MAXPACKETSIZE, 0, 
-			(struct sockaddr*)&addr, &addr_len)) == -1) {
-		perror("recvfrom");
-		exit(1);
-	}*/
-
-	
-	printf("emulator: got packet from %s\n", inet_ntop(addr.ss_family, 
+	/*printf("emulator: got packet from %s\n", inet_ntop(addr.ss_family, 
 				get_in_addr((struct sockaddr*)&addr), s, sizeof(s)));
-	printf("emulator: packet is %d bytes long\n", numbytes);
+	printf("emulator: packet is %d bytes long\n", numbytes);*/
 
 	
 	return 0;

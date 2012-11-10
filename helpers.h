@@ -20,6 +20,12 @@ void
   return &(((struct sockaddr_in6*)sa)->sin6_addr);
 }
 
+void print_packet(packet pkt) {
+	printf("packet:\n\tpriority: %d\n\tsrcIP: %s\n\tsrcPort: %s\n\tdestIP: %s\n\tdestPort: %s\n\tnew_length: %d\n\ttype: %c\n\tsequence: %d\n\tlength: %d\n\tpayload: %s\n",
+			pkt.priority, pkt.srcIP, pkt.srcPort, pkt.destIP, pkt.destPort, pkt.new_length,
+			pkt.type, pkt.sequence, pkt.length, pkt.payload);
+}
+
 void
 printError(char* errorMessage) {
 	fprintf(stderr, "An error has occured: %s\n", errorMessage);
