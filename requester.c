@@ -131,7 +131,7 @@ int
 main(int argc, char *argv[])
 {
 	char *buffer;
-	buffer = malloc(MAXPACKETSIZE);
+	buffer = malloc(P2_MAXPACKETSIZE);
 	bzero(buffer, sizeof(buffer));
 	if(buffer == NULL) {
 		printError("Buffer could not be allocated");
@@ -264,12 +264,12 @@ main(int argc, char *argv[])
 			request.payload = requested_file_name;
 
 			// Serialize the request packet for sending
-			char* requestPacketSerial = malloc(HEADERSIZE+request.length);
+			char* requestPacketSerial = malloc(P2_HEADERSIZE+HEADERSIZE+request.length);
 			serializePacket(request, requestPacketSerial);
 
 			// Send the request packet to the sender 	
 			if ((numbytes = sendto(socketFD_Client, requestPacketSerial, 
-									HEADERSIZE+request.length, 0, p->ai_addr, p->ai_addrlen))==-1) {
+									P2_HEADERSIZE+HEADERSIZE+request.length, 0, p->ai_addr, p->ai_addrlen))==-1) {
 				perror("requester: sendto");
  			 	return -1;
 			}
@@ -280,7 +280,7 @@ main(int argc, char *argv[])
 						 s, sizeof(s)));*/
 
 
-			bzero(buffer, MAXPACKETSIZE);
+			bzero(buffer, P2_MAXPACKETSIZE);
 
 			bool done_with_sender = false;
 			bool first_packet = true;
@@ -289,19 +289,19 @@ main(int argc, char *argv[])
 
 			// We go until we get an 'E' packet
 			while (!done_with_sender) {
-				bzero(buffer, MAXPACKETSIZE);
+				bzero(buffer, P2_MAXPACKETSIZE);
 				// Listen for some kind of response. If one is given, fill in info
-				if (recvfrom(socketFD_Client, buffer, MAXPACKETSIZE, 0, 
+				if (recvfrom(socketFD_Client, buffer, P2_MAXPACKETSIZE, 0, 
 						(struct sockaddr *)&server, (socklen_t *)&slen) == -1) {
 					perror("recvfrom()");
 				}
 	
 				// Create a packet from the received data
 				packet PACKET;
-				memcpy(&PACKET.type, buffer, sizeof(char));
-				memcpy(&PACKET.sequence, buffer+1, sizeof(uint32_t));
-				memcpy(&PACKET.length, buffer+9, sizeof(uint32_t));
-				PACKET.payload = buffer+HEADERSIZE;
+				memcpy(&PACKET.type, buffer+P2_HEADERSIZE, sizeof(char));
+				memcpy(&PACKET.sequence, buffer+P2_HEADERSIZE+1, sizeof(uint32_t));
+				memcpy(&PACKET.length, buffer+P2_HEADERSIZE+9, sizeof(uint32_t));
+				PACKET.payload = buffer+P2_HEADERSIZE+HEADERSIZE;
 
 				printInfoAtReceive(inet_ntoa(server.sin_addr), PACKET);
 		
