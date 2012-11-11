@@ -47,17 +47,27 @@ int printInfoAtSend(char* requester_ip, packet pkt) {
 	return 0;
 }
 
-int sendEndPkt(struct sockaddr_storage client_addr, socklen_t addr_len, int socketFD_Server) {
+int sendEndPkt(struct sockaddr_storage client_addr, socklen_t addr_len, int socketFD_Server, char* s_port, packet request, uint8_t priority) {
 	// Send the end packet to the requester.  Sender is done sending.
 	packet endPkt;
 	// TODO: fill in other members of packet
+	char hostname[255];
+	gethostname(hostname, 255);
+	char ip[32];
+	hostname_to_ip(hostname, ip);
 	
 	endPkt.type = 'E';
 	endPkt.sequence = 0;
-	endPkt.length = 0;
 	endPkt.payload = "END.";
 	endPkt.length = strlen(endPkt.payload);
-  
+	strcpy(endPkt.srcIP, ip);
+	strcpy(endPkt.srcPort, s_port);
+	strcpy(endPkt.destIP, request.srcIP);
+	strcpy(endPkt.destPort, request.srcPort);
+	endPkt.new_length = HEADERSIZE + sizeof(endPkt.payload);
+	endPkt.priority = priority;
+	
+	
 	char* endPacketBuffer = malloc(P2_HEADERSIZE + HEADERSIZE + endPkt.length);
 	serializePacket(endPkt, endPacketBuffer);
   
@@ -213,7 +223,7 @@ main(int argc, char *argv[])
 		int fd;
 		if ((fd = open(request.payload, S_IRUSR )) == -1) {
 		perror("open");
-		  sendEndPkt(client_addr, addr_len, socketFD_Server);
+		  sendEndPkt(client_addr, addr_len, socketFD_Server, s_port, request, priority);
 		  return -1;
 		}
 		
@@ -245,7 +255,19 @@ main(int argc, char *argv[])
 					senderPacketNodeArray[j].packet.sequence = sequence_number;
 					senderPacketNodeArray[j].packet.length = bytesRead;
 					senderPacketNodeArray[j].packet.payload = senderDataBufferArray[j];
-			
+					
+					char hostname[255];
+					gethostname(hostname, 255);
+					char ip[32];
+					hostname_to_ip(hostname, ip);
+					printf("srcIP: %s\n", ip);
+					strcpy(senderPacketNodeArray[j].packet.srcIP, ip);
+					strcpy(senderPacketNodeArray[j].packet.srcPort, s_port);
+					strcpy(senderPacketNodeArray[j].packet.destIP, request.srcIP);
+					strcpy(senderPacketNodeArray[j].packet.destPort, request.srcPort);
+					senderPacketNodeArray[j].packet.new_length = HEADERSIZE + length;
+					senderPacketNodeArray[j].packet.priority = priority;
+						   
 					// Reset the senderPacketNode
 					senderPacketNodeArray[j].timeSent = 0;
 					senderPacketNodeArray[j].ACKReceived = false;
@@ -323,7 +345,7 @@ main(int argc, char *argv[])
 						ACKCounter++;
 					}
 					else if(senderPacketNodeArray[k].timeSent + ((senderPacketNodeArray[k].retryCount + 1)*(timeout/1000)) < (currentTime = time(NULL))) {
-						printf("TIMEOUTEXPIRED\n");				
+						//printf("TIMEOUTEXPIRED\n");				
 						if(senderPacketNodeArray[k].retryCount < 5) {
 							char* responsePacket = malloc(P2_HEADERSIZE+HEADERSIZE+senderPacketNodeArray[k].packet.length);
 							serializePacket(senderPacketNodeArray[k].packet, responsePacket);
@@ -353,7 +375,7 @@ main(int argc, char *argv[])
 			} // END while(!allACKReceived)
 		} // END while(!readComplete)
 
-		sendEndPkt(client_addr, addr_len, socketFD_Server);
+		sendEndPkt(client_addr, addr_len, socketFD_Server, s_port, request, priority);
 	}
 
 	close(socketFD_Server);

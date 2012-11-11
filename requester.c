@@ -236,6 +236,7 @@ main(int argc, char *argv[])
 	hints.ai_family = AF_INET;
 	hints.ai_socktype = SOCK_DGRAM;
 	hints.ai_protocol = IPPROTO_UDP;
+	hints.ai_flags = AI_PASSIVE;
 
 	// Hostname used for binding.May want to bind to other hostname (tracking sheet?)
 	char hostname[255];
@@ -259,7 +260,7 @@ main(int argc, char *argv[])
 	 * Sends the request in the form of a packet.
 	 */
 		if(strcmp(tracker_array[i].file_name, requested_file_name) == 0) {
-			if ((rv = getaddrinfo(tracker_array[i].sender_hostname, tracker_array[i].sender_port, &hints, &servinfo)) != 0) {
+			if ((rv = getaddrinfo(hostname, port_str, &hints, &servinfo)) != 0) {
 				fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
 				return -1;
 			}
@@ -269,6 +270,13 @@ main(int argc, char *argv[])
 			for(p = servinfo; p != NULL; p = p->ai_next) {
 				if ((socketFD_Client = socket(p->ai_family, p->ai_socktype, p->ai_protocol)) == -1) {
 					perror("talker: socket");
+					continue;
+				}
+				
+				 
+				if (bind(socketFD_Client, p->ai_addr, p->ai_addrlen) == -1) {
+					close(socketFD_Client);
+					perror("client: bind");
 					continue;
 				}
  		 		break;
@@ -283,16 +291,20 @@ main(int argc, char *argv[])
 			packet request;
 			request.priority = 0x01;
 
-			char s[INET6_ADDRSTRLEN];
-			char emulator_ip[32];
-			hostname_to_ip(f_hostname, emulator_ip);
-			//fprintf(stderr, "%s resolved to %s", f_hostname, emulator_ip);
-			strncpy(request.srcIP, inet_ntop(AF_INET, get_in_addr( (struct sockaddr*)p->ai_addr), s, sizeof(s)), 32);
+			//char s[INET6_ADDRSTRLEN];
+			//char emulator_ip[32];
+			char sender_ip[32];
+			hostname_to_ip(tracker_array[i].sender_hostname, sender_ip);
+			char hostname[255];
+			gethostname(hostname, 255);
+			char ip[32];
+			hostname_to_ip(hostname, ip);
+			strcpy(request.srcIP, ip); //inet_ntop(AF_INET, get_in_addr( (struct sockaddr*)p->ai_addr), s, sizeof(s)), 32);
 			strcpy(request.srcPort, port_str);
 
 			// Currently the dest is the emulator..what should it be?
-			strcpy(request.destIP, emulator_ip);
-			strcpy(request.destPort, "5002");
+			strcpy(request.destIP, sender_ip);
+			strcpy(request.destPort, tracker_array[i].sender_port);
 		
 			request.new_length = window_size;
 			
@@ -307,10 +319,20 @@ main(int argc, char *argv[])
 			// Serialize the request packet for sending
 			char* requestPacketSerial = malloc(P2_HEADERSIZE+HEADERSIZE+request.length);
 			serializePacket(request, requestPacketSerial);
+			
+			struct sockaddr_in sock_sendto;
+			socklen_t sendto_len;
+			sock_sendto.sin_family = AF_INET;
+			sock_sendto.sin_port = htons( atoi(f_port) );
+			char em_ip[32];
+			hostname_to_ip(f_hostname, em_ip);
+			inet_pton(AF_INET, em_ip, &sock_sendto.sin_addr);
+			memset(sock_sendto.sin_zero, '\0', sizeof(sock_sendto.sin_zero));
+			sendto_len = sizeof(sock_sendto);
 
 			// Send the request packet to the sender 	
 			if ((numbytes = sendto(socketFD_Client, requestPacketSerial, 
-									P2_HEADERSIZE+HEADERSIZE+request.length, 0, p->ai_addr, p->ai_addrlen))==-1) {
+									P2_HEADERSIZE+HEADERSIZE+request.length, 0, (struct sockaddr*) &sock_sendto, sendto_len)) == -1) { //p->ai_addr, p->ai_addrlen))==-1) {
 				perror("requester: sendto");
  			 	return -1;
 			}
