@@ -14,7 +14,7 @@ typedef struct Queue {
 	int size;
 	int front;
 	int rear;
-	packet *elements;
+	packet_plus *elements;
 } Queue;
 
 /**
@@ -59,7 +59,7 @@ Queue * newQueue(int capacity) {
 	Q = (Queue *) malloc( sizeof(Queue) );
 	
 	// Initialize the properties of the Queue
-	Q->elements = (packet *) malloc( sizeof(packet) * capacity);
+	Q->elements = (packet_plus *) malloc( sizeof(packet_plus) * capacity);
 	Q->size = 0;
 	Q->capacity = capacity;
 	Q->front = 0;
@@ -100,7 +100,7 @@ int dequeue(Queue *Q) {
  * @param Q The pointer to the Queue
  * @return The packet at the front of the queue
  */
-packet first(Queue *Q) {
+packet_plus first(Queue *Q) {
 	if(Q->size == 0) {
 		printf("Queue is empty. Exiting.\n");
 		exit(-1);
@@ -115,7 +115,7 @@ packet first(Queue *Q) {
  * @param element A packet struct to add to the Queue
  * @return 0 if successful, -1 if Queue is full
  */
-int enqueue(Queue *Q, packet element) {
+int enqueue(Queue *Q, packet_plus element) {
 	// Can't push onto full Queue
 	if(Q->size == Q->capacity) {
 		//printf("Queue is full\n");

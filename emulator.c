@@ -28,6 +28,10 @@ Queue* p3_queue;
 char* log_file; 		// Log file name
 bool debug = false;		// Debug flag
 
+packet_plus delayed_pkt;
+struct timeb delay_start;
+char delay_timeString[80];
+
 const char*
 get_ip_address(struct sockaddr* addr) {
 	char s[INET6_ADDRSTRLEN];
@@ -217,8 +221,12 @@ int readForwardingTable(char* filename, char* hostname, char* port) {
  * Checks the priority of the packet and either puts the packet into the
  * specified queue or drops the packet and returns an error.
  * @param pkt The packet to add to a Queue
+ * @param index The index of the forwarding table associated with the packet
  */
-void queue_packet(packet pkt) {
+void queue_packet(packet pkt, int index) {
+	packet_plus pkt_plus;
+	pkt_plus.pkt = pkt;
+	pkt_plus.fwd_table_index = index;
 	/*
 	 * Check the priority of the packet. Add to the queues. 
 	 * If a queue is full, log the message.  If the packet priority 
@@ -226,19 +234,19 @@ void queue_packet(packet pkt) {
 	 */
 	switch(pkt.priority) {
 	  case 1:
-		if ( enqueue(p1_queue, pkt) == -1) {
+		if ( enqueue(p1_queue, pkt_plus) == -1) {
 			if (debug) printf("P1 queue was full. Logging.\n");
 			log_entry("P1 Queue was full", pkt);
 		}
 		break;
 	  case 2:
-		if ( enqueue(p2_queue, pkt) == -1) {
+		if ( enqueue(p2_queue, pkt_plus) == -1) {
 			if (debug) printf("P2 queue was full. Logging.\n");
 			log_entry("P2 Queue was full", pkt);
 		}
 		break;
 	  case 3:
-		if ( enqueue(p3_queue, pkt) == -1) {
+		if ( enqueue(p3_queue, pkt_plus) == -1) {
 			if (debug) printf("P3 queue was full. Logging.\n");
 			log_entry("P3 Queue was full", pkt);
 		}
@@ -247,6 +255,123 @@ void queue_packet(packet pkt) {
 		if (debug) printf("Packet priority was invalid. Logging.\n");
 		log_entry("Packet priority was invalid", pkt);
 	}
+}
+
+
+/**
+ * Gets and returns a random number in between the range 
+ * of min and max
+ * @param min The lower bound value to return
+ * @param max The upper bound value to return
+ * @return An integer between min and max
+ */
+int getRandom(int min, int max) {
+	static bool init = false;
+	int rc;
+	
+	if (!init) {
+		srand(time(NULL));
+		init = true;
+	}
+	
+	rc = (rand() % (max - min + 1) + min);
+	
+	return rc;
+}
+
+/**
+ * Deal with the delay of the packet.  If the time the packet has been delayed is
+ * greater than or equal to the delay time for the packet's forwarding table entry, 
+ * then randomly decide to send it off or drop it.
+ * @return true if the delay should continue on, false if the packet is dropped or sent
+ */
+bool dealWithDelay(int socketFD_Emulator) {
+	struct timeb cur_time;
+	char cur_timeString[80];
+	ftime(&cur_time);
+	strftime(cur_timeString, sizeof(cur_timeString), "%H:%M:%S", localtime(&(cur_time.time)));
+	double duration = difftime(cur_time.time, delay_start.time);
+	double mills = cur_time.millitm - delay_start.millitm;
+	duration += (mills / 1000.0);
+	
+	int delayed_pkt_fwd_index = delayed_pkt.fwd_table_index;
+	bool end_delay = (duration >= forwarding_table[delayed_pkt_fwd_index].delay);
+	
+	if (end_delay) {
+		if (debug) {
+			printf("Should be ending the delay and sending packet to %s\n", forwarding_table[delayed_pkt_fwd_index].next_IP);
+		}
+		
+		int loss_prob = 100 - forwarding_table[delayed_pkt_fwd_index].loss_prob;
+		int random;
+		random = getRandom(0, 100);
+		
+		bool drop = (random > loss_prob);
+		if (drop) {
+			// TODO: Should drop the packet..which means we do nothing at all
+			packet log = delayed_pkt.pkt;
+			log_entry("Random loss event occurred", log);
+		}
+		else {
+			// TODO: We should send the packet to the given next hop (forwarding table entry)
+			struct sockaddr_in sock_sendto;
+			socklen_t sendto_len;
+			sock_sendto.sin_family = AF_INET;
+			sock_sendto.sin_port = htons( atoi(forwarding_table[delayed_pkt_fwd_index].next_port) );
+			inet_pton(AF_INET, forwarding_table[delayed_pkt_fwd_index].next_IP, &sock_sendto.sin_addr);
+			
+			if (debug) {
+				printf("Trying to send something to next hop.");
+			}
+			
+			char buffer[200];
+			strcpy(buffer, "What the heck");
+			sendto_len = sizeof(sock_sendto);
+			if ( sendto(socketFD_Emulator, buffer, sizeof(buffer), 0, 
+								(struct sockaddr*) &sock_sendto, sendto_len) ==-1 ) {
+				perror("sendto()");
+			}
+		}
+		return false;
+	}
+	
+	return true;
+}
+
+/**
+ * Delay the top priority packet, looking at the three queues in the program.
+ * Sets the delayed_pkt struct, and returns true if there was a packet delayed.
+ * @return true if a packet is now being delayed, false otherwise
+ */
+bool delayPacket() {
+	bool packet_delayed = false;
+	
+	if ( !isEmpty(p1_queue) ) {
+		if (debug) printf("Delaying packet from p1 queue.\n");
+		delayed_pkt = first(p1_queue);
+		dequeue(p1_queue);
+		packet_delayed = true;
+	}
+	else if ( !isEmpty(p2_queue) ) {
+		if (debug) printf("Delaying packet from p2 queue.\n");
+		delayed_pkt = first(p2_queue);
+		dequeue(p2_queue);
+		packet_delayed = true;
+	}
+	else if ( !isEmpty(p3_queue) ) {
+		if (debug) printf("Delaying packet from p3 queue.\n");
+		delayed_pkt = first(p3_queue);
+		dequeue(p3_queue);
+		packet_delayed = true;
+	}
+	
+	// If we got a delayed packet, set the start time
+	if (packet_delayed) {
+		ftime(&delay_start);
+		strftime(delay_timeString, sizeof(delay_timeString), "%H:%M:%S", localtime(&(delay_start.time)));
+	}
+	
+	return packet_delayed;
 }
 
 
@@ -354,36 +479,20 @@ int main(int argc, char *argv[]) {
 	FD_ZERO(&readfds);
 	FD_SET(socketFD_Emulator, &readfds);
 	bool packet_delayed = false;
-	packet delayed_pkt;
-	struct timeb delay_start;
-	char delay_timeString[80];
-	delayed_info delayed_pkt_info;
 	
 	
 	while (true) {
 		addr_len = sizeof(addr);
 		if ((numbytes = recvfrom(socketFD_Emulator, buffer, MAXPACKETSIZE, 0, 
 						(struct sockaddr*)&addr, &addr_len)) <= -1) {
+			
+			// Deal with the delay or set one up
 			if (packet_delayed) {
-				// do something
-				struct timeb cur_time;
-				char cur_timeString[80];
-				ftime(&cur_time);
-				strftime(cur_timeString, sizeof(cur_timeString), "%H:%M:%S", localtime(&(cur_time.time)));
-				double duration = difftime(cur_time.time, delay_start.time);
-				double mills = cur_time.millitm - delay_start.millitm;
-				duration += (mills / 1000.0);
-				
-				bool end_delay = (duration >= delayed_pkt_info.delay);
-				
-				if (end_delay) {
-					if (debug) {
-						printf("Should be ending the delay, sending packet to %s\n", delayed_pkt_info.sendto_ip);
-					}
-					
-					//TODO: Send or drop packet
-					packet_delayed = false;
-				}
+				packet_delayed = dealWithDelay(socketFD_Emulator);
+			}
+			
+			else {
+				packet_delayed = delayPacket();
 			}
 		}
 		else {
@@ -392,11 +501,14 @@ int main(int argc, char *argv[]) {
 				printf("emulator: packet is %d bytes long\n", numbytes);
 			}
 			packet pkt = getPktFromBuffer(buffer);
-			print_packet(pkt);
 			
-			int i;
-			for (i = 0; i < forwarding_table_size; i++) {
-				forwarding_entry entry = forwarding_table[i];
+			if (debug) {
+				//print_packet(pkt);
+			}
+			
+			int index;
+			for (index = 0; index < forwarding_table_size; index++) {
+				forwarding_entry entry = forwarding_table[index];
 				
 				// The destinations do not line up; drop packet and log issue.
 				if ( (strcmp(entry.destination_IP, pkt.destIP) != 0) || 
@@ -408,55 +520,15 @@ int main(int argc, char *argv[]) {
 						printf("A forwarding table-packet destination match was found.\n");
 					}
 				  
-					queue_packet(pkt);
+					// Queue the packet 
+					queue_packet(pkt, index);
 					
+					// Deal with the delay or set one up
 					if (packet_delayed) {
-						// do something
-						struct timeb cur_time;
-						char cur_timeString[80];
-						ftime(&cur_time);
-						strftime(cur_timeString, sizeof(cur_timeString), "%H:%M:%S", localtime(&(cur_time.time)));
-						double duration = difftime(cur_time.time, delay_start.time);
-						double mills = cur_time.millitm - delay_start.millitm;
-						duration += (mills / 1000.0);
-						
-						// delay should probably not ever be 'over' in here
-						bool delay_over = (duration >= entry.delay);
-						if (debug) {
-						  printf("duration of delay so far: %f seconds.\n", duration);
-						  printf("should the delay be over? %d\n", delay_over);
-						}
+						packet_delayed = dealWithDelay(socketFD_Emulator);
 					}
 					else {
-						if ( !isEmpty(p1_queue) ) {
-							if (debug) printf("Delaying packet from p1 queue.\n");
-							delayed_pkt = first(p1_queue);
-							dequeue(p1_queue);
-							packet_delayed = true;
-						}
-						else if ( !isEmpty(p2_queue) ) {
-							if (debug) printf("Delaying packet from p2 queue.\n");
-							delayed_pkt = first(p2_queue);
-							dequeue(p2_queue);
-							packet_delayed = true;
-						}
-						else if ( !isEmpty(p3_queue) ) {
-							if (debug) printf("Delaying packet from p3 queue.\n");
-							delayed_pkt = first(p3_queue);
-							dequeue(p3_queue);
-							packet_delayed = true;
-						}
-						
-						// If we got a delayed packet, set the start time
-						if (packet_delayed) {
-							delayed_pkt_info.pkt = delayed_pkt;
-							delayed_pkt_info.delay = entry.delay;
-							strcpy(delayed_pkt_info.sendto_hostname, entry.next_hostname);
-							strcpy(delayed_pkt_info.sendto_port, entry.next_port);
-							strcpy(delayed_pkt_info.sendto_ip, entry.next_IP);
-							ftime(&delay_start);
-							strftime(delay_timeString, sizeof(delay_timeString), "%H:%M:%S", localtime(&(delay_start.time)));
-						}
+						packet_delayed = delayPacket();
 					}
 				}
 				
@@ -464,10 +536,6 @@ int main(int argc, char *argv[]) {
 		}
 	}
 
-	
-	/*printf("emulator: got packet from %s\n", inet_ntop(addr.ss_family, 
-				get_in_addr((struct sockaddr*)&addr), s, sizeof(s)));
-	printf("emulator: packet is %d bytes long\n", numbytes);*/
 
 	
 	return 0;
