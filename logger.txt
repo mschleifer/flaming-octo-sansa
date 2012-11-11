@@ -1,3 +1,0 @@
-Random loss event occurred: (src): mumble-34.cs.wisc.edu::5001, (dest): mumble-34.cs.wisc.edu::5000, (time): 18:34:30.950, (priority): 1, (size): 9
-Random loss event occurred: (src): mumble-34.cs.wisc.edu::5001, (dest): mumble-34.cs.wisc.edu::5000, (time): 18:34:33.952, (priority): 1, (size): 9
-Random loss event occurred: (src): mumble-34.cs.wisc.edu::5001, (dest): mumble-34.cs.wisc.edu::5000, (time): 18:34:36.952, (priority): 1, (size): 9

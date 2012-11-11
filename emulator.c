@@ -302,7 +302,7 @@ bool dealWithDelay(int socketFD_Emulator) {
 			printf("Should be ending the delay and sending packet to %s\n", forwarding_table[delayed_pkt_fwd_index].next_IP);
 		}
 		
-		int loss_prob = 0 + forwarding_table[delayed_pkt_fwd_index].loss_prob;
+		int loss_prob = 100 - forwarding_table[delayed_pkt_fwd_index].loss_prob;
 		int random;
 		random = getRandom(0, 100);
 		
