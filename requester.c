@@ -292,7 +292,7 @@ main(int argc, char *argv[])
 
 			// Currently the dest is the emulator..what should it be?
 			strcpy(request.destIP, emulator_ip);
-			strcpy(request.destPort, f_port);
+			strcpy(request.destPort, "5002");
 		
 			request.new_length = window_size;
 			

@@ -302,6 +302,7 @@ main(int argc, char *argv[])
 					//exit(1);
 				}
 				if(numbytes > 0) {
+					printf("client ip and port: %s %d\n", get_ip_address( (struct sockaddr*) &client_addr), ((struct sockaddr_in*)&client_addr)->sin_port);
 					ACKPacket = getPktFromBuffer(buffer);
 					if(ACKPacket.type == 'A')  {
 						for(k = 0; k < packetsRead; k++) {
