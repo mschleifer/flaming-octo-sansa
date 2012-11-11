@@ -508,7 +508,7 @@ int main(int argc, char *argv[]) {
 
 		//bzero(buffer, P2_MAXPACKETSIZE); // Need to zero the buffer
 		// If no data is being sent to us, determine if packets need to be dealt with
-		if ((numbytes = recvfrom(socketFD_Emulator, buffer, MAXPACKETSIZE, 0, 
+		if ((numbytes = recvfrom(socketFD_Emulator, buffer, P2_MAXPACKETSIZE, 0, 
 						(struct sockaddr*)&addr, &addr_len)) <= -1) {
 			
 			// Deal with the delay or set one up
