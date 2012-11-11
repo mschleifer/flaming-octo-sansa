@@ -321,7 +321,8 @@ main(int argc, char *argv[])
 					if(senderPacketNodeArray[k].ACKReceived) {
 						ACKCounter++;
 					}
-					else if(senderPacketNodeArray[k].timeSent + timeout < (currentTime = time(NULL))) {				
+					else if(senderPacketNodeArray[k].timeSent + ((senderPacketNodeArray[k].retryCount + 1)*(timeout/1000)) < (currentTime = time(NULL))) {
+						printf("TIMEOUTEXPIRED\n");				
 						if(senderPacketNodeArray[k].retryCount < 5) {
 							char* responsePacket = malloc(P2_HEADERSIZE+HEADERSIZE+senderPacketNodeArray[k].packet.length);
 							serializePacket(senderPacketNodeArray[k].packet, responsePacket);
@@ -331,8 +332,9 @@ main(int argc, char *argv[])
 									0, (struct sockaddr*) &client_addr, addr_len) == -1) {
 								perror("sendto()");
 							}
-					
+		
 							senderPacketNodeArray[k].retryCount++;
+							printf("RESENDING packet %d, attempt number %d\n",senderPacketNodeArray[k].packet.sequence, senderPacketNodeArray[k].retryCount);
 					
 							// I'm suddenly concerned with memory leaks
 							free(responsePacket);

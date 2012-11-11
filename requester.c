@@ -180,7 +180,7 @@ main(int argc, char *argv[])
 	char* requested_file_name = malloc(MAXPAYLOADSIZE);
 	char* f_hostname;
 	char* f_port;
-	int size_window;
+	int window_size;
 	
 
 	// Deal with command-line arguments
@@ -202,7 +202,7 @@ main(int argc, char *argv[])
 			f_port = optarg;
 			break;
 		case 'w':
-			size_window = atoi(optarg);
+			window_size = atoi(optarg);
 			break;
 		default: 
 			usage_Requester(argv[0]);
@@ -294,7 +294,7 @@ main(int argc, char *argv[])
 			strcpy(request.destIP, emulator_ip);
 			strcpy(request.destPort, f_port);
 		
-			request.new_length = size_window;
+			request.new_length = window_size;
 			
 			request.type = 'R';
 			request.sequence = 0;
@@ -327,6 +327,8 @@ main(int argc, char *argv[])
 			bool first_packet = true;
 			sender_summary pkt_sender;
 			bzero(&pkt_sender, sizeof(sender_summary));
+			int numPacketsReceived = 0;
+			bool packetReceived[window_size];
 
 			// We go until we get an 'E' packet
 			while (!done_with_sender) {
@@ -344,11 +346,23 @@ main(int argc, char *argv[])
 				memcpy(&PACKET.length, buffer+P2_HEADERSIZE+9, sizeof(uint32_t));
 				PACKET.payload = buffer+P2_HEADERSIZE+HEADERSIZE;
 
-				printInfoAtReceive(inet_ntoa(server.sin_addr), PACKET);
+				//printInfoAtReceive(inet_ntoa(server.sin_addr), PACKET);
 		
 				// If it's a DATA packet
 				if (PACKET.type == 'D') {
-					writeToFile(PACKET.payload, fp);
+					if((PACKET.sequence != 1) && (PACKET.sequence == (window_size * (numPacketsReceived/window_size)) + 1)) {
+						printf("Resetting receivedarray\n");
+						memset(packetReceived, 0, sizeof(bool)*window_size);
+					}
+					if(!packetReceived[(PACKET.sequence%window_size)]) {
+						printf("Received new packet, number %d\n", PACKET.sequence);
+						writeToFile(PACKET.payload, fp);
+						packetReceived[(PACKET.sequence%window_size)] = true;
+						numPacketsReceived++;
+					}
+					else {
+						printf("Received repeat packet, number %d\n", PACKET.sequence);
+					}
 		
 					// The first packet from the sender
 					if (first_packet) {
@@ -369,7 +383,7 @@ main(int argc, char *argv[])
 						pkt_sender.num_bytes += PACKET.length;
 					}
 					
-					sendACKPacket((struct sockaddr*)p->ai_addr, p->ai_addrlen, socketFD_Client, PACKET.sequence);
+					//sendACKPacket((struct sockaddr*)p->ai_addr, p->ai_addrlen, socketFD_Client, PACKET.sequence);
 	 
 				} // END IF D-Packet
 				else if (PACKET.type == 'E') {
@@ -382,10 +396,10 @@ main(int argc, char *argv[])
 					
 					// Roll the "file cursor" back 1 byte to avoid extra \n's
 					if(fseek(fp, -1, SEEK_END) < 0) {
-					//fp = fopen(file_name, "r+"); // Nothing in file yet so reopen
 						perror("fseek");
 						return -1;
 					}
+					memset(packetReceived, 0, sizeof(bool)*window_size);
 					
 				} // END ELSE-IF E-Packet
 						
