@@ -33,27 +33,41 @@ void
   return &(((struct sockaddr_in6*)sa)->sin6_addr);
 }
 
+/**
+ * Prints all information in a packet, tabbed.
+ * @param pkt A packet to print
+ */
 void print_packet(packet pkt) {
 	printf("packet:\n\tpriority: %d\n\tsrcIP: %s\n\tsrcPort: %s\n\tdestIP: %s\n\tdestPort: %s\n\tnew_length: %d\n\ttype: %c\n\tsequence: %d\n\tlength: %d\n\tpayload: %s\n",
 			pkt.priority, pkt.srcIP, pkt.srcPort, pkt.destIP, pkt.destPort, pkt.new_length,
 			pkt.type, pkt.sequence, pkt.length, pkt.payload);
 }
-void
-print_packetBuffer(char* buffer) {
+
+/**
+ * Prints all information corresponding to a packet, in the buffer.
+ * @param buffer The buffer containing the packet information to print.
+ */
+void print_packetBuffer(char* buffer) {
 	printf("\nPACKET BUFFER\n\tpriority: %d\n\tsrcIP: %s\n\tsrcPort: %s\n\tdestIP: %s\n\tdestPort: %s\n\tnew_length: %d\n\ttype: %c\n\tsequence: %d\n\tlength: %d\n\tpayload: %s\n",
 			(uint8_t)*buffer, buffer+1, buffer+33, buffer+49, buffer+81, (int)*(buffer+97),
 			(uint32_t)*(buffer+P2_HEADERSIZE), (int)*(buffer+P2_HEADERSIZE+1), (int)*(buffer+P2_HEADERSIZE+9),
 			buffer+P2_HEADERSIZE+HEADERSIZE);
 }
 
-void
-printError(char* errorMessage) {
+
+/**
+ * Simply prints the given message to stderr
+ */
+void printError(char* errorMessage) {
 	fprintf(stderr, "An error has occured: %s\n", errorMessage);
 }
 
-/*
+/**
  * Places data from pkt into buffer in a form that can be sent over the network
- * Expects buffer to point to the max packet-size worth of freespace
+ * Expects buffer to point to the max packet-size worth of freespace.
+ * The opposite of getPktFromBuffer().
+ * @param pkt A packet to transmit into the empty buffer
+ * @param buffer The buffer to fill with a packet's information (returned)
  */
 void
 serializePacket(packet pkt, char* buffer) {
@@ -72,7 +86,9 @@ serializePacket(packet pkt, char* buffer) {
 /**
  * Takes in a buffer that is assumed to contain everything that a packet
  * would contain, and it returns the packet with all information filled
- * out. 
+ * out.  The opposite of serializePacket().
+ * @param buffer A buffer filled with the information a packet would contain
+ * @return The packet with the information from the buffer
  */
 packet getPktFromBuffer(char* buffer) {
 	packet pkt;

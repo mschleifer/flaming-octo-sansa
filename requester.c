@@ -417,14 +417,21 @@ main(int argc, char *argv[])
 					ftime(&pkt_sender.end_time);
 					strftime(pkt_sender.end_timeString, sizeof(pkt_sender.end_timeString), "%H:%M:%S", 
 										localtime(&(pkt_sender.end_time.time)));
-					printSummaryInfo(server, pkt_sender);
 					
-					// Roll the "file cursor" back 1 byte to avoid extra \n's
-					if(fseek(fp, -1, SEEK_END) < 0) {
-						perror("fseek");
-						return -1;
+					/*
+					 * If we didn't receive any packets from this sender, 
+					 * don't do anything (otherwise a segfault).
+					 */
+					if (!first_packet) {
+						printSummaryInfo(server, pkt_sender);
+						
+						// Roll the "file cursor" back 1 byte to avoid extra \n's
+						if(fseek(fp, -1, SEEK_END) < 0) {
+							perror("fseek");
+							return -1;
+						}
+						memset(packetReceived, 0, sizeof(bool)*window_size);
 					}
-					memset(packetReceived, 0, sizeof(bool)*window_size);
 					numPacketsReceived = 0;
 					
 				} // END ELSE-IF E-Packet
