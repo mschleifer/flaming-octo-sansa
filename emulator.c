@@ -307,13 +307,24 @@ bool dealWithDelay(int socketFD_Emulator) {
 		random = getRandom(0, 100);
 		
 		bool drop = (random > loss_prob);
-		if (drop) {
-			// TODO: Should drop the packet..which means we do nothing at all
+		if (drop && delayed_pkt.pkt.type != 'R' && delayed_pkt.pkt.type != 'E') {
+			if (debug) {
+				printf("Randomly dropping a packet.\n");
+			}
 			packet log = delayed_pkt.pkt;
 			log_entry("Random loss event occurred", log);
 		}
 		else {
-			// TODO: We should send the packet to the given next hop (forwarding table entry)
+			if (debug) {
+				printf("Sending packet to next hop.\n");
+			}
+			
+			/*
+			 * Fills out a sockaddr_in that we will use to send 
+			 * the packet to the next hop.  Fill out the 
+			 * ip addr and port of the struct using the forwarding table
+			 * and send the data using sendto()
+			 */ 
 			struct sockaddr_in sock_sendto;
 			socklen_t sendto_len;
 			sock_sendto.sin_family = AF_INET;
@@ -321,14 +332,11 @@ bool dealWithDelay(int socketFD_Emulator) {
 			inet_pton(AF_INET, forwarding_table[delayed_pkt_fwd_index].next_IP, &sock_sendto.sin_addr);
 			memset(sock_sendto.sin_zero, '\0', sizeof(sock_sendto.sin_zero));
 			
-			if (debug) {
-				printf("Attempting to send something to next hop.\n");
-			}
-			
 			char* sendPkt = malloc(P2_HEADERSIZE+HEADERSIZE+delayed_pkt.pkt.length);
 			serializePacket(delayed_pkt.pkt, sendPkt);
 			sendto_len = sizeof(sock_sendto);
 			
+			// Send the packet to the next hop
 			if ( sendto(socketFD_Emulator, sendPkt, P2_HEADERSIZE+HEADERSIZE+delayed_pkt.pkt.length, 0, 
 								(struct sockaddr*) &sock_sendto, sendto_len) == -1 ) {
 				perror("sendto()");
@@ -508,6 +516,7 @@ int main(int argc, char *argv[]) {
 				print_packet(pkt);
 			}
 			
+			bool no_entry_found = true;
 			int index;
 			for (index = 0; index < forwarding_table_size; index++) {
 				forwarding_entry entry = forwarding_table[index];
@@ -515,13 +524,14 @@ int main(int argc, char *argv[]) {
 				// The destinations do not line up; drop packet and log issue.
 				if ( (strcmp(entry.destination_IP, pkt.destIP) != 0) || 
 					  (strcmp(entry.destination_port, pkt.destPort) != 0) ) {
-					log_no_entry_found(pkt.destIP, pkt.destPort, pkt.srcIP, pkt.srcPort, pkt.priority, pkt.length);
+					//log_no_entry_found(pkt.destIP, pkt.destPort, pkt.srcIP, pkt.srcPort, pkt.priority, pkt.length);
 				}
 				else {
 					if (debug) {
 						printf("A forwarding table-packet destination match was found.\n");
 					}
 				  
+					no_entry_found = false;
 					// Queue the packet 
 					queue_packet(pkt, index);
 					
@@ -533,7 +543,12 @@ int main(int argc, char *argv[]) {
 						packet_delayed = delayPacket();
 					}
 				}
-				
+	
+			}
+			
+			// If no destination was found, drop packet and log issue
+			if (no_entry_found) {
+				log_no_entry_found(pkt.destIP, pkt.destPort, pkt.srcIP, pkt.srcPort, pkt.priority, pkt.length);
 			}
 		}
 	}

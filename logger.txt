@@ -1,16 +1,7 @@
-no forwarding entry was found: (src): mumble-21.cs.wisc.edu::5001, (dest): mumble-21.cs.wisc.edu::5002, (time): 15:50:56.404, (priority): 1, (size): 9
-no forwarding entry was found: (src): mumble-21.cs.wisc.edu::5002, (dest): mumble-21.cs.wisc.edu::5001, (time): 15:50:56.505, (priority): 1, (size): 10
-Random loss event occurred: (src): mumble-21.cs.wisc.edu::5002, (dest): mumble-21.cs.wisc.edu::5001, (time): 15:50:56.707, (priority): 1, (size): 10
-no forwarding entry was found: (src): mumble-21.cs.wisc.edu::5002, (dest): mumble-21.cs.wisc.edu::5001, (time): 15:50:57.506, (priority): 1, (size): 10
-Random loss event occurred: (src): mumble-21.cs.wisc.edu::5002, (dest): mumble-21.cs.wisc.edu::5001, (time): 15:50:57.707, (priority): 1, (size): 10
-no forwarding entry was found: (src): mumble-21.cs.wisc.edu::5002, (dest): mumble-21.cs.wisc.edu::5001, (time): 15:50:58.507, (priority): 1, (size): 10
-no forwarding entry was found: (src): mumble-21.cs.wisc.edu::5002, (dest): mumble-21.cs.wisc.edu::5001, (time): 15:50:59.3, (priority): 1, (size): 10
-no forwarding entry was found: (src): mumble-21.cs.wisc.edu::5002, (dest): mumble-21.cs.wisc.edu::5001, (time): 15:50:59.7, (priority): 1, (size): 10
-no forwarding entry was found: (src): mumble-21.cs.wisc.edu::5002, (dest): mumble-21.cs.wisc.edu::5001, (time): 15:51:00.3, (priority): 1, (size): 10
-no forwarding entry was found: (src): mumble-21.cs.wisc.edu::5002, (dest): mumble-21.cs.wisc.edu::5001, (time): 15:51:00.7, (priority): 1, (size): 10
-no forwarding entry was found: (src): mumble-21.cs.wisc.edu::5002, (dest): mumble-21.cs.wisc.edu::5001, (time): 15:51:01.2, (priority): 1, (size): 10
-no forwarding entry was found: (src): mumble-21.cs.wisc.edu::5002, (dest): mumble-21.cs.wisc.edu::5001, (time): 15:51:01.7, (priority): 1, (size): 10
-no forwarding entry was found: (src): mumble-21.cs.wisc.edu::5002, (dest): mumble-21.cs.wisc.edu::5001, (time): 15:51:02.3, (priority): 1, (size): 10
-no forwarding entry was found: (src): mumble-21.cs.wisc.edu::5002, (dest): mumble-21.cs.wisc.edu::5001, (time): 15:51:02.9, (priority): 1, (size): 10
-no forwarding entry was found: (src): mumble-21.cs.wisc.edu::5002, (dest): mumble-21.cs.wisc.edu::5001, (time): 15:51:03.2, (priority): 1, (size): 10
-no forwarding entry was found: (src): mumble-21.cs.wisc.edu::5002, (dest): mumble-21.cs.wisc.edu::5001, (time): 15:51:04.1, (priority): 1, (size): 4
+Random loss event occurred: (src): mumble-21.cs.wisc.edu::5002, (dest): mumble-21.cs.wisc.edu::5001, (time): 16:18:28.171, (priority): 1, (size): 10
+Random loss event occurred: (src): mumble-21.cs.wisc.edu::5002, (dest): mumble-21.cs.wisc.edu::5001, (time): 16:18:47.217, (priority): 1, (size): 10
+Random loss event occurred: (src): mumble-21.cs.wisc.edu::5002, (dest): mumble-21.cs.wisc.edu::5001, (time): 16:18:48.211, (priority): 1, (size): 10
+Random loss event occurred: (src): mumble-21.cs.wisc.edu::5002, (dest): mumble-21.cs.wisc.edu::5001, (time): 16:18:57.210, (priority): 1, (size): 10
+Random loss event occurred: (src): mumble-21.cs.wisc.edu::5002, (dest): mumble-21.cs.wisc.edu::5001, (time): 16:18:58.201, (priority): 1, (size): 10
+Random loss event occurred: (src): mumble-21.cs.wisc.edu::5002, (dest): mumble-21.cs.wisc.edu::5001, (time): 16:19:08.223, (priority): 1, (size): 10
+Random loss event occurred: (src): mumble-21.cs.wisc.edu::5002, (dest): mumble-21.cs.wisc.edu::5001, (time): 16:19:18.204, (priority): 1, (size): 10

@@ -360,7 +360,6 @@ main(int argc, char *argv[])
 						(struct sockaddr *)&server, (socklen_t *)&slen) == -1) {
 					perror("recvfrom()");
 				}
-				printf("Received something.\n");
 	
 				// Create a packet from the received data
 				packet PACKET;
