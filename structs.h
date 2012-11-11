@@ -1,6 +1,8 @@
 #ifndef STRUCTS_H
 #define STRUCTS_H
 
+#include <stdbool.h>
+
 // Packets as defined in the project specifications
 typedef struct packet {
 	char type;
@@ -76,4 +78,13 @@ typedef struct delayed_info {
 	char sendto_ip[32];
 	float delay;
 } delayed_info;
+
+// Used by sender to keep track of info related to resending a packet
+typedef struct senderPacketNode {
+	time_t timeSent;
+	bool ACKReceived;
+	packet packet;
+	int retryCount;
+} senderPacketNode;
+
 #endif

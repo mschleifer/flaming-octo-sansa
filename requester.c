@@ -25,7 +25,29 @@ get_ip_address(struct sockaddr* addr) {
 	return inet_ntop( AF_INET, get_in_addr(addr), s, sizeof(s) ); 
 }
 
-
+int sendACKPacket(struct sockaddr* sendTo_addr, socklen_t addr_len, int socketFD_Client, int seq_no) {
+	// Send ACK packet to the sender
+	packet ACKPkt;
+	// TODO: fill in other members of packet
+	
+	ACKPkt.type = 'A';
+	ACKPkt.sequence = seq_no;
+	ACKPkt.length = 0;
+	ACKPkt.payload = "";
+  
+	char* ACKPacketBuffer = malloc(P2_HEADERSIZE + HEADERSIZE + ACKPkt.length);
+	serializePacket(ACKPkt, ACKPacketBuffer);
+  
+	if (sendto(socketFD_Client, ACKPacketBuffer, 
+			P2_HEADERSIZE+HEADERSIZE+ACKPkt.length, 0, sendTo_addr, addr_len) == -1) {
+		perror("requester: sendto");
+ 		return -1;
+	}
+	
+	printf("Sent ACK packet for %d\n", ACKPkt.sequence);
+	
+	return 0;
+}
 
 /**
  * Writes what is given to the given file name. 
@@ -346,6 +368,8 @@ main(int argc, char *argv[])
 						pkt_sender.num_data_pkts++;
 						pkt_sender.num_bytes += PACKET.length;
 					}
+					
+					sendACKPacket((struct sockaddr*)p->ai_addr, p->ai_addrlen, socketFD_Client, PACKET.sequence);
 	 
 				} // END IF D-Packet
 				else if (PACKET.type == 'E') {
