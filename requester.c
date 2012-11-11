@@ -338,6 +338,7 @@ main(int argc, char *argv[])
 						(struct sockaddr *)&server, (socklen_t *)&slen) == -1) {
 					perror("recvfrom()");
 				}
+				printf("Received something.\n");
 	
 				// Create a packet from the received data
 				packet PACKET;
@@ -346,22 +347,17 @@ main(int argc, char *argv[])
 				memcpy(&PACKET.length, buffer+P2_HEADERSIZE+9, sizeof(uint32_t));
 				PACKET.payload = buffer+P2_HEADERSIZE+HEADERSIZE;
 
-				//printInfoAtReceive(inet_ntoa(server.sin_addr), PACKET);
+				printInfoAtReceive(inet_ntoa(server.sin_addr), PACKET);
 		
 				// If it's a DATA packet
 				if (PACKET.type == 'D') {
 					if((PACKET.sequence != 1) && (PACKET.sequence == (window_size * (numPacketsReceived/window_size)) + 1)) {
-						printf("Resetting receivedarray\n");
 						memset(packetReceived, 0, sizeof(bool)*window_size);
 					}
 					if(!packetReceived[(PACKET.sequence%window_size)]) {
-						printf("Received new packet, number %d\n", PACKET.sequence);
 						writeToFile(PACKET.payload, fp);
 						packetReceived[(PACKET.sequence%window_size)] = true;
 						numPacketsReceived++;
-					}
-					else {
-						printf("Received repeat packet, number %d\n", PACKET.sequence);
 					}
 		
 					// The first packet from the sender
@@ -383,7 +379,7 @@ main(int argc, char *argv[])
 						pkt_sender.num_bytes += PACKET.length;
 					}
 					
-					//sendACKPacket((struct sockaddr*)p->ai_addr, p->ai_addrlen, socketFD_Client, PACKET.sequence);
+					sendACKPacket((struct sockaddr*)p->ai_addr, p->ai_addrlen, socketFD_Client, PACKET.sequence);
 	 
 				} // END IF D-Packet
 				else if (PACKET.type == 'E') {
