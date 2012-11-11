@@ -285,7 +285,7 @@ int getRandom(int min, int max) {
  * then randomly decide to send it off or drop it.
  * @return true if the delay should continue on, false if the packet is dropped or sent
  */
-bool dealWithDelay() {
+bool dealWithDelay(int socketFD_Emulator) {
 	struct timeb cur_time;
 	char cur_timeString[80];
 	ftime(&cur_time);
@@ -314,6 +314,23 @@ bool dealWithDelay() {
 		}
 		else {
 			// TODO: We should send the packet to the given next hop (forwarding table entry)
+			struct sockaddr_in sock_sendto;
+			socklen_t sendto_len;
+			sock_sendto.sin_family = AF_INET;
+			sock_sendto.sin_port = htons( atoi(forwarding_table[delayed_pkt_fwd_index].next_port) );
+			inet_pton(AF_INET, forwarding_table[delayed_pkt_fwd_index].next_IP, &sock_sendto.sin_addr);
+			
+			if (debug) {
+				printf("Trying to send something to next hop.");
+			}
+			
+			char buffer[200];
+			strcpy(buffer, "What the heck");
+			sendto_len = sizeof(sock_sendto);
+			if ( sendto(socketFD_Emulator, buffer, sizeof(buffer), 0, 
+								(struct sockaddr*) &sock_sendto, sendto_len) ==-1 ) {
+				perror("sendto()");
+			}
 		}
 		return false;
 	}
@@ -471,7 +488,7 @@ int main(int argc, char *argv[]) {
 			
 			// Deal with the delay or set one up
 			if (packet_delayed) {
-				packet_delayed = dealWithDelay();
+				packet_delayed = dealWithDelay(socketFD_Emulator);
 			}
 			
 			else {
@@ -508,7 +525,7 @@ int main(int argc, char *argv[]) {
 					
 					// Deal with the delay or set one up
 					if (packet_delayed) {
-						packet_delayed = dealWithDelay();
+						packet_delayed = dealWithDelay(socketFD_Emulator);
 					}
 					else {
 						packet_delayed = delayPacket();
