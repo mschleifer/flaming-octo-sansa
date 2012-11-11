@@ -309,6 +309,8 @@ bool dealWithDelay() {
 		bool drop = (random > loss_prob);
 		if (drop) {
 			// TODO: Should drop the packet..which means we do nothing at all
+			packet log = delayed_pkt.pkt;
+			log_entry("Random loss event occurred", log);
 		}
 		else {
 			// TODO: We should send the packet to the given next hop (forwarding table entry)
