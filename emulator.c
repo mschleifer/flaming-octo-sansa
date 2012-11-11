@@ -32,8 +32,13 @@ packet_plus delayed_pkt;
 struct timeb delay_start;
 char delay_timeString[80];
 
-const char*
-get_ip_address(struct sockaddr* addr) {
+
+/** 
+ * Gets the ip address related to the given sockaddr pointer
+ * @param addr The sockaddr struct to get the ip address of 
+ * @return A character array (string) with the ip address
+ */
+const char* get_ip_address(struct sockaddr* addr) {
 	char s[INET6_ADDRSTRLEN];
 	// A hack that makes absolutely no sense whatsoever
 	char* n = "";
@@ -200,6 +205,7 @@ int readForwardingTable(char* filename, char* hostname, char* port) {
 		}
 	}
 	
+	// Prints out the in-memory version of the forwarding table for debug purposes
 	if (debug) {
 		printf("forwarding table:\n");
 		for (k = 0; k < forwarding_table_size; k++) {
@@ -283,6 +289,7 @@ int getRandom(int min, int max) {
  * Deal with the delay of the packet.  If the time the packet has been delayed is
  * greater than or equal to the delay time for the packet's forwarding table entry, 
  * then randomly decide to send it off or drop it.
+ * @param socketFD_Emulator The socket file descriptor for the emulator
  * @return true if the delay should continue on, false if the packet is dropped or sent
  */
 bool dealWithDelay(int socketFD_Emulator) {
@@ -297,6 +304,11 @@ bool dealWithDelay(int socketFD_Emulator) {
 	int delayed_pkt_fwd_index = delayed_pkt.fwd_table_index;
 	bool end_delay = (duration >= forwarding_table[delayed_pkt_fwd_index].delay);
 	
+	/*
+	 * If the delay is over, determine whether to drop the packet or not, and then
+	 * either drop the packet (do nothing) or send the packet to the next hop in 
+	 * the forwarding table.
+	 */
 	if (end_delay) {
 		if (debug) {
 			printf("Should be ending the delay and sending packet to %s\n", forwarding_table[delayed_pkt_fwd_index].next_IP);
@@ -311,6 +323,7 @@ bool dealWithDelay(int socketFD_Emulator) {
 			if (debug) {
 				printf("Randomly dropping a packet.\n");
 			}
+			
 			packet log = delayed_pkt.pkt;
 			log_entry("Random loss event occurred", log);
 		}
@@ -336,7 +349,6 @@ bool dealWithDelay(int socketFD_Emulator) {
 			serializePacket(delayed_pkt.pkt, sendPkt);
 			sendto_len = sizeof(sock_sendto);
 			
-			// Send the packet to the next hop
 			if ( sendto(socketFD_Emulator, sendPkt, P2_HEADERSIZE+HEADERSIZE+delayed_pkt.pkt.length, 0, 
 								(struct sockaddr*) &sock_sendto, sendto_len) == -1 ) {
 				perror("sendto()");
@@ -401,8 +413,6 @@ int main(int argc, char *argv[]) {
 	char* port;					//port of emulator
 	int queue_size;				//length of esch queue
 	char* filename;				//name of file with forwarding table
-	//char* log_file;				
-	//bool debug = false;
 
 	// Get the commandline args
 	int c;
@@ -454,6 +464,8 @@ int main(int argc, char *argv[]) {
 	hints.ai_socktype = SOCK_DGRAM;
 	hints.ai_protocol = IPPROTO_UDP;
 	hints.ai_flags = AI_PASSIVE;
+	
+	// PASSIVE and NULL, so we are open to all connections on port
 	if ( (rv = getaddrinfo(NULL, port, &hints, &servinfo)) != 0) {
 		fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
 		return -1;
@@ -462,7 +474,7 @@ int main(int argc, char *argv[]) {
 	
 
 	
-	// loop through all the results and bind to the first that we can
+	// loop through all the results and bind to the first that we can (NON BLOCKING)
 	for (p = servinfo; p != NULL; p = p->ai_next) {
 		if ((socketFD_Emulator = socket(p->ai_family, p->ai_socktype, p->ai_protocol)) == -1) {
 			perror("sender: socket");
@@ -493,6 +505,8 @@ int main(int argc, char *argv[]) {
 	
 	while (true) {
 		addr_len = sizeof(addr);
+		
+		// If no data is being sent to us, determine if packets need to be dealt with
 		if ((numbytes = recvfrom(socketFD_Emulator, buffer, MAXPACKETSIZE, 0, 
 						(struct sockaddr*)&addr, &addr_len)) <= -1) {
 			
@@ -510,6 +524,8 @@ int main(int argc, char *argv[]) {
 				printf("emulator: got packet from %s\n", get_ip_address( (struct sockaddr*) &addr )); 
 				printf("emulator: packet is %d bytes long\n", numbytes);
 			}
+			
+			// Gets a packet from the buffer from recvfrom
 			packet pkt = getPktFromBuffer(buffer);
 			
 			if (debug) {
@@ -518,6 +534,11 @@ int main(int argc, char *argv[]) {
 			
 			bool no_entry_found = true;
 			int index;
+			
+			/* 
+			 * Look through the forwarding table for an entry that matches the destination
+			 * of the packet.
+			 */
 			for (index = 0; index < forwarding_table_size; index++) {
 				forwarding_entry entry = forwarding_table[index];
 				
@@ -531,9 +552,9 @@ int main(int argc, char *argv[]) {
 						printf("A forwarding table-packet destination match was found.\n");
 					}
 				  
-					no_entry_found = false;
 					// Queue the packet 
 					queue_packet(pkt, index);
+					no_entry_found = false;
 					
 					// Deal with the delay or set one up
 					if (packet_delayed) {
