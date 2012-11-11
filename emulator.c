@@ -387,7 +387,7 @@ bool delayPacket() {
 
 int main(int argc, char *argv[]) {
 	char *buffer;
-	buffer = malloc(MAXPACKETSIZE);
+	buffer = malloc(P2_MAXPACKETSIZE);
 	if(buffer == NULL) {
 		printError("Buffer could not be allocated");
 		return 0;
@@ -493,7 +493,8 @@ int main(int argc, char *argv[]) {
 	
 	while (true) {
 		addr_len = sizeof(addr);
-		if ((numbytes = recvfrom(socketFD_Emulator, buffer, MAXPACKETSIZE, 0, 
+		//bzero(buffer, P2_MAXPACKETSIZE);
+		if ((numbytes = recvfrom(socketFD_Emulator, buffer, P2_MAXPACKETSIZE, 0, 
 						(struct sockaddr*)&addr, &addr_len)) <= -1) {
 			
 			// Deal with the delay or set one up

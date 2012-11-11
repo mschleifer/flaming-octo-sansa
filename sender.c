@@ -260,7 +260,7 @@ main(int argc, char *argv[])
 					gethostname(hostname, 255);
 					char ip[32];
 					hostname_to_ip(hostname, ip);
-					printf("srcIP: %s\n", ip);
+
 					strcpy(senderPacketNodeArray[j].packet.srcIP, ip);
 					strcpy(senderPacketNodeArray[j].packet.srcPort, s_port);
 					strcpy(senderPacketNodeArray[j].packet.destIP, request.srcIP);
@@ -317,6 +317,7 @@ main(int argc, char *argv[])
 			fcntl(socketFD_Server, F_SETFL, O_NONBLOCK);
 	
 			while(!allACKReceived) {
+				bzero(buffer, P2_MAXPACKETSIZE);
 				if ((numbytes = recvfrom(socketFD_Server, buffer, P2_MAXPACKETSIZE, 0,
 						 (struct sockaddr*)&client_addr, &addr_len)) == -1) {
 					// Don't do anything b/c we're non-blocking.
@@ -324,7 +325,7 @@ main(int argc, char *argv[])
 					//exit(1);
 				}
 				if(numbytes > 0) {
-					printf("client ip and port: %s %d\n", get_ip_address( (struct sockaddr*) &client_addr), ((struct sockaddr_in*)&client_addr)->sin_port);
+					//printf("client ip and port: %s %d\n", get_ip_address( (struct sockaddr*) &client_addr), ((struct sockaddr_in*)&client_addr)->sin_port);
 					ACKPacket = getPktFromBuffer(buffer);
 					if(ACKPacket.type == 'A')  {
 						for(k = 0; k < packetsRead; k++) {

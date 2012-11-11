@@ -130,7 +130,8 @@ int printInfoAtReceive(char* sender_ip, packet pkt) {
 	}
 	// For a data pkt, print out data as required
 	else {
-		printf("Received DATA pkt from %s\n", sender_ip);
+		printf("Received DATA pkt from %s, packet#: %d, ", sender_ip, pkt.sequence);
+		printf("Data: %c%c%c%c\n", pkt.payload[0], pkt.payload[1], pkt.payload[2], pkt.payload[3]);
 
 		/*printf("Received packet at: %s.%d(ms).\n\tSender IP: %s.\n\tSequence number: %d.\n\tLength: %d.\n\t",
 		timeString, time.millitm, sender_ip, pkt.sequence, pkt.length);
@@ -361,8 +362,8 @@ main(int argc, char *argv[])
 			while (!done_with_sender) {
 				bzero(buffer, P2_MAXPACKETSIZE);
 				// Listen for some kind of response. If one is given, fill in info
-				if (recvfrom(socketFD_Client, buffer, P2_MAXPACKETSIZE, 0, 
-						(struct sockaddr *)&server, (socklen_t *)&slen) == -1) {
+				if ((numbytes = recvfrom(socketFD_Client, buffer, P2_MAXPACKETSIZE, 0, 
+						(struct sockaddr *)&server, (socklen_t *)&slen)) == -1) {
 					perror("recvfrom()");
 				}
 	
@@ -424,6 +425,7 @@ main(int argc, char *argv[])
 						return -1;
 					}
 					memset(packetReceived, 0, sizeof(bool)*window_size);
+					numPacketsReceived = 0;
 					
 				} // END ELSE-IF E-Packet
 						
