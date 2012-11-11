@@ -257,6 +257,28 @@ void queue_packet(packet pkt, int index) {
 	}
 }
 
+
+/**
+ * Gets and returns a random number in between the range 
+ * of min and max
+ * @param min The lower bound value to return
+ * @param max The upper bound value to return
+ * @return An integer between min and max
+ */
+int getRandom(int min, int max) {
+	static bool init = false;
+	int rc;
+	
+	if (!init) {
+		srand(time(NULL));
+		init = true;
+	}
+	
+	rc = (rand() % (max - min + 1) + min);
+	
+	return rc;
+}
+
 /**
  * Deal with the delay of the packet.  If the time the packet has been delayed is
  * greater than or equal to the delay time for the packet's forwarding table entry, 
@@ -280,7 +302,17 @@ bool dealWithDelay() {
 			printf("Should be ending the delay and sending packet to %s\n", forwarding_table[delayed_pkt_fwd_index].next_IP);
 		}
 		
-		//TODO: Send or drop packet
+		int loss_prob = 0 + forwarding_table[delayed_pkt_fwd_index].loss_prob;
+		int random;
+		random = getRandom(0, 100);
+		
+		bool drop = (random > loss_prob);
+		if (drop) {
+			// TODO: Should drop the packet..which means we do nothing at all
+		}
+		else {
+			// TODO: We should send the packet to the given next hop (forwarding table entry)
+		}
 		return false;
 	}
 	
