@@ -25,15 +25,20 @@ get_ip_address(struct sockaddr* addr) {
 	return inet_ntop( AF_INET, get_in_addr(addr), s, sizeof(s) ); 
 }
 
-int sendACKPacket(struct sockaddr* sendTo_addr, socklen_t addr_len, int socketFD_Client, int seq_no) {
+int sendACKPacket(int socketFD_Client, struct sockaddr* sendTo_addr, socklen_t addr_len,
+					int seq_no, char* srcIP, char* srcPort, char* destIP, char* destPort) {
 	// Send ACK packet to the sender
 	packet ACKPkt;
-	// TODO: fill in other members of packet
+	ACKPkt.priority = 1;
+	strcpy(ACKPkt.srcIP, srcIP);
+	strcpy(ACKPkt.srcPort, srcPort);
+	strcpy(ACKPkt.destIP, destIP);
+	strcpy(ACKPkt.destPort, destPort);
 	
 	ACKPkt.type = 'A';
 	ACKPkt.sequence = seq_no;
-	ACKPkt.length = 0;
 	ACKPkt.payload = "";
+	ACKPkt.length = 0;
   
 	char* ACKPacketBuffer = malloc(P2_HEADERSIZE + HEADERSIZE + ACKPkt.length);
 	serializePacket(ACKPkt, ACKPacketBuffer);
@@ -400,7 +405,9 @@ main(int argc, char *argv[])
 						pkt_sender.num_bytes += PACKET.length;
 					}
 					
-					sendACKPacket((struct sockaddr*)p->ai_addr, p->ai_addrlen, socketFD_Client, PACKET.sequence);
+					sendACKPacket(socketFD_Client, (struct sockaddr*) &sock_sendto, 
+									sendto_len, PACKET.sequence, ip, port_str,
+									sender_ip, tracker_array[i].sender_port);
 	 
 				} // END IF D-Packet
 				else if (PACKET.type == 'E') {
@@ -423,6 +430,7 @@ main(int argc, char *argv[])
 			} // END while not done with sender
  	
 		} // END strcmp
+		close(socketFD_Client);
 
 	} // END for each in tracker array
 
