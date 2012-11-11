@@ -318,14 +318,11 @@ bool dealWithDelay(int socketFD_Emulator) {
 			socklen_t sendto_len;
 			sock_sendto.sin_family = AF_INET;
 			sock_sendto.sin_port = htons( atoi(forwarding_table[delayed_pkt_fwd_index].next_port) );
-			printf("test %d\n", atoi(forwarding_table[delayed_pkt_fwd_index].next_port) );
 			inet_pton(AF_INET, forwarding_table[delayed_pkt_fwd_index].next_IP, &sock_sendto.sin_addr);
 			memset(sock_sendto.sin_zero, '\0', sizeof(sock_sendto.sin_zero));
 			
 			if (debug) {
-				printf("trying to send something to next hop.\n");
-				printf("sento ip: %s\n", get_ip_address( (struct sockaddr*) &sock_sendto ));
-				printf("sendto port: %d\n", sock_sendto.sin_port);
+				printf("Attempting to send something to next hop.\n");
 			}
 			
 			char* sendPkt = malloc(P2_HEADERSIZE+HEADERSIZE+delayed_pkt.pkt.length);
@@ -508,7 +505,7 @@ int main(int argc, char *argv[]) {
 			packet pkt = getPktFromBuffer(buffer);
 			
 			if (debug) {
-				//print_packet(pkt);
+				print_packet(pkt);
 			}
 			
 			int index;
