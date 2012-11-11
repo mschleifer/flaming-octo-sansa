@@ -3,11 +3,11 @@
 
 /**
  * Queue struct with 5 properties. The Queue works only with packets currently.
- * @capacity The number of elements the Queue can contain
- * @size The current size of the Queue
- * @front The index of the first element in the Queue (where to dequeue)
- * @rear The index of the last element in the Queue (where to enqueue)
- * @elements A pointer to the elements in the Queue
+ * @param capacity The number of elements the Queue can contain
+ * @param size The current size of the Queue
+ * @param front The index of the first element in the Queue (where to dequeue)
+ * @param rear The index of the last element in the Queue (where to enqueue)
+ * @param elements A pointer to the elements in the Queue
  */
 typedef struct Queue {
 	int capacity;
