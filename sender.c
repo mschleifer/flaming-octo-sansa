@@ -47,25 +47,26 @@ int printInfoAtSend(char* requester_ip, packet pkt) {
 	return 0;
 }
 
-int sendEndPkt(struct sockaddr_storage client_addr, socklen_t addr_len, int socketFD_Server, char* s_port, packet request, uint8_t priority) {
+int sendEndPkt(struct sockaddr_in client_addr, socklen_t addr_len, int socketFD_Server, char* s_port, packet request, uint8_t priority) {
 	// Send the end packet to the requester.  Sender is done sending.
 	packet endPkt;
-	// TODO: fill in other members of packet
+	
 	char hostname[255];
 	gethostname(hostname, 255);
 	char ip[32];
 	hostname_to_ip(hostname, ip);
 	
-	endPkt.type = 'E';
-	endPkt.sequence = 0;
-	endPkt.payload = "END.";
-	endPkt.length = 4;
 	strcpy(endPkt.srcIP, ip);
 	strcpy(endPkt.srcPort, s_port);
 	strcpy(endPkt.destIP, request.srcIP);
 	strcpy(endPkt.destPort, request.srcPort);
 	endPkt.new_length = HEADERSIZE + 4;
 	endPkt.priority = priority;
+	
+	endPkt.type = 'E';
+	endPkt.sequence = 0;
+	endPkt.payload = "END.";
+	endPkt.length = 4;
 	
 	
 	char* endPacketBuffer = malloc(P2_HEADERSIZE + HEADERSIZE + endPkt.length);
@@ -104,8 +105,8 @@ main(int argc, char *argv[])
 	double rate;  			// The number of packets sent per second
 	int sequence_number; 	// The initial sequence of the packet exchange
 	int length;  			// The length of the payload in the packets
-	//char* f_hostname;		// hostname of emulator
-	//char* f_port;			// post of emulator
+	char* f_hostname;		// hostname of emulator
+	int f_port;			// post of emulator
 	uint8_t priority;		// priority of sent packets
 	int timeout;			// timeout for retransmission
 	
@@ -139,10 +140,10 @@ main(int argc, char *argv[])
 			length = atoi(optarg);
 			break;
 		case 'f':
-			//f_hostname = optarg;
+			f_hostname = optarg;
 			break;
 		case 'h':
-			//f_port = optarg;
+			f_port = atoi(optarg);
 			break;
 		case 'i':
 			priority = atoi(optarg);
@@ -214,6 +215,17 @@ main(int argc, char *argv[])
 	printf( "server: got packet from %s\n", get_ip_address((struct sockaddr*) &client_addr) ); 
 	printf("server: packet is %d bytes long\n", numbytes);
 	
+	// Change the client_addr info so we can use it to send to the emulator
+	struct sockaddr_in addr_emulator;
+	socklen_t addr_emulator_len;
+	addr_emulator.sin_family = AF_INET;
+	addr_emulator.sin_port = htons(f_port);
+	char emulator_ip[32];
+	hostname_to_ip(f_hostname, emulator_ip);
+	inet_pton(AF_INET, emulator_ip, &addr_emulator.sin_addr);
+	memset(addr_emulator.sin_zero, '\0', sizeof(addr_emulator.sin_zero));
+	addr_emulator_len = sizeof(addr_emulator);
+	
 	// Construct a packet from the data recv'd
 	packet request;
 	request = getPktFromBuffer(buffer);
@@ -224,7 +236,7 @@ main(int argc, char *argv[])
 		int fd;
 		if ((fd = open(request.payload, S_IRUSR )) == -1) {
 		perror("open");
-		  sendEndPkt(client_addr, addr_len, socketFD_Server, s_port, request, priority);
+		  sendEndPkt(addr_emulator, addr_emulator_len, socketFD_Server, s_port, request, priority);
 		  return -1;
 		}
 		
@@ -292,12 +304,12 @@ main(int argc, char *argv[])
 		  
 
 				//printf("port: %d\n", ntohs( ((struct sockaddr_in*)&client_addr)->sin_port ));
-				printInfoAtSend(inet_ntoa( ((struct sockaddr_in*)&client_addr)->sin_addr ), senderPacketNodeArray[k].packet);
+				printInfoAtSend(inet_ntoa( ((struct sockaddr_in*)&addr_emulator)->sin_addr ), senderPacketNodeArray[k].packet);
 
 				// Send data to the requester
 				if (sendto(socketFD_Server, responsePacket,
 						P2_HEADERSIZE+HEADERSIZE+senderPacketNodeArray[k].packet.length,
-						0, (struct sockaddr*) &client_addr, addr_len) == -1) {
+						0, (struct sockaddr*) &addr_emulator, addr_emulator_len) == -1) {
 					perror("sendto()");
 				}
 
@@ -354,7 +366,7 @@ main(int argc, char *argv[])
 					
 							if (sendto(socketFD_Server, responsePacket,
 									P2_HEADERSIZE+HEADERSIZE+senderPacketNodeArray[k].packet.length,
-									0, (struct sockaddr*) &client_addr, addr_len) == -1) {
+									0, (struct sockaddr*) &addr_emulator, addr_emulator_len) == -1) {
 								perror("sendto()");
 							}
 		
@@ -377,7 +389,7 @@ main(int argc, char *argv[])
 			} // END while(!allACKReceived)
 		} // END while(!readComplete)
 
-		sendEndPkt(client_addr, addr_len, socketFD_Server, s_port, request, priority);
+		sendEndPkt(addr_emulator, addr_emulator_len, socketFD_Server, s_port, request, priority);
 	}
 
 	close(socketFD_Server);
