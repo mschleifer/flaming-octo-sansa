@@ -26,7 +26,7 @@ Queue* p2_queue;
 Queue* p3_queue;
 
 char* log_file; 		// Log file name
-bool debug = false;		// Debug flag
+bool debug = true;		// Debug flag
 
 packet_plus delayed_pkt;
 struct timeb delay_start;
@@ -408,7 +408,7 @@ int main(int argc, char *argv[]) {
 		printError("Buffer could not be allocated");
 		return 0;
 	}
-	if(argc != 11) {
+	if(argc != 9 && argc != 11) {
 		printError("Incorrect number of arguments");
 		usage_Emulator(argv[0]);
 		return 0;
@@ -421,7 +421,8 @@ int main(int argc, char *argv[]) {
 	// Get the commandline args
 	int c;
 	opterr = 0;
-	while ((c = getopt(argc, argv, "p:q:f:l:d:")) != -1) {
+	
+	while ((c = getopt(argc, argv, "p:q:f:l:")) != -1) {
 		switch (c) {
 		case 'p':
 			port = optarg;
@@ -438,11 +439,6 @@ int main(int argc, char *argv[]) {
 		case 'l':
 			log_file = optarg;
 			clearFile(log_file);
-			break;
-		case 'd':
-			if (atoi(optarg) == 1) {
-				debug = true;
-			}
 			break;
 		default:
 			usage_Emulator(argv[0]);

@@ -145,7 +145,7 @@ int hostname_to_ip(char *hostname , char *ip)
  */
 void
 usage_Emulator(char *prog) {
-	fprintf(stderr, "usage: %s -p <port> -q <queue_size> -f <filename> -l <log> -d <debug>\n", prog);
+	fprintf(stderr, "usage: %s -p <port> -q <queue_size> -f <filename> -l <log>\n", prog);
 	exit(1);
 }
 
