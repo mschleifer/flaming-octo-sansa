@@ -16,6 +16,12 @@
 #include <netdb.h>
 
 
+/**
+ * Takes in a sockaddr pointer and gets the ip address related to 
+ * it.  
+ * @param addr The sockaddr we want to get the ip address of
+ * @return const char* The ip address of the sockaddr
+ */
 const char*
 get_ip_address(struct sockaddr* addr) {
 	char s[INET6_ADDRSTRLEN];
@@ -235,6 +241,9 @@ main(int argc, char *argv[])
 	packet request;
 	request = getPktFromBuffer(buffer);
 	print_packet(request);
+	// variables to calcuate the loss ratio
+	double normalTransmissions = 0;
+	double reTransmissions = 0;
 	
 	if (request.type == 'R' && request.sequence == 0) {
 		// Open the requested file for reading
@@ -262,6 +271,7 @@ main(int argc, char *argv[])
 			senderDataBufferArray[i] = malloc(length);
 			bzero(senderDataBufferArray[i], length);
 		}
+		
 
 		while(!readComplete) {
 
@@ -308,6 +318,7 @@ main(int argc, char *argv[])
 				//printf("port: %d\n", ntohs( ((struct sockaddr_in*)&addr_emulator)->sin_port ));
 				printInfoAtSend(inet_ntoa( ((struct sockaddr_in*)&addr_emulator)->sin_addr ), senderPacketNodeArray[k].packet);
 
+				normalTransmissions++;
 				// Send data to the requester (via the emulator)
 				if (sendto(socketFD_Sender, responsePacket,
 						P2_HEADERSIZE+HEADERSIZE+senderPacketNodeArray[k].packet.length,
@@ -369,6 +380,7 @@ main(int argc, char *argv[])
 							char* responsePacket = malloc(P2_HEADERSIZE+HEADERSIZE+senderPacketNodeArray[k].packet.length);
 							serializePacket(senderPacketNodeArray[k].packet, responsePacket);
 		
+							reTransmissions++;
 							// Retry sending the packet
 							if (sendto(socketFD_Sender, responsePacket,
 									P2_HEADERSIZE+HEADERSIZE+senderPacketNodeArray[k].packet.length,
@@ -401,6 +413,15 @@ main(int argc, char *argv[])
 		sendEndPkt(addr_emulator, addr_emulator_len, socketFD_Sender, s_port, request, priority);
 	}
 
+	printf("normalTransmissions: %f\n", normalTransmissions);
+	printf("reTransmissions: %f\n", reTransmissions);
+	double totalTransmissions = normalTransmissions + reTransmissions;
+	
+	double lossRatio = (reTransmissions / totalTransmissions)*100.0;
+	printf("loss ratio: %f\n", lossRatio);
+	
+	printf("Sent %1.0f packets total, and needed to send %1.0f.\n\tThe observed loss ratio was %2.2f%%\n",
+				totalTransmissions, normalTransmissions, lossRatio);
 	close(socketFD_Sender);
 	return 0;
 
