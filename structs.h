@@ -2,6 +2,7 @@
 #define STRUCTS_H
 
 #include <stdbool.h>
+#define PAYLOADSIZE (5120)
 
 // Packets as defined in the project specifications
 typedef struct packet {
@@ -74,6 +75,7 @@ typedef struct log_info {
 typedef struct packet_plus {
 	packet pkt;
 	int fwd_table_index;
+	char pkt_payload_array[PAYLOADSIZE];
 } packet_plus;
 
 // Used by sender to keep track of info related to resending a packet

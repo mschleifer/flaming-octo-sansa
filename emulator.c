@@ -230,9 +230,13 @@ int readForwardingTable(char* filename, char* hostname, char* port) {
  * @param index The index of the forwarding table associated with the packet
  */
 void queue_packet(packet pkt, int index) {
-	packet_plus pkt_plus;
-	pkt_plus.pkt = pkt;
-	pkt_plus.fwd_table_index = index;
+	packet_plus* pkt_plus;
+	pkt_plus = malloc(sizeof(packet_plus));
+	memcpy(&(pkt_plus->pkt), &pkt, sizeof(packet));
+	pkt_plus->fwd_table_index = index;
+	memset(pkt_plus->pkt_payload_array, 0, MAXPAYLOADSIZE);
+	memcpy(pkt_plus->pkt_payload_array, pkt.payload, pkt.length);
+	pkt_plus->pkt.payload = pkt_plus->pkt_payload_array;
 	/*
 	 * Check the priority of the packet. Add to the queues. 
 	 * If a queue is full, log the message.  If the packet priority 
@@ -240,19 +244,19 @@ void queue_packet(packet pkt, int index) {
 	 */
 	switch(pkt.priority) {
 	  case 1:
-		if ( enqueue(p1_queue, pkt_plus) == -1) {
+		if ( enqueue(p1_queue, *pkt_plus) == -1) {
 			if (debug) printf("P1 queue was full. Logging.\n");
 			log_entry("P1 Queue was full", pkt);
 		}
 		break;
 	  case 2:
-		if ( enqueue(p2_queue, pkt_plus) == -1) {
+		if ( enqueue(p2_queue, *pkt_plus) == -1) {
 			if (debug) printf("P2 queue was full. Logging.\n");
 			log_entry("P2 Queue was full", pkt);
 		}
 		break;
 	  case 3:
-		if ( enqueue(p3_queue, pkt_plus) == -1) {
+		if ( enqueue(p3_queue, *pkt_plus) == -1) {
 			if (debug) printf("P3 queue was full. Logging.\n");
 			log_entry("P3 Queue was full", pkt);
 		}
@@ -506,7 +510,7 @@ int main(int argc, char *argv[]) {
 	while (true) {
 		addr_len = sizeof(addr);
 
-		//bzero(buffer, P2_MAXPACKETSIZE); // Need to zero the buffer
+		bzero(buffer, P2_MAXPACKETSIZE); // Need to zero the buffer
 		// If no data is being sent to us, determine if packets need to be dealt with
 		if ((numbytes = recvfrom(socketFD_Emulator, buffer, P2_MAXPACKETSIZE, 0, 
 						(struct sockaddr*)&addr, &addr_len)) <= -1) {

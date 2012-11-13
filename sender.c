@@ -59,12 +59,12 @@ int sendEndPkt(struct sockaddr_storage client_addr, socklen_t addr_len, int sock
 	endPkt.type = 'E';
 	endPkt.sequence = 0;
 	endPkt.payload = "END.";
-	endPkt.length = strlen(endPkt.payload);
+	endPkt.length = 4;
 	strcpy(endPkt.srcIP, ip);
 	strcpy(endPkt.srcPort, s_port);
 	strcpy(endPkt.destIP, request.srcIP);
 	strcpy(endPkt.destPort, request.srcPort);
-	endPkt.new_length = HEADERSIZE + sizeof(endPkt.payload);
+	endPkt.new_length = HEADERSIZE + 4;
 	endPkt.priority = priority;
 	
 	
@@ -99,13 +99,13 @@ main(int argc, char *argv[])
 	char* s_port;
 
 	int requester_port; 	// Port on which the requester is waiting
-	char* requester_port_str;
+	//char* requester_port_str;
 
 	double rate;  			// The number of packets sent per second
 	int sequence_number; 	// The initial sequence of the packet exchange
 	int length;  			// The length of the payload in the packets
-	char* f_hostname;		// hostname of emulator
-	char* f_port;			// post of emulator
+	//char* f_hostname;		// hostname of emulator
+	//char* f_port;			// post of emulator
 	uint8_t priority;		// priority of sent packets
 	int timeout;			// timeout for retransmission
 	
@@ -126,7 +126,7 @@ main(int argc, char *argv[])
 			break;
 		case 'g':
 			requester_port = atoi(optarg);
-			requester_port_str = optarg;
+			//requester_port_str = optarg;
 			break;
 		case 'r':
 			rate = atof(optarg);
@@ -139,10 +139,10 @@ main(int argc, char *argv[])
 			length = atoi(optarg);
 			break;
 		case 'f':
-			f_hostname = optarg;
+			//f_hostname = optarg;
 			break;
 		case 'h':
-			f_port = optarg;
+			//f_port = optarg;
 			break;
 		case 'i':
 			priority = atoi(optarg);
@@ -217,6 +217,7 @@ main(int argc, char *argv[])
 	// Construct a packet from the data recv'd
 	packet request;
 	request = getPktFromBuffer(buffer);
+	print_packet(request);
 	
 	if (request.type == 'R' && request.sequence == 0) {
 		// Open the requested file for reading

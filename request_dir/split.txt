@@ -1,3 +1,2 @@
 *This is split1.txt.
-*isis is lili.t.t.
-.
+*This is split2.txt.

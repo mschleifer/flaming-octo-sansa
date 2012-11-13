@@ -57,9 +57,10 @@ int sendACKPacket(int socketFD_Client, struct sockaddr* sendTo_addr, socklen_t a
 /**
  * Writes what is given to the given file name. 
  */
-int writeToFile(char* payload, FILE* fp) {
+int writeToFile(char* payload, FILE* fp, int length) {
 
-fprintf(fp, "%s", payload);
+//fprintf(fp, "%s", payload);
+fwrite(payload, sizeof(char), length, fp);
 
 return 0;
 }
@@ -382,7 +383,7 @@ main(int argc, char *argv[])
 						memset(packetReceived, 0, sizeof(bool)*window_size);
 					}
 					if(!packetReceived[(PACKET.sequence%window_size)]) {
-						writeToFile(PACKET.payload, fp);
+						writeToFile(PACKET.payload, fp, PACKET.length);
 						packetReceived[(PACKET.sequence%window_size)] = true;
 						numPacketsReceived++;
 					}
