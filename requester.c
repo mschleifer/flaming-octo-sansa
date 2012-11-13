@@ -57,12 +57,18 @@ int sendACKPacket(int socketFD_Client, struct sockaddr* sendTo_addr, socklen_t a
 /**
  * Writes what is given to the given file name. 
  */
-int writeToFile(char* payload, FILE* fp, int length) {
+int writeToFile(requesterBufferNode* nodeArray, int packetsToWrite, int window_size, FILE* fp) {
 
-//fprintf(fp, "%s", payload);
-fwrite(payload, sizeof(char), length, fp);
+	//fprintf(fp, "%s", payload);
+	int i;
+	for(i = 0; i < packetsToWrite; i++) {
+		fwrite(&(nodeArray[i+1].packet_data), sizeof(char), nodeArray[i+1].data_length, fp);
+	}
+	if(packetsToWrite == window_size) {
+		fwrite(&(nodeArray[0].packet_data), sizeof(char), nodeArray[0].data_length, fp);
+	}
 
-return 0;
+	return 0;
 }
 
 /** 
@@ -356,9 +362,10 @@ main(int argc, char *argv[])
 			bool first_packet = true;
 			sender_summary pkt_sender;
 			bzero(&pkt_sender, sizeof(sender_summary));
-			//int numPacketsReceived = 0;
-			int nextWindowNumber = 1;
-			bool packetReceived[window_size];
+			int nextWindowNumber = 1; // Used to index the sequence numbers
+			int windowPacketsReceived = 0; // x/window_size packets recv'd
+			// Tracker array for packets recv'd. Uses a new struct.
+			requesterBufferNode requesterBufferNodeArray[window_size];
 
 			// We go until we get an 'E' packet
 			while (!done_with_sender) {
@@ -380,13 +387,19 @@ main(int argc, char *argv[])
 		
 				// If it's a DATA packet
 				if (PACKET.type == 'D') {
+					// If this is a new window of packets reset the tracker array
 					if(PACKET.sequence >= window_size*nextWindowNumber + 1) {
-						memset(packetReceived, 0, sizeof(bool)*window_size);
+						writeToFile(requesterBufferNodeArray, windowPacketsReceived, window_size, fp);
+						memset(requesterBufferNodeArray, 0, sizeof(requesterBufferNode)*window_size);
 						nextWindowNumber++;
+						windowPacketsReceived = 0;
 					}
-					if(!packetReceived[(PACKET.sequence%window_size)]) {
-						writeToFile(PACKET.payload, fp, PACKET.length);
-						packetReceived[(PACKET.sequence%window_size)] = true;
+					// If we haven't received this packet before, fill out tracker info
+					if(!((requesterBufferNodeArray[(PACKET.sequence%window_size)]).packet_received)) {
+						memcpy(&(requesterBufferNodeArray[(PACKET.sequence%window_size)].packet_data), PACKET.payload, PACKET.length);
+						(requesterBufferNodeArray[(PACKET.sequence%window_size)]).packet_received = true;
+						(requesterBufferNodeArray[(PACKET.sequence%window_size)]).data_length = PACKET.length;
+						windowPacketsReceived++;
 					}
 		
 					// The first packet from the sender
@@ -420,6 +433,11 @@ main(int argc, char *argv[])
 					strftime(pkt_sender.end_timeString, sizeof(pkt_sender.end_timeString), "%H:%M:%S", 
 										localtime(&(pkt_sender.end_time.time)));
 					
+					// Write any data to the file that currently buffered
+					writeToFile(requesterBufferNodeArray, windowPacketsReceived, window_size, fp);
+					memset(requesterBufferNodeArray, 0, sizeof(requesterBufferNode)*window_size);
+					windowPacketsReceived = 0;
+					
 					/*
 					 * If we didn't receive any packets from this sender, 
 					 * don't do anything (otherwise a segfault).
@@ -432,9 +450,7 @@ main(int argc, char *argv[])
 							perror("fseek");
 							return -1;
 						}
-						memset(packetReceived, 0, sizeof(bool)*window_size);
 					}
-					//numPacketsReceived = 0;
 					
 				} // END ELSE-IF E-Packet
 						

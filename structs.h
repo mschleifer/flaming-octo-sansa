@@ -86,4 +86,10 @@ typedef struct senderPacketNode {
 	int retryCount;
 } senderPacketNode;
 
+typedef struct requesterBufferNode {
+	bool packet_received;
+	int data_length;
+	char packet_data[PAYLOADSIZE];
+} requesterBufferNode;
+
 #endif
