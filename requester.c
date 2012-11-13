@@ -356,7 +356,8 @@ main(int argc, char *argv[])
 			bool first_packet = true;
 			sender_summary pkt_sender;
 			bzero(&pkt_sender, sizeof(sender_summary));
-			int numPacketsReceived = 0;
+			//int numPacketsReceived = 0;
+			int nextWindowNumber = 1;
 			bool packetReceived[window_size];
 
 			// We go until we get an 'E' packet
@@ -379,13 +380,13 @@ main(int argc, char *argv[])
 		
 				// If it's a DATA packet
 				if (PACKET.type == 'D') {
-					if((PACKET.sequence != 1) && (PACKET.sequence == (window_size * (numPacketsReceived/window_size)) + 1)) {
+					if(PACKET.sequence >= window_size*nextWindowNumber + 1) {
 						memset(packetReceived, 0, sizeof(bool)*window_size);
+						nextWindowNumber++;
 					}
 					if(!packetReceived[(PACKET.sequence%window_size)]) {
 						writeToFile(PACKET.payload, fp, PACKET.length);
 						packetReceived[(PACKET.sequence%window_size)] = true;
-						numPacketsReceived++;
 					}
 		
 					// The first packet from the sender
@@ -433,7 +434,7 @@ main(int argc, char *argv[])
 						}
 						memset(packetReceived, 0, sizeof(bool)*window_size);
 					}
-					numPacketsReceived = 0;
+					//numPacketsReceived = 0;
 					
 				} // END ELSE-IF E-Packet
 						
