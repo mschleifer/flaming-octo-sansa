@@ -26,7 +26,7 @@ Queue* p2_queue;
 Queue* p3_queue;
 
 char* log_file; 		// Log file name
-bool debug = true;		// Debug flag
+bool debug = false;		// Debug flag - set to print extra information
 
 packet_plus delayed_pkt;
 struct timeb delay_start;
@@ -314,9 +314,10 @@ bool dealWithDelay(int socketFD_Emulator) {
 	 * the forwarding table.
 	 */
 	if (end_delay) {
-		if (debug) {
-			printf("Should be ending the delay and sending packet to %s\n", forwarding_table[delayed_pkt_fwd_index].next_IP);
-		}
+		printf("Delay complete. Sending packet to %s::%s\n", 
+				forwarding_table[delayed_pkt_fwd_index].next_IP,
+				forwarding_table[delayed_pkt_fwd_index].next_port);
+		
 		
 		int loss_prob = 100 - forwarding_table[delayed_pkt_fwd_index].loss_prob;
 		int random;
@@ -526,8 +527,13 @@ int main(int argc, char *argv[]) {
 				printf("emulator: packet is %d bytes long\n", numbytes);
 			}
 			
+			
+			
 			// Gets a packet from the buffer from recvfrom
 			packet pkt = getPktFromBuffer(buffer);
+			
+			// Print less obtrusive information about the packet. Cleaner.
+			print_clean_pkt_info(pkt);
 			
 			if (debug) {
 				print_packet(pkt);

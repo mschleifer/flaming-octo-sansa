@@ -44,6 +44,15 @@ void print_packet(packet pkt) {
 }
 
 /**
+ * Prints less information than print_packet() above, to be on in all cases for
+ * the emulator.
+ */
+void print_clean_pkt_info(packet pkt) {
+	printf("packet received. src: %s:%s, destination: %s:%s\n",
+		   pkt.srcIP, pkt.srcPort, pkt.destIP, pkt.destPort);
+}
+
+/**
  * Prints all information corresponding to a packet, in the buffer.
  * @param buffer The buffer containing the packet information to print.
  */
