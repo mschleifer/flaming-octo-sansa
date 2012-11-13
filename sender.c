@@ -47,7 +47,7 @@ int printInfoAtSend(char* requester_ip, packet pkt) {
 	return 0;
 }
 
-int sendEndPkt(struct sockaddr_in client_addr, socklen_t addr_len, int socketFD_Server, char* s_port, packet request, uint8_t priority) {
+int sendEndPkt(struct sockaddr_in client_addr, socklen_t addr_len, int socketFD_Sender, char* s_port, packet request, uint8_t priority) {
 	// Send the end packet to the requester.  Sender is done sending.
 	packet endPkt;
 	
@@ -72,7 +72,7 @@ int sendEndPkt(struct sockaddr_in client_addr, socklen_t addr_len, int socketFD_
 	char* endPacketBuffer = malloc(P2_HEADERSIZE + HEADERSIZE + endPkt.length);
 	serializePacket(endPkt, endPacketBuffer);
   
-	if (sendto(socketFD_Server, endPacketBuffer, P2_HEADERSIZE+HEADERSIZE+endPkt.length,
+	if (sendto(socketFD_Sender, endPacketBuffer, P2_HEADERSIZE+HEADERSIZE+endPkt.length,
 			0, (struct sockaddr*)&client_addr, addr_len) == -1) {
 		perror("sendto()");
 	}
@@ -100,21 +100,20 @@ main(int argc, char *argv[])
 	char* s_port;
 
 	int requester_port; 	// Port on which the requester is waiting
-	//char* requester_port_str;
 
 	double rate;  			// The number of packets sent per second
 	int sequence_number; 	// The initial sequence of the packet exchange
 	int length;  			// The length of the payload in the packets
 	char* f_hostname;		// hostname of emulator
-	int f_port;			// post of emulator
+	int f_port;				// post of emulator
 	uint8_t priority;		// priority of sent packets
 	int timeout;			// timeout for retransmission
 	
 	int i, j, k; 			// Loop counters
-	int packetsRead;
-	int ACKCounter;
-	packet ACKPacket;
-	time_t currentTime;
+	int packetsRead;		// # of packets read from file for each "window"
+	int ACKCounter;			// Tracks number of ACKs received for each "window"
+	packet ACKPacket;		// Filled with data recv'd while waiting for ACKs
+	time_t currentTime;		// Used with time(NULL) for timeout calculations
 	
 	// Get the commandline args
 	int c;
@@ -162,13 +161,12 @@ main(int argc, char *argv[])
 		return 0;
 	}
 	
-	int socketFD_Server;
+	int socketFD_Sender;
 
 	struct addrinfo hints, *p, *servinfo;
 	int rv, numbytes;
-	struct sockaddr_storage client_addr;
+	struct sockaddr_storage client_addr; // sock_addr big enough to hold any 
 	socklen_t addr_len;
-	//char s[INET6_ADDRSTRLEN];
 	
 	// Used to bind to the port on this host as a 'server'
 	bzero(&hints, sizeof(hints));
@@ -181,15 +179,15 @@ main(int argc, char *argv[])
 	  return -1;
 	}
 
-	// loop through all the results and bind to the first that we can
+	// Loop through all the available results and bind to the 1st socket we can
 	for (p = servinfo; p != NULL; p = p->ai_next) {
-	  if ((socketFD_Server = socket(p->ai_family, p->ai_socktype, p->ai_protocol)) == -1) {
+	  if ((socketFD_Sender = socket(p->ai_family, p->ai_socktype, p->ai_protocol)) == -1) {
 	    perror("sender: socket");
 	    continue;
 	  }
 
-	  if (bind(socketFD_Server, p->ai_addr, p->ai_addrlen) == -1) {
-	    close(socketFD_Server);
+	  if (bind(socketFD_Sender, p->ai_addr, p->ai_addrlen) == -1) {
+	    close(socketFD_Sender);
 	    perror("sender: bind");
 	    continue;
 	  }
@@ -203,19 +201,15 @@ main(int argc, char *argv[])
 	}
 
 	freeaddrinfo(servinfo);
-
-	// Wait to receive a request
-	addr_len = sizeof(client_addr);
-	if ((numbytes = recvfrom(socketFD_Server, buffer, P2_MAXPACKETSIZE, 0,
-				 (struct sockaddr*)&client_addr, &addr_len)) == -1) {
-	  perror("recvfrom");
-	  exit(1);
-	}
-
-	printf( "server: got packet from %s\n", get_ip_address((struct sockaddr*) &client_addr) ); 
-	printf("server: packet is %d bytes long\n", numbytes);
 	
-	// Change the client_addr info so we can use it to send to the emulator
+	// Get sender's IP
+	char hostname[255];
+	gethostname(hostname, 255);
+	char sender_ip[32];
+	hostname_to_ip(hostname, sender_ip);
+	
+	// Set up address info for the emulator
+	// This is where the sender will send all its packets
 	struct sockaddr_in addr_emulator;
 	socklen_t addr_emulator_len;
 	addr_emulator.sin_family = AF_INET;
@@ -225,6 +219,17 @@ main(int argc, char *argv[])
 	inet_pton(AF_INET, emulator_ip, &addr_emulator.sin_addr);
 	memset(addr_emulator.sin_zero, '\0', sizeof(addr_emulator.sin_zero));
 	addr_emulator_len = sizeof(addr_emulator);
+
+	// Wait to receive a request
+	addr_len = sizeof(client_addr);
+	if ((numbytes = recvfrom(socketFD_Sender, buffer, P2_MAXPACKETSIZE, 0,
+				 (struct sockaddr*)&client_addr, &addr_len)) == -1) {
+	  perror("recvfrom");
+	  exit(1);
+	}
+
+	printf( "server: got packet from %s\n", get_ip_address((struct sockaddr*) &client_addr) ); 
+	printf("server: packet is %d bytes long\n", numbytes);
 	
 	// Construct a packet from the data recv'd
 	packet request;
@@ -235,21 +240,24 @@ main(int argc, char *argv[])
 		// Open the requested file for reading
 		int fd;
 		if ((fd = open(request.payload, S_IRUSR )) == -1) {
-		perror("open");
-		  sendEndPkt(addr_emulator, addr_emulator_len, socketFD_Server, s_port, request, priority);
+			perror("open");
+			sendEndPkt(addr_emulator, addr_emulator_len, socketFD_Sender, s_port,
+						request, priority);
 		  return -1;
 		}
 		
 		char filePayload[length];
-		int bytesRead;
 		bzero(filePayload, length);
-		int window_size = request.new_length;
-		bool readComplete = false;
-		bool allACKReceived = false;
+		int bytesRead;
+		int window_size = request.new_length; // 'R' sends window via new_length
+		bool readComplete = false; // Read and sent all data in our file
+		bool allACKReceived = false; // Received all ACKs for a specific window
 		
+		// Nodes track resending related info (timeout, ACKReceived, etc.)
+		// Buffer buffers each packets payload so it can be resent if needed
 		senderPacketNode senderPacketNodeArray[window_size];
 		char * senderDataBufferArray[window_size];
-		// Create array of pointers each pointing to 'length' worth of free space
+		// Buffer is array of pointers each pointing to 'length' worth of space
 		for(i = 0; i < window_size; i ++) {
 			senderDataBufferArray[i] = malloc(length);
 			bzero(senderDataBufferArray[i], length);
@@ -263,25 +271,19 @@ main(int argc, char *argv[])
 					memcpy(senderDataBufferArray[j], &filePayload, length);
 			
 					// Set up packet
-					//TODO: setup P2 packet members
 					senderPacketNodeArray[j].packet.type = 'D';
 					senderPacketNodeArray[j].packet.sequence = sequence_number;
 					senderPacketNodeArray[j].packet.length = bytesRead;
 					senderPacketNodeArray[j].packet.payload = senderDataBufferArray[j];
-					
-					char hostname[255];
-					gethostname(hostname, 255);
-					char ip[32];
-					hostname_to_ip(hostname, ip);
 
-					strcpy(senderPacketNodeArray[j].packet.srcIP, ip);
+					strcpy(senderPacketNodeArray[j].packet.srcIP, sender_ip);
 					strcpy(senderPacketNodeArray[j].packet.srcPort, s_port);
 					strcpy(senderPacketNodeArray[j].packet.destIP, request.srcIP);
 					strcpy(senderPacketNodeArray[j].packet.destPort, request.srcPort);
 					senderPacketNodeArray[j].packet.new_length = HEADERSIZE + length;
 					senderPacketNodeArray[j].packet.priority = priority;
 						   
-					// Reset the senderPacketNode
+					// Reset the senderPacketNode for this window of packets
 					senderPacketNodeArray[j].timeSent = 0;
 					senderPacketNodeArray[j].ACKReceived = false;
 					senderPacketNodeArray[j].retryCount = 0;
@@ -294,7 +296,7 @@ main(int argc, char *argv[])
 					break;
 				}
 			}
-			packetsRead = j;
+			packetsRead = j; // j is # of packets read (max. is window_size)
 		
 			for(k = 0; k < packetsRead; k++) {
 	
@@ -303,11 +305,11 @@ main(int argc, char *argv[])
 				serializePacket(senderPacketNodeArray[k].packet, responsePacket);
 		  
 
-				//printf("port: %d\n", ntohs( ((struct sockaddr_in*)&client_addr)->sin_port ));
+				//printf("port: %d\n", ntohs( ((struct sockaddr_in*)&addr_emulator)->sin_port ));
 				printInfoAtSend(inet_ntoa( ((struct sockaddr_in*)&addr_emulator)->sin_addr ), senderPacketNodeArray[k].packet);
 
-				// Send data to the requester
-				if (sendto(socketFD_Server, responsePacket,
+				// Send data to the requester (via the emulator)
+				if (sendto(socketFD_Sender, responsePacket,
 						P2_HEADERSIZE+HEADERSIZE+senderPacketNodeArray[k].packet.length,
 						0, (struct sockaddr*) &addr_emulator, addr_emulator_len) == -1) {
 					perror("sendto()");
@@ -322,20 +324,19 @@ main(int argc, char *argv[])
 				// We'd leak memory like crazy otherwise
 				free(responsePacket);
 			}
+			
+			// All packets sent. Now wait for them all to be ACK'd
 	
 			allACKReceived = false;
 	
-			// TODO: Need to set up a non-blocking socket
-			// TODO: does this work??? I dont know...
-			fcntl(socketFD_Server, F_SETFL, O_NONBLOCK);
+			// Set the sender socket to be non-blocking now
+			fcntl(socketFD_Sender, F_SETFL, O_NONBLOCK);
 	
 			while(!allACKReceived) {
 				bzero(buffer, P2_MAXPACKETSIZE);
-				if ((numbytes = recvfrom(socketFD_Server, buffer, P2_MAXPACKETSIZE, 0,
+				if ((numbytes = recvfrom(socketFD_Sender, buffer, P2_MAXPACKETSIZE, 0,
 						 (struct sockaddr*)&client_addr, &addr_len)) == -1) {
 					// Don't do anything b/c we're non-blocking.
-					//perror("recvfrom");
-					//exit(1);
 				}
 				if(numbytes > 0) {
 					//printf("client ip and port: %s %d\n", get_ip_address( (struct sockaddr*) &client_addr), ((struct sockaddr_in*)&client_addr)->sin_port);
@@ -352,19 +353,24 @@ main(int argc, char *argv[])
 						printf("\nERROR: sender got a packet that's not an ACK\n");
 					}
 				}
-
+				
+				// Count up all the ACK packets received so far
+				// TODO: Might move this inside (numbytes > 0)
 				ACKCounter = 0;
 				for(k = 0; k < packetsRead; k++) {
+					// If a packet has already been ACK'd
 					if(senderPacketNodeArray[k].ACKReceived) {
 						ACKCounter++;
 					}
-					else if(senderPacketNodeArray[k].timeSent + ((senderPacketNodeArray[k].retryCount + 1)*(timeout/1000)) < (currentTime = time(NULL))) {
-						//printf("TIMEOUTEXPIRED\n");				
+					// Else if the timemout has expired
+					else if(senderPacketNodeArray[k].timeSent + ((senderPacketNodeArray[k].retryCount + 1)*(timeout/1000)) < (currentTime = time(NULL))) {				
+						// If a packet can still be retried (i.e. retryCount<5)
 						if(senderPacketNodeArray[k].retryCount < 5) {
 							char* responsePacket = malloc(P2_HEADERSIZE+HEADERSIZE+senderPacketNodeArray[k].packet.length);
 							serializePacket(senderPacketNodeArray[k].packet, responsePacket);
-					
-							if (sendto(socketFD_Server, responsePacket,
+		
+							// Retry sending the packet
+							if (sendto(socketFD_Sender, responsePacket,
 									P2_HEADERSIZE+HEADERSIZE+senderPacketNodeArray[k].packet.length,
 									0, (struct sockaddr*) &addr_emulator, addr_emulator_len) == -1) {
 								perror("sendto()");
@@ -376,10 +382,13 @@ main(int argc, char *argv[])
 							// I'm suddenly concerned with memory leaks
 							free(responsePacket);
 						}
-						else {
+						// Else we're out of retries to just give up already
+						else 
+						{
 							printf("Gave up on sending packet with sequence number: %d\n",
 									senderPacketNodeArray[k].packet.sequence);
-							senderPacketNodeArray[k].ACKReceived = true; //So we know not to check anymore
+							// Count packets given up on as ACK'd for counting
+							senderPacketNodeArray[k].ACKReceived = true;
 						}
 					}
 				}
@@ -389,10 +398,10 @@ main(int argc, char *argv[])
 			} // END while(!allACKReceived)
 		} // END while(!readComplete)
 
-		sendEndPkt(addr_emulator, addr_emulator_len, socketFD_Server, s_port, request, priority);
+		sendEndPkt(addr_emulator, addr_emulator_len, socketFD_Sender, s_port, request, priority);
 	}
 
-	close(socketFD_Server);
+	close(socketFD_Sender);
 	return 0;
 
 } // End Main
