@@ -1,0 +1,52 @@
+emulator -p <port> -f <filename> -d <debug>
+trace -a <routetrace port> -b <source hostname> -c <source port> -d <destination hostname> -e <destination port> -f <debug option>
+	
+
+functions: (emulator)
+	readtopology():
+		reads text file which defines interconnection of network (max: 20 nodes) in a specific format
+		http://pages.cs.wisc.edu/~pb/640/PA3/PA3.htm for more
+		only executed once, when the emulator is started
+		emulator knows entire topology at startup
+	
+	createroutes():
+		implements link state routing protocol between nodes in topology - look in book/notes for more
+			(must do reliable flooding)
+		runs continuously after readtopology()
+		reacts to responsive/unresponsive nodes
+		sends information to neighbors
+		we can choose the frequency of updates
+		we can choose to use UDP or TCP
+			- but routing topology must stabilize 5 seconds after a state change
+		can assume weights between all nodes are 1
+		
+	forwardpacket():
+		determines where to forward a packet received by the emulator
+		deals with link state packets and regular packets (if different)
+			we can choose the link state packet format
+	
+	when emulator receives routetrace pkt:
+		if TTL=0, send back to routetrace
+		if TTL>0, decrement TTL, send to next hop
+
+routetrace:
+	traces hops along a shortest path between source and destination emulator
+	sends pkts to source emulator with growing TTLs until destination node is reached
+		- will produce output showing shortest path to destination
+		(verifies that emulator's link state protocol is correct)
+	when debug=1, prints:
+		pkt TTL, pkt src IP and hostname, pkt dst IP and hostname
+	pkt format: http://pages.cs.wisc.edu/~pb/640/PA3/PA3.htm
+	
+	application:
+		1. gets info from cmd line
+		2. starts with TTL=0
+		3. sends routetrace pkt to source: "T", TTL, rIP, rPort, dIP, dPort
+		4. waits for response
+		5. response, prints rIP, rPort (response)
+		6. if srcIP, srcPort == rIP, rPort, terminate
+		7. TTL++, goto (3)
+		
+
+The sender and requester from p1, p2 are gone.
+Topology must be configurable on the fly.
