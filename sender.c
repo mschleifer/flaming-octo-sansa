@@ -413,12 +413,12 @@ main(int argc, char *argv[])
 		sendEndPkt(addr_emulator, addr_emulator_len, socketFD_Sender, s_port, request, priority);
 	}
 
-	printf("normalTransmissions: %f\n", normalTransmissions);
-	printf("reTransmissions: %f\n", reTransmissions);
+	//printf("normalTransmissions: %f\n", normalTransmissions);
+	//printf("reTransmissions: %f\n", reTransmissions);
 	double totalTransmissions = normalTransmissions + reTransmissions;
 	
 	double lossRatio = (reTransmissions / totalTransmissions)*100.0;
-	printf("loss ratio: %f\n", lossRatio);
+	//printf("loss ratio: %f\n", lossRatio);
 	
 	printf("Sent %1.0f packets total, and needed to send %1.0f.\n\tThe observed loss ratio was %2.2f%%\n",
 				totalTransmissions, normalTransmissions, lossRatio);

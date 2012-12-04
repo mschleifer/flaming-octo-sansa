@@ -26,7 +26,7 @@ Queue* p2_queue;
 Queue* p3_queue;
 
 char* log_file; 		// Log file name
-bool debug = false;		// Debug flag - set to print extra information
+bool debug = true;		// Debug flag - set to print extra information
 
 packet_plus delayed_pkt;
 struct timeb delay_start;
