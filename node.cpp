@@ -12,6 +12,7 @@ using namespace std;
 
 /**
  * Node class to be used in the topology.
+ * The way I view it, the Topology has Nodes, which have neighbors (of Nodes)
  */
 class Node {
 	public:

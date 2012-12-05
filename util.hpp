@@ -19,6 +19,8 @@ using namespace std;
  * CPP utilities and other functions can go here
  *************************************************/
 
+
+
 /**
  * Can't fully explain yet.  Does some sort of parsing on the delimiter to get the
  * vector, given a delimiting string and a string to parse
@@ -52,6 +54,8 @@ vector<string> parse_string( const string &delim, const string &str)
 			  
 	return array;
 }
+
+
 
 
 /**
