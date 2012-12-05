@@ -1,2 +1,0 @@
-mumble-20 3000 mumble-20 4000 mumble-20 4000 10 20
-mumble-20 3000 mumble-20 2000 mumble-20 2000 0 0
