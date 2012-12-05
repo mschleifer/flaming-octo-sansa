@@ -20,6 +20,41 @@ using namespace std;
  *************************************************/
 
 /**
+ * Can't fully explain yet.  Does some sort of parsing on the delimiter to get the
+ * vector, given a delimiting string and a string to parse
+ */
+vector<string> parse_string( const string &delim, const string &str)
+{
+	vector<string> array;
+
+	int strlen = str.length();
+	int dellen = delim.length();
+	if (dellen==0)
+		return array;
+
+	int i = 0; 
+	int k = 0;
+	while( i < strlen ) {
+		int j=0;
+		while ( i+j < strlen && j < dellen && str[i+j] == delim[j]) {
+			j++;
+		}
+		if (j == dellen) { //found delim 
+			array.push_back(  str.substr(k, i-k) );
+			i += dellen;
+			k=i;
+		}
+		else {
+			i++;
+		}
+	}
+	array.push_back(  str.substr(k, i-k) );
+			  
+	return array;
+}
+
+
+/**
  * Returns the hostname of the current machine.
  * I think this only works in the mumble labs.
  */
