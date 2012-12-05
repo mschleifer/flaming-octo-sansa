@@ -2,8 +2,10 @@
 #define STRUCTS_H
 
 #include <stdbool.h>
+#include <string.h>
 #define PAYLOADSIZE (5120)
 
+using namespace std;
 // Packets as defined in the project specifications
 typedef struct packet {
 	char type;
@@ -78,13 +80,6 @@ typedef struct packet_plus {
 	char pkt_payload_array[PAYLOADSIZE];
 } packet_plus;
 
-// Used by sender to keep track of info related to resending a packet
-typedef struct senderPacketNode {
-	time_t timeSent;
-	bool ACKReceived;
-	packet packet;
-	int retryCount;
-} senderPacketNode;
 
 typedef struct requesterBufferNode {
 	bool packet_received;

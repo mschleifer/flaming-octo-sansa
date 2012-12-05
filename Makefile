@@ -11,7 +11,7 @@ requester:
 	rm requester
 
 emulator:
-	gcc -Wall -Werror -o emulator emulator.c
+	gcc -Wall -Werror -o emulator emulator.cpp
 
 clean:
 	rm -rf sender requester emulator *.o

@@ -13,6 +13,7 @@
 #include <arpa/inet.h>
 #include <netdb.h>
 #include <stdbool.h>
+#include <string.h>
 
 #define BUFFER (5120)
 
@@ -22,6 +23,8 @@
 
 #define P2_MAXPACKETSIZE (5238)
 #define P2_HEADERSIZE (101)
+
+using namespace std;
 
 // get sockaddr, IPv4 or IPv6:
 void 
@@ -67,7 +70,7 @@ void print_packetBuffer(char* buffer) {
 /**
  * Simply prints the given message to stderr
  */
-void printError(char* errorMessage) {
+void printError(char const *errorMessage) {
 	fprintf(stderr, "An error has occured: %s\n", errorMessage);
 }
 
