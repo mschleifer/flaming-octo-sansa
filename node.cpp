@@ -100,13 +100,13 @@ class Node {
 		 * already exist in the neighbor list.
 		 * @return A pointer to this node
 		 */
-		Node& neighbor(Node neighbor) {
+		Node& addNeighbor(Node neighbor) {
 			string key = this->getKey(neighbor);
 			
-			// add if doesn't already exist
+			// add if doesn't already exist; also add to Node's neighbor list
 			if (!node_neighbors.count(key)) {
 				node_neighbors[key] = neighbor;
-				neighbor.neighbor(*this);
+				neighbor.addNeighbor(*this);
 			}
 
 		 	return *this;
@@ -114,11 +114,12 @@ class Node {
 		
 		/**
 		 * Adds the list of neighbor nodes to this nodes list of neighbors.
+		 * And vice versa.
 		 */
-		Node& neighbors(vector<Node> neighborsList) {
+		Node& addNeighbors(vector<Node> neighborsList) {
 			
 			for(unsigned int i = 0; i < neighborsList.size(); i++) {
-				this->neighbor(neighborsList.at(i));
+				this->addNeighbor(neighborsList.at(i));
 			}
 		
 			return *this;
@@ -127,7 +128,7 @@ class Node {
 		/**
 		 * Returns a list (vector) of all of the neighbors of the current node.
 		 */
-		vector<Node> neighbors() {
+		vector<Node> getNeighbors() {
 			map<string, Node>::iterator iter;
 			vector<Node> n;
 			
@@ -145,12 +146,13 @@ class Node {
 		 * Otherwise return -1.
 		 * @return 0 if values are same, -1 otherwise.
 		 */
-		int compare(Node n) {
-			if(this->getHostname().compare(n.getHostname()) == 0 && this->getPort() == n.getPort()) {
+		int compareTo(Node n) {
+			if (this->getHostname().compare(n.getHostname()) == 0 && this->getPort() == n.getPort()) {
 				return 0;
-			} else {
-				return -1;
-			}
+			} 
+			
+			// could do some more complex comparing/return vals, but no for now
+			return -1;
 		}
 
 		
