@@ -20,7 +20,7 @@
 #define MAXLINE (440)
 
 // Global Variables
-bool debug = false;
+bool debug = true;
 
 void readTopology(const char* filename) {
 
