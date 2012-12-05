@@ -1,6 +1,5 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 #include <unistd.h>
 #include <time.h>
 #include <sys/timeb.h>
@@ -9,6 +8,7 @@
 #include <netinet/in.h>
 #include "structs.h"
 #include "helpers.h"
+#include "util.hpp"
 #include "queue.h"
 #include <arpa/inet.h>
 #include <stdbool.h>

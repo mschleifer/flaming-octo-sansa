@@ -1,7 +1,7 @@
 all: emulator
 
 emulator:
-	gcc -Wall -Werror -o emulator emulator.cpp
+	g++ -Wall -Werror -o emulator emulator.cpp
 
 clean:
-	rm -rf sender requester emulator *.o
+	rm -rf emulator *.o
