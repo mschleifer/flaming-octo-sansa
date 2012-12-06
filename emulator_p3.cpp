@@ -16,46 +16,96 @@
 #include <fcntl.h>
 #include <netdb.h>
 #include <string.h>
+#include "node.cpp"
+#include <iostream>
 
 #define MAXLINE (440)
 
-// Global Variables
+/* Global Variables */
 bool debug = true;
+Node *topology; // Array of the nodes in the network
+				// TODO: may want to use something other than an array
+int topologySize = 0;
 
+/*
+ * Reads a topology text file passed in by 'filename' and sets up the global
+ * Node[] that represents the network.
+ *
+ */
 void readTopology(const char* filename) {
 
-	char* line = (char*)malloc(MAXLINE);
-	FILE *file = fopen(filename, "r"); //read only
+	char* line = (char*)malloc(MAXLINE);	// Line in the file
+	
+	FILE *file = fopen(filename, "r");
 	if (file == NULL) {
 		fprintf(stderr, "Cannot open input file.\n");
 		exit(1);
 	}
 	
-	char** saveptr = NULL;
-	char* token = NULL;
-	char* address = NULL;
-	int port = -1;
+	// We'll read the file once first to figure out how many nodes are in the
+	// topology so we can create the Node[] dynamically
+	while ( fgets ( line, MAXLINE, file ) != NULL ) // Read in a line
+	{
+		topologySize++;
+	}
+	topology = new Node[topologySize];
+	
+	// We'll read the file fo-real's this time and do some work
+	rewind(file);
+	
+	char** saveptr = NULL;	// for strtok_r
+	char* token = NULL;		// Each token returned by strtok
+	
+	char* address = NULL;	// address for a node
+	int port = -1;			// port of a node
+	
+	int nodeCount = 0;		// Index of the host node we're on
 	
 	while ( fgets ( line, MAXLINE, file ) != NULL ) // Read in a line
 	{
-		if(debug)
-			printf("LINE: %s", line);
+		if(debug) cout << "LINE: " << line;
 		
 		// Parse the line one token (<addr,port> pair) at a time
 		saveptr = &line;
+		token = strtok_r(NULL, " \n", saveptr); // First token is the node
+		address = strtok(token, ",");
+		port = atoi(strtok(NULL, " \n"));
+
+		topology[nodeCount].setHostname(address); // Set up the host node
+		topology[nodeCount].setPort(port);
+		topology[nodeCount].setOnline(true);
+		
+		// Add each other token in the line to the list of connections
 		while((token = strtok_r(NULL, " \n", saveptr)) != NULL) {
 			address = strtok(token, ",");
 			port = atoi(strtok(NULL, " \n"));
-			//TODO: want to put these in some kind of structure
-			
-			if(debug) {
-				printf("ADDRESS: %s | ", address);
-				printf("PORT: %d\n", port);
-			}
+			topology[nodeCount].addNeighbor(*(new Node(address, port, false)));
 		}
+		
+		nodeCount++; // New host node in topology for a new line
 	}
 	
+	if(debug) cout << endl;
 	fclose(file);
+}
+
+/*
+ * Called to update the routing tables for each node.  Uses a link-state
+ * protocol.
+ */
+void createRoutes() {
+	// TODO: This seems to me like it'll be tough.  We're going to need to come
+	// TODO: up with some structure(s) to store the shortest-paths.
+}
+
+/*
+ * Determine where to forward a packet received by the emulator. Handles
+ * both packets containing link-state info and those from routetrace
+ */
+void forwardPacket() {
+	// TODO: Don't know if we should use this as the general packet sending
+	// TODO: function or just specifically for forwarding.  We need to come up
+	// TODO: with some kind of packet structure since none was given.
 }
 
 int main(int argc, char *argv[]) {
@@ -98,10 +148,21 @@ int main(int argc, char *argv[]) {
 	if(debug)
 		printf("ARGS: %s %s %s\n", port, filename, debug ? "True" : "False");
 	
-	readTopology(filename); // Read the topology file
+	readTopology(filename); // Read the topology file 
 	
+	if(debug) {
+		for(int i = 0; i < topologySize; i++) {
+			cout << topology[i].toString() << endl;
+		}
+	}
 	
+	// TODO: now the real stuff happens. Loop repeatedly calling createRoutes()
+	// TODO: and updating the shortest paths using link-state protocol.
 	
+	// TODO: Also need a forwardPacket() function for sending to neighbors
+	
+	return 0;
+}	// end main
 
 /*	
 	char hostname[255];
@@ -239,7 +300,4 @@ int main(int argc, char *argv[]) {
 		}
 	}
 	*/
-
 	
-	return 0;
-}	// end main

@@ -18,7 +18,7 @@ class Node {
 	public:
 		
 		/**
-		 * Empty constructor for a Node.  Sets online to be true. 
+		 * Empty constructor for a Node.  Sets online to be false. 
 		 */
 		Node() {
 			node_online = false;
@@ -106,7 +106,7 @@ class Node {
 			// add if doesn't already exist; also add to Node's neighbor list
 			if (!node_neighbors.count(key)) {
 				node_neighbors[key] = neighbor;
-				neighbor.addNeighbor(*this);
+				neighbor.addNeighbor(*this); // Make the connection 2-way
 			}
 
 		 	return *this;
@@ -147,6 +147,7 @@ class Node {
 		 * @return 0 if values are same, -1 otherwise.
 		 */
 		int compareTo(Node n) {
+			// Might want to do n.getHostname.equals(getHostname()) to compare host
 			if (this->getHostname().compare(n.getHostname()) == 0 && this->getPort() == n.getPort()) {
 				return 0;
 			} 
