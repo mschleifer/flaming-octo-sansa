@@ -28,7 +28,7 @@ class Node {
 		 *  Constructor for Node.  Takes in hostname, port combo.
 		 *  Sets online to be true as well.
 		 */
-		Node(string host_str, int port_int) {
+		Node(string host_str, string port_int) {
 			node_host = host_str;
 			node_port = port_int;
 			node_online = true;
@@ -38,7 +38,7 @@ class Node {
 		 * Third constructor for a Node.  Sets hostname, port, and online
 		 * to what is passed in.
 		 */
-		Node(string host_str, int port_int, bool online_bool) {
+		Node(string host_str, string port_int, bool online_bool) {
 			node_host = host_str;
 			node_port = port_int;
 			node_online = online_bool;
@@ -65,7 +65,7 @@ class Node {
 		 * Sets the port of the Node
 		 * @return A pointer to the Node
 		 */
-		Node& setPort(int port_int) { 
+		Node& setPort(string port_int) { 
 			node_port = port_int; 
 			return *this; 
 		}
@@ -74,7 +74,7 @@ class Node {
 		 * Gets the port of the Node
 		 * @return int The port of the Node
 		 */
-		int getPort() { 
+		string getPort() { 
 			return node_port; 
 		}
 		
@@ -147,8 +147,7 @@ class Node {
 		 * @return 0 if values are same, -1 otherwise.
 		 */
 		int compareTo(Node n) {
-			// Might want to do n.getHostname.equals(getHostname()) to compare host
-			if (this->getHostname().compare(n.getHostname()) == 0 && this->getPort() == n.getPort()) {
+			if (this->getHostname().compare(n.getHostname()) == 0 && this->getPort().compare(n.getPort()) == 0) {
 				return 0;
 			} 
 			
@@ -185,7 +184,7 @@ class Node {
 		
 	private:
 		string node_host;
-		int node_port;
+		string node_port;
 		bool node_online;
 		map<string, Node> node_neighbors;
 		
@@ -194,7 +193,7 @@ class Node {
 		 * Returns the host, port combo of the Node.
 		 * The format is 'key:port'.
 		 */
-		string getKey(string host, int port) {
+		string getKey(string host, string port) {
 			stringstream key;
 			key << host << ":" << port;
 			return key.str();

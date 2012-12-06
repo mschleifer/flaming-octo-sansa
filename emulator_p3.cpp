@@ -26,6 +26,7 @@ bool debug = true;
 Node *topology; // Array of the nodes in the network
 				// TODO: may want to use something other than an array
 int topologySize = 0;
+Node *emulator = new Node();	// Node representing this particular emulator
 
 /*
  * Reads a topology text file passed in by 'filename' and sets up the global
@@ -57,7 +58,7 @@ void readTopology(const char* filename) {
 	char* token = NULL;		// Each token returned by strtok
 	
 	char* address = NULL;	// address for a node
-	int port = -1;			// port of a node
+	char* port = NULL;		// port of a node
 	
 	int nodeCount = 0;		// Index of the host node we're on
 	
@@ -69,7 +70,7 @@ void readTopology(const char* filename) {
 		saveptr = &line;
 		token = strtok_r(NULL, " \n", saveptr); // First token is the node
 		address = strtok(token, ",");
-		port = atoi(strtok(NULL, " \n"));
+		port = strtok(NULL, " \n");
 
 		topology[nodeCount].setHostname(address); // Set up the host node
 		topology[nodeCount].setPort(port);
@@ -78,8 +79,8 @@ void readTopology(const char* filename) {
 		// Add each other token in the line to the list of connections
 		while((token = strtok_r(NULL, " \n", saveptr)) != NULL) {
 			address = strtok(token, ",");
-			port = atoi(strtok(NULL, " \n"));
-			topology[nodeCount].addNeighbor(*(new Node(address, port, false)));
+			port = strtok(NULL, " \n");
+			topology[nodeCount].addNeighbor(*(new Node(address, port, true)));
 		}
 		
 		nodeCount++; // New host node in topology for a new line
@@ -95,7 +96,9 @@ void readTopology(const char* filename) {
  */
 void createRoutes() {
 	// TODO: This seems to me like it'll be tough.  We're going to need to come
-	// TODO: up with some structure(s) to store the shortest-paths.
+	// TODO: up with a number of structures to keep track of different data
+	// TODO: elements (network graph, routing table for each node, etc.).
+	// TODO: Wikipedia has a pretty detailed description (link-state routing).
 }
 
 /*
@@ -109,12 +112,7 @@ void forwardPacket() {
 }
 
 int main(int argc, char *argv[]) {
-	char *buffer;
-	buffer = (char*)malloc(P2_MAXPACKETSIZE);
-	if(buffer == NULL) {
-		printError("Buffer could not be allocated");
-		return 0;
-	}
+
 	if(argc != 5 && argc != 7) {
 		printError("Incorrect number of arguments");
 		usage_Emulator(argv[0]);
@@ -123,6 +121,7 @@ int main(int argc, char *argv[]) {
 
 	char* port = NULL;					//port of emulator
 	char* filename = NULL;				//name of file with forwarding table
+	int rv = -1;
 
 	// Get the commandline args
 	int c;
@@ -148,11 +147,68 @@ int main(int argc, char *argv[]) {
 	if(debug)
 		printf("ARGS: %s %s %s\n", port, filename, debug ? "True" : "False");
 	
-	readTopology(filename); // Read the topology file 
+	readTopology(filename); // Read the topology file
+	
+	// Get the hostname where this emulator is running
+	char hostname[255];
+	gethostname(hostname, 255);
+	
+	int socketFD;
+	struct addrinfo *addrInfo, hints, *p;	// Use these to getaddrinfo()
+	
+	// Set up the hints
+	memset(&hints, 0, sizeof(hints));
+	hints.ai_family = AF_INET;
+	hints.ai_socktype = SOCK_DGRAM;
+	hints.ai_protocol = IPPROTO_UDP;
+	//hints.ai_flags = AI_PASSIVE; Don't want to connect to "any" ip 
+	
+	// Try to get addrInfo for the specific hostname
+	if ( (rv = getaddrinfo(hostname, port, &hints, &addrInfo)) != 0) {
+		fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
+		return -1;
+	}
+	
+	// Try to connect the address with a socket
+	for (p = addrInfo; p != NULL; p = p->ai_next) {
+		if ((socketFD = socket(p->ai_family, p->ai_socktype, p->ai_protocol)) == -1) {
+			perror("sender: socket");
+			continue;
+		}
+		
+		fcntl(socketFD, F_SETFL, O_NONBLOCK);
+		// Use connect() instead of bind() because not AI_PASSIVE
+		if (connect(socketFD, p->ai_addr, p->ai_addrlen) == -1) {
+			close(socketFD);
+			perror("sender: connect");
+			continue;
+		}
+		break;
+	}
+	
+	// Set up the local Node "emulator" with info about the current host
+	string ipAddress =  inet_ntoa(((sockaddr_in*)(p->ai_addr))->sin_addr);
+	emulator->setHostname(ipAddress);
+	emulator->setPort(port);
+	if(debug)
+		cout << "ADDR/PORT for current emulator: " << emulator->toString() << endl << endl;
 	
 	if(debug) {
+		cout << "TOPOLOGY ARRAY:" << endl;
 		for(int i = 0; i < topologySize; i++) {
 			cout << topology[i].toString() << endl;
+		}
+		cout << endl;
+	}
+	for(int i = 0; i < topologySize; i++) {
+		if(topology[i].compareTo(*emulator) == 0) {
+			if(debug)
+				cout << "This 'emulator' node is topology[" << i << "]" << endl;
+				cout << topology[i].toString() << endl << endl;
+			
+			// Set up the remaining members of the 'emulator' Node
+			emulator->setOnline(true);
+			emulator->addNeighbors(topology[i].getNeighbors());
 		}
 	}
 	
