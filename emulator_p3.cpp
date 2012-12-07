@@ -81,31 +81,19 @@ void readTopology(const char* filename) {
 		Node n = Node(address, port, true);
 		topology.push_back(n);
 		top2.push_back(n);
-		/*topology[nodeCount].setHostname(address); // Set up the host node
-		topology[nodeCount].setPort(port);
-		topology[nodeCount].setOnline(true);*/
-		
 		
 		// Add each other token in the line to the list of connections
 		while((token = strtok_r(NULL, " \n", saveptr)) != NULL) {
 			address = strtok(token, ",");
 			port = strtok(NULL, " \n");
 			topology[nodeCount].addNeighbor(*(new Node(address, port, true)));
-			//Node p = Node(address, port, true);
-			//cout << &p << endl;
-			//topology[nodeCount].addNeighbor(p);
 		}
-		
-		//Node node = Node(topology[nodeCount].getHostname(), topology[nodeCount].getPort(), true);
-		//top.addNode(topology[nodeCount]);
 		
 		nodeCount++; // New host node in topology for a new line
 	}
 	
+	// Add the initial nodes; then add the neighbors of them
 	top.addNodes(topology);
-	
-	
-	
 	for (unsigned int i = 0; i < topology.size(); i++) {
 		top.addNeighbors(topology[i]);
 	}

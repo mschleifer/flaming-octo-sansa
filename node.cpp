@@ -86,21 +86,18 @@ class Node {
 			return node_port; 
 		}
 		
+	
 		/**
-		 * Sets the online bool of the Node
-		 * @return A pointer to the Node
+		 * Sets the node to be online
 		 */
-		Node& setOnline(bool online_bool) { 
-			node_online = online_bool; 
-			return *this; 
-		}
-		
-		
 		Node& setOnline() {
 			node_online = true;
 			return *this;
 		}
 		
+		/**
+		 * Sets the node to be offline
+		 */
 		Node& setOffline() {
 			node_online = false;
 			return *this;

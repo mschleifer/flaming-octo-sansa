@@ -108,10 +108,10 @@ class Topology {
 	}
 	
 	
-	
-	
-	
-	
+	/**
+	 * Basic toString() for the Topology.  Calls the node's toString()
+	 * quite a bit.
+	 */
 	string toString() {
 		stringstream out;
 		map<string, Node>::iterator iter;
