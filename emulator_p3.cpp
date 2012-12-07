@@ -101,16 +101,17 @@ void readTopology(const char* filename) {
 		nodeCount++; // New host node in topology for a new line
 	}
 	
-	top.addStartingNodes(topology);
+	top.addNodes(topology);
+	
+	
+	
+	for (unsigned int i = 0; i < topology.size(); i++) {
+		top.addNeighbors(topology[i]);
+	}
 	
 	cout << "Topology after readTopology():" << endl << top.toString() << endl;
 	
-	for (unsigned int i = 0; i < topology.size(); i++) {
-		cout << topology[i].toString();
-		top.addNode(topology[i]);
-		//top.addNeighbors(topology[i]);
-	}
-	//cout << "Topology after readTopology():" << endl << top.toString() << endl;
+	
 	if(debug) cout << endl;
 	fclose(file);
 }
@@ -219,6 +220,10 @@ int main(int argc, char *argv[]) {
 		cout << "ADDR/PORT for current emulator: " << emulator->toString() << endl << endl;
 	
 	top.disableNode("4.0.0.0", "4");
+	top.disableNode("3.0.0.0", "3");
+	
+	cout << top.toString() << endl;
+	top.enableNode("4.0.0.0:4");
 	cout << top.toString() << endl;
 	
 	/*if(debug) {

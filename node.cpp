@@ -159,6 +159,39 @@ class Node {
 			
 			return n;
 		}
+		
+		/**
+		 * Returns a pointer to the neighbor with the given key
+		 */
+		Node* getNeighbor(string key) {
+			map<string, Node>::iterator iter;
+			
+			// iterate through, fill out vector as we go
+			for(iter = node_neighbors.begin(); iter != node_neighbors.end(); iter++) {
+				Node node = iter->second;
+				if (node.getKey().compare(key) == 0) {
+					return &node_neighbors[key];
+				}
+			}
+			
+			exit(-1);
+		}
+		
+		
+		/**
+		 * Gets a list of the neighbors' keys
+		 */
+		vector<string> getNeighborsKeys() {
+			map<string, Node>::iterator iter;
+			vector<string> keys;
+			
+			for (iter = node_neighbors.begin(); iter != node_neighbors.end(); iter++) {
+				Node node = iter->second;
+				keys.push_back(node.getKey());
+			}
+			
+			return keys;
+		}
 
 		/**
 		 * Compares two nodes.  If the two have the same host and port, return 0.
