@@ -87,6 +87,17 @@ class Node {
 			return *this; 
 		}
 		
+		
+		Node& setOnline() {
+			node_online = true;
+			return *this;
+		}
+		
+		Node& setOffline() {
+			node_online = false;
+			return *this;
+		}
+		
 		/**
 		 * Gets the online boolean of the Node
 		 * @return bool The boolean representing whether the Node is online or not.
@@ -164,14 +175,19 @@ class Node {
 			stringstream out;
 			map<string, Node>::iterator iter;
 			
-			out << "Node ( " << node_host << "::" << node_port << " - " << node_online << " ) --> "; 
-			out << "{";
+			out << "Node ( " << node_host << "::" << node_port << " - ";
+			if (node_online) out << "online";
+			else out << "offline";
+			out << " ) --> {";
 			
 			for (iter = node_neighbors.begin(); iter != node_neighbors.end(); iter++) {
 				Node n = iter->second;
 				
-				out << "( " << n.getHostname() << "::" << n.getPort() << " - " << n.getOnline() << " )";
-				out << ", ";
+				out << "( " << n.getHostname() << "::" << n.getPort() << " - ";
+				
+				if (n.getOnline()) out << "online";
+				else out << "offline";
+				out << " )" << ", ";
 			}
 			
 			string toString = out.str();
@@ -180,6 +196,15 @@ class Node {
 			toString += "}";
 			
 			return toString;
+		}
+		
+		/**
+		 * Returns the host, port combo of the Node.
+		 * The format returned is 'key:port'.
+		 */
+		string getKey() {
+			stringstream key;
+			return this->getKey(this->getHostname(), this->getPort());
 		}
 		
 	private:
@@ -207,4 +232,6 @@ class Node {
 			stringstream key;
 			return this->getKey(n.getHostname(), n.getPort());
 		}
+		
+		
 };

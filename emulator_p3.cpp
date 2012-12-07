@@ -17,6 +17,7 @@
 #include <netdb.h>
 #include <string.h>
 #include "node.cpp"
+#include "topology.cpp"
 #include <iostream>
 
 #define MAXLINE (440)
@@ -62,6 +63,7 @@ void readTopology(const char* filename) {
 	
 	int nodeCount = 0;		// Index of the host node we're on
 	
+	Topology top = Topology(true);
 	while ( fgets ( line, MAXLINE, file ) != NULL ) // Read in a line
 	{
 		if(debug) cout << "LINE: " << line;
@@ -76,6 +78,7 @@ void readTopology(const char* filename) {
 		topology[nodeCount].setPort(port);
 		topology[nodeCount].setOnline(true);
 		
+		
 		// Add each other token in the line to the list of connections
 		while((token = strtok_r(NULL, " \n", saveptr)) != NULL) {
 			address = strtok(token, ",");
@@ -83,8 +86,13 @@ void readTopology(const char* filename) {
 			topology[nodeCount].addNeighbor(*(new Node(address, port, true)));
 		}
 		
+		//Node node = Node(topology[nodeCount].getHostname(), topology[nodeCount].getPort(), true);
+		top.addNode(topology[nodeCount]);
+		
 		nodeCount++; // New host node in topology for a new line
 	}
+	
+	cout << top.toString() << endl;
 	
 	if(debug) cout << endl;
 	fclose(file);
@@ -193,14 +201,16 @@ int main(int argc, char *argv[]) {
 	if(debug)
 		cout << "ADDR/PORT for current emulator: " << emulator->toString() << endl << endl;
 	
-	if(debug) {
+	/*if(debug) {
 		cout << "TOPOLOGY ARRAY:" << endl;
 		for(int i = 0; i < topologySize; i++) {
 			cout << topology[i].toString() << endl;
 		}
 		cout << endl;
-	}
-	for(int i = 0; i < topologySize; i++) {
+	}*/
+	
+	
+	/*for(int i = 0; i < topologySize; i++) {
 		if(topology[i].compareTo(*emulator) == 0) {
 			if(debug)
 				cout << "This 'emulator' node is topology[" << i << "]" << endl;
@@ -210,7 +220,7 @@ int main(int argc, char *argv[]) {
 			emulator->setOnline(true);
 			emulator->addNeighbors(topology[i].getNeighbors());
 		}
-	}
+	}*/
 	
 	// TODO: now the real stuff happens. Loop repeatedly calling createRoutes()
 	// TODO: and updating the shortest paths using link-state protocol.
