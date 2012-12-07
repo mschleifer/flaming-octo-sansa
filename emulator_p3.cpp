@@ -219,8 +219,8 @@ int main(int argc, char *argv[]) {
 	if(debug)
 		cout << "ADDR/PORT for current emulator: " << emulator->toString() << endl << endl;
 	
-	top.disableNode("4.0.0.0", "4");
-	top.disableNode("3.0.0.0", "3");
+	top.disableNode("4.0.0.0:4");
+	top.disableNode("3.0.0.0:3");
 	
 	cout << top.toString() << endl;
 	top.enableNode("4.0.0.0:4");

@@ -62,14 +62,14 @@ class Topology {
 		exit(-1);
 	}
 	
+	
+	
 	/**
 	 * Disables the node with the given hostname and port.
 	 * Due to limitations with my skill with C++, very much slower 
 	 * than it should be.
 	 */
-	void disableNode(string hostname, string port) {
-		string nodeKey = this->getKey(hostname, port);
-		
+	void disableNode(string nodeKey) {
 		vector<string> disabledKeys;
 		if (topology_nodes.count(nodeKey) == 1) {
 			Node &node = topology_nodes[nodeKey]; 
@@ -137,33 +137,3 @@ class Topology {
 		return key.str();
 	}
 };
-
-
-/*
-
-	string contents = file_get_contents(filename);
-
-		vector<string> lines = explode("\n", contents);
-		for(unsigned int i = 0; i < lines.size(); i++) {
-			vector<string> nodes = explode(" ", lines.at(i));
-
-			vector<string> node = explode(",", nodes.at(0));
-			Node n = Node().host(node[0]).port(atoi(node[1].c_str())).online(true);
-			this->add(n);
-
-			Node &me = this->get(n);
-
-			for(unsigned int j = 1; j < nodes.size(); j++) {
-				vector<string> node = explode(",", nodes.at(j));
-				// Node n = Node().host(node[0]).port(atoi(node[1].c_str())).online(true);
-				int p = atoi(node[1].c_str());
-				this->add(node[0], p);
-				Node &neighb = this->get(node[0], p);
-
-				me.neighbor(neighb);
-			}
-
-		}
-	};
-	
-	*/
