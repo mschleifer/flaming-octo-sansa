@@ -24,8 +24,10 @@
 
 /* Global Variables */
 bool debug = true;
-Node *topology; // Array of the nodes in the network
+vector<Node> topology; // Array of the nodes in the network
+vector<Node> top2;
 				// TODO: may want to use something other than an array
+Topology top = Topology(true);
 int topologySize = 0;
 Node *emulator = new Node();	// Node representing this particular emulator
 
@@ -50,7 +52,7 @@ void readTopology(const char* filename) {
 	{
 		topologySize++;
 	}
-	topology = new Node[topologySize];
+	//topology = new Node[topologySize];
 	
 	// We'll read the file fo-real's this time and do some work
 	rewind(file);
@@ -63,7 +65,8 @@ void readTopology(const char* filename) {
 	
 	int nodeCount = 0;		// Index of the host node we're on
 	
-	Topology top = Topology(true);
+	
+	
 	while ( fgets ( line, MAXLINE, file ) != NULL ) // Read in a line
 	{
 		if(debug) cout << "LINE: " << line;
@@ -74,9 +77,12 @@ void readTopology(const char* filename) {
 		address = strtok(token, ",");
 		port = strtok(NULL, " \n");
 
-		topology[nodeCount].setHostname(address); // Set up the host node
+		Node n = Node(address, port, true);
+		topology.push_back(n);
+		top2.push_back(n);
+		/*topology[nodeCount].setHostname(address); // Set up the host node
 		topology[nodeCount].setPort(port);
-		topology[nodeCount].setOnline(true);
+		topology[nodeCount].setOnline(true);*/
 		
 		
 		// Add each other token in the line to the list of connections
@@ -84,16 +90,27 @@ void readTopology(const char* filename) {
 			address = strtok(token, ",");
 			port = strtok(NULL, " \n");
 			topology[nodeCount].addNeighbor(*(new Node(address, port, true)));
+			//Node p = Node(address, port, true);
+			//cout << &p << endl;
+			//topology[nodeCount].addNeighbor(p);
 		}
 		
 		//Node node = Node(topology[nodeCount].getHostname(), topology[nodeCount].getPort(), true);
-		top.addNode(topology[nodeCount]);
+		//top.addNode(topology[nodeCount]);
 		
 		nodeCount++; // New host node in topology for a new line
 	}
 	
-	cout << top.toString() << endl;
+	top.addStartingNodes(topology);
 	
+	cout << "Topology after readTopology():" << endl << top.toString() << endl;
+	
+	for (unsigned int i = 0; i < topology.size(); i++) {
+		cout << topology[i].toString();
+		top.addNode(topology[i]);
+		//top.addNeighbors(topology[i]);
+	}
+	//cout << "Topology after readTopology():" << endl << top.toString() << endl;
 	if(debug) cout << endl;
 	fclose(file);
 }
@@ -200,6 +217,9 @@ int main(int argc, char *argv[]) {
 	emulator->setPort(port);
 	if(debug)
 		cout << "ADDR/PORT for current emulator: " << emulator->toString() << endl << endl;
+	
+	top.disableNode("4.0.0.0", "4");
+	cout << top.toString() << endl;
 	
 	/*if(debug) {
 		cout << "TOPOLOGY ARRAY:" << endl;

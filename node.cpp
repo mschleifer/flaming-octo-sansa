@@ -44,6 +44,14 @@ class Node {
 			node_online = online_bool;
 		}
 		
+		Node & operator=(const Node &node) {
+			node_host = node.node_host;
+			node_port = node.node_port;
+			node_online = node.node_online;
+			node_neighbors.clear();
+			return *this;
+		}
+		
 		/**
 		 * Sets the hostname of the Node.
 		 * @return A pointer to the Node
@@ -129,7 +137,7 @@ class Node {
 		 */
 		Node& addNeighbors(vector<Node> neighborsList) {
 			
-			for(unsigned int i = 0; i < neighborsList.size(); i++) {
+			for (unsigned int i = 0; i < neighborsList.size(); i++) {
 				this->addNeighbor(neighborsList.at(i));
 			}
 		
@@ -182,6 +190,8 @@ class Node {
 			
 			for (iter = node_neighbors.begin(); iter != node_neighbors.end(); iter++) {
 				Node n = iter->second;
+				
+				//out << &n << ", ";
 				
 				out << "( " << n.getHostname() << "::" << n.getPort() << " - ";
 				

@@ -13,6 +13,38 @@ class Topology {
 	}
 	
 	
+	void addStartingNodes(vector<Node> nodes) {
+		for (unsigned int i = 0; i < nodes.size(); i++) {
+			Node node = nodes[i];
+			string nodeKey = node.getKey();
+		
+		  if (topology_nodes.count(nodeKey) == 0) {
+			  Node n = Node(node);//	node.getHostname(), node.getPort(), node.getOnline());
+			  topology_nodes[nodeKey] = n;
+			  cout << &topology_nodes[nodeKey] << endl;
+			  if (debug) {
+				  //cout << "added node to topology" << endl;
+			  }
+		  }
+		}
+	}
+	
+	void addNeighbors(Node parentNode) {
+		string nodeKey = parentNode.getKey();
+		Node& parentNodePtr = getNode(nodeKey);
+		cout << &parentNodePtr << endl;
+		
+		vector<Node> neighbors = parentNode.getNeighbors();
+		for (unsigned int i = 0; i < neighbors.size(); i++) {
+			Node neighbor = neighbors[i];
+			nodeKey = neighbor.getKey();
+			Node &neighborPtr = getNode(nodeKey);
+ 			cout << &neighborPtr << endl;
+ 			parentNodePtr.addNeighbor(neighborPtr);
+		}
+		
+	}
+	
 	/**
 	 * Adds a node to the topology. All neighbors and etc are added
 	 * automatically.
@@ -20,18 +52,46 @@ class Topology {
 	void addNode(Node node) {
 		string nodeKey = node.getKey();
 		
-		if (topology_nodes.count(nodeKey) == 0) {
-			topology_nodes[nodeKey] = node;
+		/*if (topology_nodes.count(nodeKey) == 0) {
+			Node n = Node(node.getHostname(), node.getPort(), node.getOnline());
+			topology_nodes[nodeKey] = n;
 			if (debug) {
 				//cout << "added node to topology" << endl;
 			}
-		}
-		
-		/*vector<Node> neighbors = node.getNeighbors();
-		for (unsigned int i = 0; i < neighbors.size(); i++) {
-			cout << neighbors[i].toString() << endl;
 		}*/
 		
+		vector<Node> neighbors = node.getNeighbors();
+		//node.getNeighbors().clear();
+		for (unsigned int i = 0; i < neighbors.size(); i++) {
+			//cout << neighbors[i].toString() << endl;
+			string key = neighbors[i].getKey();
+			Node &nNode = getNode(key);
+			topology_nodes[nodeKey].addNeighbor(nNode);
+			cout << "foo";
+		}
+		
+	}
+	
+	Node& getNode(string hostname, string port) {
+		string nodeKey = this->getKey(hostname, port);
+		return getNode(nodeKey);
+	}
+	
+	Node& getNode(string nodeKey) {
+		if (topology_nodes.count(nodeKey) == 1) {
+			return topology_nodes[nodeKey];
+		}
+
+		exit(-1);
+	}
+	
+	void disableNode(string hostname, string port) {
+		string nodeKey = this->getKey(hostname, port);
+		if (topology_nodes.count(nodeKey) == 1) {
+			Node &node = topology_nodes[nodeKey]; 
+			cout << &node << endl;
+			node.setOffline();
+		}
 	}
 	
 	void disableNode(Node node) {
@@ -70,6 +130,11 @@ class Topology {
 	map<string, Node> topology_nodes;
 	bool debug;
   
+	string getKey(string host, string port) {
+		stringstream key;
+		key << host << ":" << port;
+		return key.str();
+	}
 };
 
 
