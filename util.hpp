@@ -55,3 +55,19 @@ string getIP() {
 
 	return ip_address;
 }
+
+bool vectorContains( vector<Node>::iterator itr, vector<Node> list, Node node) {
+   for(itr=list.begin(); itr != list.end(); itr++) {
+       if((*itr).compareTo(node) == 0) {
+           return true;
+       }
+   }
+   return false;
+}
+
+string getNodeKey(string host, string port) {
+		stringstream key;
+		key << host << ":" << port;
+		return key.str();
+}
+

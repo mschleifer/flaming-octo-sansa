@@ -9,7 +9,7 @@
 #include <netinet/in.h>
 #include "structs.h"
 #include "helpers.h"
-#include "queue.h"
+//#include "queue.h"
 #include <arpa/inet.h>
 #include <stdbool.h>
 #include <sys/stat.h>
@@ -53,7 +53,6 @@ void readTopology(const char* filename) {
 	{
 		topologySize++;
 	}
-	//topology = new Node[topologySize];
 	
 	// We'll read the file fo-real's this time and do some work
 	rewind(file);
@@ -165,6 +164,11 @@ int main(int argc, char *argv[]) {
 	
 	readTopology(filename); // Read the topology file
 	
+	// Set up the local Node "emulator" with info about the current host
+	emulator = &top.getNode(getNodeKey(getIP(), port));
+	if(debug)
+		cout << "Node for current emulator: " << emulator->toString() << endl << endl;
+	
 	// Get the hostname where this emulator is running
 	char hostname[255];
 	gethostname(hostname, 255);
@@ -201,44 +205,12 @@ int main(int argc, char *argv[]) {
 		break;
 	}
 	
-	// Set up the local Node "emulator" with info about the current host
-	string ipAddress =  getIP();
-	emulator->setHostname(ipAddress);
-	emulator->setPort(port);
-	if(debug)
-		cout << "ADDR/PORT for current emulator: " << emulator->toString() << endl << endl;
-	
 	top.disableNode("4.0.0.0:4");
 	top.disableNode("3.0.0.0:3");
 	
 	cout << top.toString() << endl;
 	top.enableNode("4.0.0.0:4");
 	cout << top.toString() << endl;
-	
-	/*if(debug) {
-		cout << "TOPOLOGY ARRAY:" << endl;
-		for(int i = 0; i < topologySize; i++) {
-			cout << topology[i].toString() << endl;
-		}
-		cout << endl;
-	}*/
-	
-	
-	/*for(int i = 0; i < topologySize; i++) {
-	}
-	
-	// Look through the topology
-	for(int i = 0; i < topologySize; i++) {
-		if(topology[i].compareTo(*emulator) == 0) {
-			if(debug)
-				cout << "This 'emulator' node is topology[" << i << "]" << endl;
-				cout << topology[i].toString() << endl << endl;
-			
-			// Set up the remaining members of the 'emulator' Node
-			emulator->setOnline(true);
-			emulator->addNeighbors(topology[i].getNeighbors());
-		}
-	}*/
 	
 	// Send a message to each of the emulator's neighbors
 	// TODO: Probably put this all in its own function for organization
