@@ -164,18 +164,18 @@ class Node {
 			stringstream out;
 			map<string, Node>::iterator iter;
 			
-			out << "Node ( " << node_host << " - " << node_port << " - " << node_online << " ) --> "; 
-			out << "{ ";
+			out << "Node ( " << node_host << "::" << node_port << " - " << node_online << " ) --> "; 
+			out << "{";
 			
-			for(iter = node_neighbors.begin(); iter != node_neighbors.end(); iter++) {
+			for (iter = node_neighbors.begin(); iter != node_neighbors.end(); iter++) {
 				Node n = iter->second;
 				
-				out << "( " << n.getHostname() << " - " << n.getPort() << " - " << n.getOnline() << " ) ";
+				out << "( " << n.getHostname() << "::" << n.getPort() << " - " << n.getOnline() << " )";
 				out << ", ";
 			}
 			
 			string toString = out.str();
-			//output.erase(output.size()-2);
+			toString.erase(toString.size()-2);
 			
 			toString += "}";
 			
