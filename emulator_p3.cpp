@@ -17,6 +17,7 @@
 #include <netdb.h>
 #include <string.h>
 #include "node.cpp"
+#include "util.hpp"
 #include <iostream>
 
 #define MAXLINE (440)
@@ -119,6 +120,7 @@ int main(int argc, char *argv[]) {
 		return 0;
 	}
 
+	char* buffer = (char*)malloc(1024);
 	char* port = NULL;					//port of emulator
 	char* filename = NULL;				//name of file with forwarding table
 	int rv = -1;
@@ -177,8 +179,7 @@ int main(int argc, char *argv[]) {
 		}
 		
 		fcntl(socketFD, F_SETFL, O_NONBLOCK);
-		// Use connect() instead of bind() because not AI_PASSIVE
-		if (connect(socketFD, p->ai_addr, p->ai_addrlen) == -1) {
+		if (bind(socketFD, p->ai_addr, p->ai_addrlen) == -1) {
 			close(socketFD);
 			perror("sender: connect");
 			continue;
@@ -187,7 +188,7 @@ int main(int argc, char *argv[]) {
 	}
 	
 	// Set up the local Node "emulator" with info about the current host
-	string ipAddress =  inet_ntoa(((sockaddr_in*)(p->ai_addr))->sin_addr);
+	string ipAddress =  getIP();
 	emulator->setHostname(ipAddress);
 	emulator->setPort(port);
 	if(debug)
@@ -200,6 +201,8 @@ int main(int argc, char *argv[]) {
 		}
 		cout << endl;
 	}
+	
+	// Look through the topology
 	for(int i = 0; i < topologySize; i++) {
 		if(topology[i].compareTo(*emulator) == 0) {
 			if(debug)
@@ -212,6 +215,55 @@ int main(int argc, char *argv[]) {
 		}
 	}
 	
+	// Send a message to each of the emulator's neighbors
+	// TODO: Probably put this all in its own function for organization
+	struct sockaddr_in sock_sendto;
+	socklen_t sendto_len;
+	
+	vector<Node> neighbors = emulator->getNeighbors();
+	
+	for(int i = 0; i < (int)neighbors.size(); i++) {
+	
+		sock_sendto.sin_family = AF_INET;
+		sock_sendto.sin_port = htons( atoi(neighbors[i].getPort().c_str()) );
+		inet_pton(AF_INET, neighbors[i].getHostname().c_str(), &sock_sendto.sin_addr);
+		memset(sock_sendto.sin_zero, '\0', sizeof(sock_sendto.sin_zero));
+	
+		string sendPkt = "HERE IS A MESSAGE\n";
+		sendto_len = sizeof(sock_sendto);
+
+		if(debug)
+			cout << "Sending message to: " << neighbors[i].getHostname().c_str()
+				<< ":" << neighbors[i].getPort() << endl;
+
+		if ( sendto(socketFD, (void*)sendPkt.c_str(), 18, 0, 
+						(struct sockaddr*) &sock_sendto, sendto_len) == -1 ) {
+			perror("sendto()");
+		}
+	}
+	
+	
+	
+	struct sockaddr_storage addr;
+	socklen_t addr_len;
+	
+	while (true) {
+		addr_len = sizeof(addr);
+
+		int numbytes;
+		memset(buffer, 0,  1024); // Need to zero the buffer
+
+		if ((numbytes = recvfrom(socketFD, buffer, 18, 0, 
+						(struct sockaddr*)&addr, &addr_len)) <= -1) {
+			
+			// Nothing received
+		}
+		else { 
+			printf("emulator: packet is %d bytes long\n", numbytes);
+			cout << "MESSAGE: " << buffer << endl;
+		}
+	}
+	
 	// TODO: now the real stuff happens. Loop repeatedly calling createRoutes()
 	// TODO: and updating the shortest paths using link-state protocol.
 	
@@ -220,140 +272,45 @@ int main(int argc, char *argv[]) {
 	return 0;
 }	// end main
 
-/*	
-	char hostname[255];
-	gethostname(hostname, 255);
-	readForwardingTable(filename, hostname, port);
+// NOTES ON THE LINK-STATE PROTOCOL (from Wikipedia)
 
-
-	int socketFD_Emulator;
-
-	struct addrinfo hints, *p, *servinfo;
-	int rv, numbytes;
-	struct sockaddr_storage addr;
-	socklen_t addr_len;
-	// char s[INET6_ADDRSTRLEN];
+// DISTRIBUTING THE MAP INFORMATION
+	// First, each node needs to determine what other ports it is connected to
+	// it does this using a simple reachability protocol which it runs each of its neighbors
 	
-	// Used to bind to the port on this host as a 'server'
-	bzero(&hints, sizeof(hints));
-	hints.ai_family = AF_INET;
-	hints.ai_socktype = SOCK_DGRAM;
-	hints.ai_protocol = IPPROTO_UDP;
-	hints.ai_flags = AI_PASSIVE;
+	// Next, each node periodically and in case of connectivity changes makes up 
+	// a short message, the link-state advertisement, which:
+    	// Identifies the node which is producing it.
+    	// Identifies all the other nodes (either routers or networks) to which it is directly connected.
+    	// Includes a sequence number, which increases every time the source node makes up a new version of the message.
+	// This message is then flooded throughout the network. Each node in the network remembers, 
+	// for every other node in the network, the sequence number of the last 
+	// link-state message which it received from that node
 	
-	// PASSIVE and NULL, so we are open to all connections on port
-	if ( (rv = getaddrinfo(NULL, port, &hints, &servinfo)) != 0) {
-		fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
-		return -1;
-	}
-
+	// A Node sends a copy to all of its neighbors. When a link-state advertisement
+	// is received at a node, the node looks up the sequence number it has stored for
+	// the source of that link-state message. If this message is newer (i.e. has a higher
+	// sequence number), it is saved, and a copy is sent in turn to each of that node's neighbors
 	
-
+// CREATING THE MAP
+	// Finally, with the complete set of link-state advertisements 
+	// (one from each node in the network) in hand, it is "obviously" easy to 
+	// produce the graph for the map of the network.
 	
-	// loop through all the results and bind to the first that we can (NON BLOCKING)
-	for (p = servinfo; p != NULL; p = p->ai_next) {
-		if ((socketFD_Emulator = socket(p->ai_family, p->ai_socktype, p->ai_protocol)) == -1) {
-			perror("sender: socket");
-			continue;
-		}
-		
-		fcntl(socketFD_Emulator, F_SETFL, O_NONBLOCK);
-		if (bind(socketFD_Emulator, p->ai_addr, p->ai_addrlen) == -1) {
-			close(socketFD_Emulator);
-			perror("sender: bind");
-			continue;
-		}
-		break;
-	}
-
-	if (p == NULL) {
-		fprintf(stderr, "sender: failed to bind socket\n");
-		return -1;
-	}
-
-	freeaddrinfo(servinfo);
-
-	fd_set readfds;
-	FD_ZERO(&readfds);
-	FD_SET(socketFD_Emulator, &readfds);
-	bool packet_delayed = false;
+	// The algorithm iterates over the collection of link-state advertisements; 
+	// for each one
+		// make links on the map of the network, from the node which sent that message
+		// to all the nodes which that message indicates are neighbours of the sending node
 	
+	// (Potentiall optional for use I think)
+	// if one node reports that it is connected to another, but the other node 
+	// does not report that it is connected to the first, there is a problem, 
+	// and the link is not included on the map
 	
-	while (true) {
-		addr_len = sizeof(addr);
-
-		bzero(buffer, P2_MAXPACKETSIZE); // Need to zero the buffer
-		// If no data is being sent to us, determine if packets need to be dealt with
-		if ((numbytes = recvfrom(socketFD_Emulator, buffer, P2_MAXPACKETSIZE, 0, 
-						(struct sockaddr*)&addr, &addr_len)) <= -1) {
-			
-			// Deal with the delay or set one up
-			if (packet_delayed) {
-				packet_delayed = dealWithDelay(socketFD_Emulator);
-			}
-			
-			else {
-				packet_delayed = delayPacket();
-			}
-		}
-		else {
-			if (debug) {
-				printf("emulator: got packet from %s\n", get_ip_address( (struct sockaddr*) &addr )); 
-				printf("emulator: packet is %d bytes long\n", numbytes);
-			}
-			
-			
-			
-			// Gets a packet from the buffer from recvfrom
-			packet pkt = getPktFromBuffer(buffer);
-			
-			// Print less obtrusive information about the packet. Cleaner.
-			print_clean_pkt_info(pkt);
-			
-			if (debug) {
-				print_packet(pkt);
-			}
-			
-			bool no_entry_found = true;
-			int index;
-			
-			 //
-			 // Look through the forwarding table for an entry that matches the destination
-			 // of the packet.
-			 //
-			for (index = 0; index < forwarding_table_size; index++) {
-				forwarding_entry entry = forwarding_table[index];
-				
-				// The destinations do not line up; drop packet and log issue.
-				if ( (strcmp(entry.destination_IP, pkt.destIP) != 0) || 
-					  (strcmp(entry.destination_port, pkt.destPort) != 0) ) {
-					//log_no_entry_found(pkt.destIP, pkt.destPort, pkt.srcIP, pkt.srcPort, pkt.priority, pkt.length);
-				}
-				else {
-					if (debug) {
-						printf("A forwarding table-packet destination match was found.\n");
-					}
-				  
-					// Queue the packet 
-					queue_packet(pkt, index);
-					no_entry_found = false;
-					
-					// Deal with the delay or set one up
-					if (packet_delayed) {
-						packet_delayed = dealWithDelay(socketFD_Emulator);
-					}
-					else {
-						packet_delayed = delayPacket();
-					}
-				}
+	// Link-state message giving information about the neighbors is recomputed, 
+	// and then flooded throughout the network, whenever there is a change in the
+	// connectivity between the node and its neighbors, e.g. when a link fails. 
+	// Any such change will be detected by the reachability protocol which each 
+	// node runs with its neighbors.
 	
-			}
-			
-			// If no destination was found, drop packet and log issue
-			if (no_entry_found) {
-				log_no_entry_found(pkt.destIP, pkt.destPort, pkt.srcIP, pkt.srcPort, pkt.priority, pkt.length);
-			}
-		}
-	}
-	*/
-	
+// CREATING THE ROUTING TABLE
