@@ -18,6 +18,7 @@
 #include <string.h>
 #include "node.cpp"
 #include "topology.cpp"
+#include "test.cpp"
 #include "util.hpp"
 #include <iostream>
 
@@ -27,10 +28,12 @@
 bool debug = true;
 vector<Node> topology; // Array of the nodes in the network
 vector<Node> top2;
+vector<Node> mainNodes;
 				// TODO: may want to use something other than an array
 Topology top = Topology(true);
 int topologySize = 0;
 Node *emulator = new Node();	// Node representing this particular emulator
+
 
 /*
  * Reads a topology text file passed in by 'filename' and sets up the global
@@ -109,7 +112,17 @@ void readTopology(const char* filename) {
  * Called to update the routing tables for each node.  Uses a link-state
  * protocol.
  */
-void createRoutes() {
+void createRoutes(Topology topology) {
+	cout << "inside createRoutes: " << topology.toString() << endl;
+	vector<Node> mainNodes = topology.getNodes();
+	cout << mainNodes[0].toString() << endl;
+	map<string, TestClass> routeMap;
+	string startkey = mainNodes[0].getKey();
+	string endkey = mainNodes[4].getKey();
+	TestClass tc = TestClass(startkey, endkey);
+	
+	tc.findPath(topology);
+	cout << tc.toString() << endl;
 	// TODO: This seems to me like it'll be tough.  We're going to need to come
 	// TODO: up with a number of structures to keep track of different data
 	// TODO: elements (network graph, routing table for each node, etc.).
@@ -208,13 +221,14 @@ int main(int argc, char *argv[]) {
 	if(debug)
 		cout << "ADDR/PORT for current emulator: " << emulator->toString() << endl << endl;
 	
-	top.disableNode("4.0.0.0:4");
-	top.disableNode("3.0.0.0:3");
+	//top.disableNode("4.0.0.0:4");
+	//top.disableNode("3.0.0.0:3");
 	
-	cout << top.toString() << endl;
+	/*cout << top.toString() << endl;
 	top.enableNode("4.0.0.0:4");
-	cout << top.toString() << endl;
+	cout << top.toString() << endl;*/
 	
+	createRoutes(top);
 	/*if(debug) {
 		cout << "TOPOLOGY ARRAY:" << endl;
 		for(int i = 0; i < topologySize; i++) {

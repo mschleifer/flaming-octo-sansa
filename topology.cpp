@@ -59,6 +59,7 @@ class Topology {
 			return topology_nodes[nodeKey];
 		}
 
+		cout << "Something went wrong.  getNode() in Topology." << endl;
 		exit(-1);
 	}
 	
@@ -83,6 +84,17 @@ class Topology {
 			Node *disableNode = node.getNeighbor(nodeKey);
 			disableNode->setOffline();
 		}
+	}
+	
+	vector<Node> getNodes() {
+		vector<Node> nodes;
+		map<string, Node>::iterator iter;
+		
+ 		for (iter = topology_nodes.begin(); iter != topology_nodes.end(); iter++) {
+			nodes.push_back(iter->second);
+		}
+		
+		return nodes;
 	}
 	
 
@@ -130,10 +142,4 @@ class Topology {
   private:
 	map<string, Node> topology_nodes;
 	bool debug;
-  
-	string getKey(string host, string port) {
-		stringstream key;
-		key << host << ":" << port;
-		return key.str();
-	}
 };

@@ -190,6 +190,12 @@ class Node {
 			return keys;
 		}
 
+		int compareTo(string key) {
+			if (this->getKey().compare(key) == 0) {
+			  return 0;
+			}
+			return -1;
+		}
 		/**
 		 * Compares two nodes.  If the two have the same host and port, return 0.
 		 * Otherwise return -1.
@@ -204,6 +210,16 @@ class Node {
 			return -1;
 		}
 
+		string toStringNodeOnly() {
+			stringstream out;
+			map<string, Node>::iterator iter;
+			
+			out << "Node ( " << node_host << "::" << node_port << " - ";
+			if (node_online) out << "online";
+			else out << "offline";
+			out << " )";
+			return out.str();
+		}
 		
 		/**
 		 * A toString for the Node.  Prints out the Node along with all neighbors.
