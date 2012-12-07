@@ -225,15 +225,26 @@ int main(int argc, char *argv[]) {
 		sock_sendto.sin_port = htons( atoi(neighbors[i].getPort().c_str()) );
 		inet_pton(AF_INET, neighbors[i].getHostname().c_str(), &sock_sendto.sin_addr);
 		memset(sock_sendto.sin_zero, '\0', sizeof(sock_sendto.sin_zero));
-	
-		string sendPkt = "HERE IS A MESSAGE\n";
 		sendto_len = sizeof(sock_sendto);
+
+		LinkPacket linkstatePacket;
+		linkstatePacket.type = 'L';
+		linkstatePacket.sequence = 1;
+		linkstatePacket.length = MAXLINKPAYLOAD;
+		linkstatePacket.srcIP = atoi(emulator->getHostname().c_str());
+		linkstatePacket.srcPort = atoi(emulator->getPort().c_str());
+		linkstatePacket.payload = (char*)"HELLO DOWN THERE"; // Setup with neighbors
+		linkstatePacket.length = 16;
+		
+		char* sendPkt = (char*)malloc(MAXLINKPACKET);
+		serializeLinkPacket(linkstatePacket, sendPkt);
+		
 
 		if(debug)
 			cout << "Sending message to: " << neighbors[i].getHostname().c_str()
 				<< ":" << neighbors[i].getPort() << endl;
 
-		if ( sendto(socketFD, (void*)sendPkt.c_str(), 18, 0, 
+		if ( sendto(socketFD, (void*)sendPkt, 18, 0, 
 						(struct sockaddr*) &sock_sendto, sendto_len) == -1 ) {
 			perror("sendto()");
 		}
