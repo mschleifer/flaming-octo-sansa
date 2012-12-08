@@ -23,10 +23,13 @@ using namespace std;
 #define BUFFER (5120)
 
 #define LINKPACKETHEADER (57)
-#define MAXLINKPACKET (171)
-#define MAXLINKPAYLOAD (114)
+#define MAXLINKPACKET (988)
+#define MAXLINKPAYLOAD (931)
 
 using namespace std;
+
+// Forward declare, fix this hack later
+LinkPacket getLinkPktFromBuffer(char* buffer);
 
 // get sockaddr, IPv4 or IPv6:
 void *get_in_addr(struct sockaddr *sa) {
@@ -37,13 +40,36 @@ void *get_in_addr(struct sockaddr *sa) {
   return &(((struct sockaddr_in6*)sa)->sin6_addr);
 }
 
+/* Needed up here for forward declaration */
+vector<Node> getNodesFromLinkPacket(LinkPacket linkPacket) {
+	vector<Node> neighbors;
+	char hostname[32];
+	char port[16];
+	bool online;
+	
+	for(int i = 0; i < (int)linkPacket.length; i+=LINKPAYLOADNODE) {
+		memcpy(&hostname, linkPacket.payload+i, 32);
+		memcpy(&port, linkPacket.payload+i+32, 16);
+		memcpy(&online, linkPacket.payload+i+48,1);
+		
+		neighbors.push_back(Node(hostname, port, online));
+	}
+	
+	return neighbors;
+}
+
 /**
  * Prints all information in a packet, tabbed.
  * @param pkt A packet to print
  */
 void print_LinkPacket(LinkPacket pkt) {
-	printf("packet:\n\ttype: %c\n\tsequence: %d\n\tlength: %d\n\tsrcIP: %s\n\tsrcPort: %s\n\tpayload: %s\n",
-			pkt.type, pkt.sequence, pkt.length, pkt.srcIP, pkt.srcPort, pkt.payload);
+	printf("packet:\n\ttype: %c\n\tsequence: %d\n\tlength: %d\n\tsrcIP: %s\n\tsrcPort: %s\n\tpayload: ",
+			pkt.type, pkt.sequence, pkt.length, pkt.srcIP, pkt.srcPort);
+	vector<Node> n = getNodesFromLinkPacket(pkt);
+	for(vector<Node>::iterator itr = n.begin(); itr != n.end(); itr++) {
+		cout << itr->toString() << endl << "\t\t ";
+	}
+	cout << endl;
 }
 
 /**
@@ -51,8 +77,10 @@ void print_LinkPacket(LinkPacket pkt) {
  * @param buffer The buffer containing the packet information to print.
  */
 void print_LinkPacketBuffer(char* buffer) {
-	printf("\nPACKET BUFFER\n\ttype: %c\n\tsequence: %d\n\tlength: %d\n\tsrcIP: %s\n\tsrcPort: %s\n\tpayload: %s\n",
-			(char)*buffer, (int)*(buffer+1), (int)*(buffer+5), buffer+9, buffer+41, buffer+57);
+	cout << "buffer version ";
+	LinkPacket pkt = getLinkPktFromBuffer(buffer);
+	
+	print_LinkPacket(pkt);
 }
 
 
@@ -115,7 +143,7 @@ LinkPacket getLinkPktFromBuffer(char* buffer) {
 	memcpy(&(pkt.sequence), buffer+1, sizeof(uint32_t));
 	memcpy(&(pkt.length), buffer+5, sizeof(uint32_t));
 	memcpy(&(pkt.srcIP), buffer+9, 32);
-	memcpy(&(pkt.srcPort), buffer+13, 32);
+	memcpy(&(pkt.srcPort), buffer+41, 32);
 	pkt.payload = buffer+LINKPACKETHEADER;
 
 	return pkt;
@@ -211,33 +239,12 @@ void createLinkPacketPayload(char* payload, vector<Node> neighbors) {
 	for(itr = neighbors.begin(); itr != neighbors.end(); itr++) {
 		bool online = (*itr).getOnline();
 	
-		memcpy(payload+offset, (*itr).getHostname().c_str(), 4);
-		memcpy(payload+offset+4, (*itr).getPort().c_str(), 2);
-		memcpy(payload+offset+6,&online, 1);
+		memcpy(payload+offset, (*itr).getHostname().c_str(), 32);
+		memcpy(payload+offset+32, (*itr).getPort().c_str(), 16);
+		memcpy(payload+offset+48, &online, 1);
 		
 		offset += LINKPAYLOADNODE;
 	}
-}
-
-vector<Node> getNodesFromLinkPacket(LinkPacket linkPacket) {
-	vector<Node> neighbors;
-	char hostname[32];
-	char port[16];
-	bool online;
-	
-	cout << "Getting nodes from linkstate packet" << endl;
-	
-	for(int i = 0; i < (int)linkPacket.length; i+=LINKPAYLOADNODE) {
-		memcpy(&hostname, linkPacket.payload, 32);
-		memcpy(&port, linkPacket.payload+32, 16);
-		memcpy(&online, linkPacket.payload+48,1);
-		
-		cout << hostname << " | " << port << " | " << online << endl;
-		
-		neighbors.push_back(Node(hostname, port, online));
-	}
-	
-	return neighbors;
 }
 
 #endif

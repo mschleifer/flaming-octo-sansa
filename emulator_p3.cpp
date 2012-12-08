@@ -310,21 +310,22 @@ int main(int argc, char *argv[]) {
 		LinkPacket linkstatePacket;
 		linkstatePacket.type = 'L';
 		linkstatePacket.sequence = 1;
-		linkstatePacket.length = MAXLINKPAYLOAD;
-		memcpy(linkstatePacket.srcIP, emulator->getHostname().c_str(), emulator->getHostname().size());
-		memcpy(linkstatePacket.srcPort, emulator->getPort().c_str(), emulator->getPort().size());
+		linkstatePacket.length = 0;
+		strcpy(linkstatePacket.srcIP, emulator->getHostname().c_str());
+		strcpy(linkstatePacket.srcPort, emulator->getPort().c_str());
 		linkstatePacket.payload = (char*)malloc(emulator->getNeighbors().size() * LINKPAYLOADNODE);
+		linkstatePacket.length = emulator->getNeighbors().size() * LINKPAYLOADNODE;
 		
 		createLinkPacketPayload(linkstatePacket.payload, emulator->getNeighbors());
 		
 		char* sendPkt = (char*)malloc(MAXLINKPACKET);
+		memset(sendPkt, 0, MAXLINKPACKET);
 		serializeLinkPacket(linkstatePacket, sendPkt);
 		
 
 		if(debug)
 			cout << "Sending message to: " << neighbors[i].getHostname().c_str()
 				<< ":" << neighbors[i].getPort() << endl;
-			//print_LinkPacketBuffer(sendPkt+LINKPACKETHEADER);
 
 		if ( sendto(socketFD, (void*)sendPkt, LINKPACKETHEADER+linkstatePacket.length, 0, 
 						(struct sockaddr*) &sock_sendto, sendto_len) == -1 ) {
@@ -354,7 +355,7 @@ int main(int argc, char *argv[]) {
 		else {
 		
 			LinkPacket linkstatePacket = getLinkPktFromBuffer(buffer);
-			//vector<Node> recNodes = getNodesFromLinkPacket(linkstatePacket);
+			vector<Node> recNodes = getNodesFromLinkPacket(linkstatePacket);
 		}
 	}
 	
