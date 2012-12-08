@@ -14,6 +14,9 @@
 #include <netdb.h>
 #include <stdbool.h>
 #include <string.h>
+#include <iostream>
+
+using namespace std;
 
 #define BUFFER (5120)
 
@@ -137,6 +140,12 @@ void
 usage_Emulator(char *prog) {
 	fprintf(stderr, "usage: %s -p <port>  -f <filename> -d <debug>\n", prog);
 	exit(1);
+}
+
+void 
+usage_routes(char *prog) {
+	cout << "usage: " << "trace -a <routetrace port> -b < source hostname> -c <source port> -d <destination hostname> -e <destination port> -f <debug option>" << endl;
+	exit(-1);
 }
 
 /**
