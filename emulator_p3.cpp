@@ -121,6 +121,10 @@ void createRoutes(Topology topology) {
 	//string startkey = mainNodes[0].getKey();
 	//string endkey = mainNodes[7].getKey();
 	
+	/**
+	 * Finds the shortest path from every node to every other node 
+	 * in the entire topology.
+	 */
 	for (unsigned int i = 0; i < mainNodes.size(); i++) {
 		for (unsigned int j = 0; j < mainNodes.size(); j++) {
 			if (i == j) continue;
@@ -139,7 +143,7 @@ void createRoutes(Topology topology) {
 	}
 	//tc.findPath(topology);
 	//cout << tc.toString() << endl;
-	cout << "FFFFFFFFF" << endl;
+	cout << "Finished and didn't take long? Yep!" << endl;
 	// TODO: This seems to me like it'll be tough.  We're going to need to come
 	// TODO: up with a number of structures to keep track of different data
 	// TODO: elements (network graph, routing table for each node, etc.).
@@ -238,7 +242,7 @@ int main(int argc, char *argv[]) {
 	if(debug)
 		cout << "ADDR/PORT for current emulator: " << emulator->toString() << endl << endl;
 	
-	//top.disableNode("4.0.0.0:4");
+	top.disableNode("5.0.0.0:5");
 	//top.disableNode("3.0.0.0:3");
 	
 	/*cout << top.toString() << endl;
