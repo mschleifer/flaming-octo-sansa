@@ -29,6 +29,7 @@ bool debug = true;
 vector<Node> topology; // Array of the nodes in the network
 vector<Node> top2;
 vector<Node> mainNodes;
+vector<TestClass> bestRoutes;
 Topology top = Topology(true);
 int topologySize = 0;
 Node *emulator = new Node();	// Node representing this particular emulator
@@ -154,7 +155,7 @@ void createRoutes(Topology topology) {
  * neighbors.  I'm not sure what exactly I'll need to do for this 
  * project, but one of these two createRoutes methods should help.
  */
-void createRoutes(Topology topology, Node emulator) {
+vector<TestClass> createRoutes(Topology topology, Node emulator) {
 	cout << "Inside createRoutes: " << endl;
 	vector<Node> mainNodes = topology.getNodes();
 	vector<TestClass> testMap;
@@ -185,12 +186,14 @@ void createRoutes(Topology topology, Node emulator) {
 	
 	
 	// Print out the results 
-	if (debug) {
+	/*if (debug) {
 		for (unsigned int i = 0; i < testMap.size(); i++) {
 			cout << testMap[i].toString();
 			cout << endl;
 		}
-	}
+	}*/
+	
+	return testMap;
 }
 
 
@@ -297,8 +300,8 @@ int main(int argc, char *argv[]) {
 	//top.disableNode("3.0.0.0:3");
 	//top.disableNode("4.0.0.0:4");
 	//top.disableNode("3.0.0.0:3");
-	createRoutes(top);
-	//createRoutes(top, *emulator);
+	//createRoutes(top);
+	bestRoutes = createRoutes(top, *emulator);
 	
 	
 	// Send a message to each of the emulator's neighbors
@@ -401,7 +404,37 @@ int main(int argc, char *argv[]) {
 				}
 				
 				else {
-					cout << "Now we have to do something more.." << endl;
+					// send packet back to next hop
+					
+					//TODO: forward to next on path to pkt.dstNode
+					string gotoIp;
+					string gotoPort;
+					for (unsigned int i = 0; i < bestRoutes.size(); i++ ) {
+						//cout << bestRoutes[i].toString();
+						if (bestRoutes[i].getEndkey().
+						  compare(getNodeKey(routePacket.dstIP, routePacket.dstPort)) == 0) {
+							gotoIp = keyToIp(bestRoutes[i].getNextkey());
+							gotoPort = keyToPort(bestRoutes[i].getNextkey());
+							//cout << gotoIp << "::" << gotoPort << endl;
+						}
+					}
+					
+					sock_sendto.sin_family = AF_INET;
+					sock_sendto.sin_port = htons( atoi(gotoPort.c_str()) );
+					inet_pton(AF_INET, gotoIp.c_str(), &sock_sendto.sin_addr);
+					memset(sock_sendto.sin_zero, '\0', sizeof(sock_sendto.sin_zero));
+					sendto_len = sizeof(sock_sendto);
+					
+					routePacket.ttl--;
+					char* sendPkt = (char*)malloc(ROUTETRACESIZE);
+					serializeRoutePacket(routePacket, sendPkt);
+					
+					if ( sendto(socketFD, (void*)sendPkt, ROUTETRACESIZE, 0, 
+							  (struct sockaddr*) &sock_sendto, sendto_len) == -1 ) {
+						perror("sendto()");
+					}
+					
+					free(sendPkt);
 				}
 				
 			}

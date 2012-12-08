@@ -190,6 +190,7 @@ int main(int argc, char *argv[]) {
 			
 			if (debug) {
 				  printf("routetrace: (received) packet is %d bytes long\n", numbytes);
+				  // TODO: Need to save returned packets, where they came from
 				  print_RoutePacket(routePkt);
 				  cout << endl;
 			}

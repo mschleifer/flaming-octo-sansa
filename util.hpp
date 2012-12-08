@@ -65,6 +65,34 @@ bool vectorContains( vector<Node>::iterator itr, vector<Node> list, Node node) {
    return false;
 }
 
+
+/**
+ * converts a ip:port key and returns the ip
+ */
+string keyToIp(string key) {
+	string token;
+	istringstream ss(key);
+	while ( getline(ss, token, ':') ) {
+		return token;
+	}
+	return token;
+}
+
+/**
+ * returns the port of the ip:port key
+ */
+string keyToPort(string key) {
+	string token;
+	istringstream ss(key);
+	while ( getline(ss, token, ':') ) {
+		
+	}
+	return token;
+}
+
+/**
+ * returns a key in the ip:port combo
+ */
 string getNodeKey(string host, string port) {
 		stringstream key;
 		key << host << ":" << port;

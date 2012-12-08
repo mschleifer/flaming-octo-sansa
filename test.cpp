@@ -111,6 +111,14 @@ class TestClass {
 					
 					// We were filling the path in reverse; this fixes that.
 					reverse(this->path.begin(), this->path.end());
+					
+					// special case
+					if (this->cost == 1) {
+						this->nextkey = endkey;
+					}
+					else {
+						this->nextkey = this->path[1].getKey();
+					}
 					return;
 				}
 				
@@ -137,6 +145,8 @@ class TestClass {
 				pathQueue.pop();
 			
 			} // while !Q.empty()
+			
+			
 		}
 		
 		
@@ -158,6 +168,10 @@ class TestClass {
 		
 		string getEndkey() {
 			return this->endkey;
+		}
+		
+		string getNextkey() {
+			return this->nextkey;
 		}
 		
 		void setPath(vector<Node> path) {
@@ -186,6 +200,7 @@ class TestClass {
 			out << "TestClass:" << endl;
 			out << "startkey: " << startkey << endl;
 			out << "endkey: " << endkey << endl;
+			out << "nextkey: " << nextkey << endl;
 			out << "Cost: " << cost << endl;
 			
 			for (unsigned int i = 0; i < path.size(); i++) {
@@ -202,6 +217,7 @@ class TestClass {
 	private:
 		string startkey;
 		string endkey;
+		string nextkey;
 		vector<Node> path;
 		int cost;
 };
