@@ -145,6 +145,8 @@ int main(int argc, char *argv[]) {
 	sendto_len = sizeof(sock_sendto);
 	
 	stepthree:
+	
+	
 	RoutePacket routeTracePkt;
 	routeTracePkt.type = 'T';
 	routeTracePkt.ttl = ttl;
@@ -153,17 +155,19 @@ int main(int argc, char *argv[]) {
 	strcpy(routeTracePkt.dstIP, dstIP.c_str());
 	strcpy(routeTracePkt.dstPort, dstPort.c_str());
 	
-	char* sendPkt = (char*)malloc(161);
+	char* sendPkt = (char*)malloc(ROUTETRACESIZE);
 	serializeRoutePacket(routeTracePkt, sendPkt);
 	
 	/*print_RoutePacket(routeTracePkt);
 	print_RoutePacketBuffer(sendPkt);
-	RoutePacket pkt2 = getRoutePktFromBuffer(sendPkt);
-	print_RoutePacket(pkt2);*/
+	RoutePacket pkt2 = getRoutePktFromBuffer(sendPkt);*/
+	
 	
 	
 	if(debug) {
-		cout << "Sending routetrace pkt to: " << dstIP << "::" << dstPort << endl;
+		cout << "routetrace (sending) pkt to: " << srcIP << "::" << srcPort << endl;
+		print_RoutePacket(routeTracePkt);
+		cout << endl;
 	}
 	
 	if ( sendto(socketFD, (void*)sendPkt, ROUTETRACESIZE, 0, 
@@ -178,7 +182,6 @@ int main(int argc, char *argv[]) {
 	addr_len = sizeof(addr);
 	int numbytes;
 	memset(buffer, 0,  1024); // Need to zero the buffer
-	
 	if ((numbytes = recvfrom(socketFD, buffer, MAXLINKPACKET, 0, 
 						(struct sockaddr*)&addr, &addr_len)) > 0) {
 			
@@ -186,8 +189,9 @@ int main(int argc, char *argv[]) {
 			RoutePacket routePkt = getRoutePktFromBuffer(buffer);
 			
 			if (debug) {
-				  printf("routetrace: packet is %d bytes long\n", numbytes);
+				  printf("routetrace: (received) packet is %d bytes long\n", numbytes);
 				  print_RoutePacket(routePkt);
+				  cout << endl;
 			}
 			
 			string rpSrcIP = routePkt.srcIP;
@@ -201,8 +205,11 @@ int main(int argc, char *argv[]) {
 			
 			ttl++;
 			if (ttl > 25) return 0;
+			
+			
 			goto stepthree;
 	}
-  
+	
+	
 	return 0;
 }

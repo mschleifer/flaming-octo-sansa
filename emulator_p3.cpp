@@ -22,6 +22,7 @@
 #include <iostream>
 
 #define MAXLINE (440)
+#define ROUTETRACESIZE (133)
 
 /* Global Variables */
 bool debug = true;
@@ -192,6 +193,9 @@ void createRoutes(Topology topology, Node emulator) {
 	}
 }
 
+
+string emulatorIP;
+string emulatorPort;
 /*
  * Determine where to forward a packet received by the emulator. Handles
  * both packets containing link-state info and those from routetrace
@@ -223,6 +227,7 @@ int main(int argc, char *argv[]) {
 		switch (c) {
 		case 'p':
 			port = optarg;
+			emulatorPort = port;		//string, same thing
 			break;
 		case 'f':
 			filename = optarg;
@@ -249,7 +254,11 @@ int main(int argc, char *argv[]) {
 	// Get the hostname where this emulator is running
 	char hostname[255];
 	gethostname(hostname, 255);
+	char ip[32];
+	hostname_to_ip(hostname, ip);
+	emulatorIP = ip;
 	cout << "Hostname: " << hostname << endl;
+	cout << "Emulator IP::Port: " << emulatorIP << "::" << emulatorPort << endl;
 	
 	int socketFD;
 	struct addrinfo *addrInfo, hints, *p;	// Use these to getaddrinfo()
@@ -259,7 +268,7 @@ int main(int argc, char *argv[]) {
 	hints.ai_family = AF_INET;
 	hints.ai_socktype = SOCK_DGRAM;
 	hints.ai_protocol = IPPROTO_UDP;
-	//hints.ai_flags = AI_PASSIVE; Don't want to connect to "any" ip 
+	//hints.ai_flags = AI_PASSIVE; //Don't want to connect to "any" ip 
 	
 	// Try to get addrInfo for the specific hostname
 	if ( (rv = getaddrinfo(hostname, port, &hints, &addrInfo)) != 0) {
@@ -353,9 +362,49 @@ int main(int argc, char *argv[]) {
 			// Nothing received
 		}
 		else {
+			char type;
+			memcpy(&(type), buffer, sizeof(char));
+			cout << "packet type: " << type << endl;
+			
+			if (type == 'L') {
+				LinkPacket linkstatePacket = getLinkPktFromBuffer(buffer);
+				vector<Node> recNodes = getNodesFromLinkPacket(linkstatePacket);
+			}
+			else if (type == 'T') {
+				RoutePacket routePacket = getRoutePktFromBuffer(buffer);
+				print_RoutePacket(routePacket);
+	
+				if (routePacket.ttl == 0) {
+				  
+					if(debug) {
+						cout << "emulator: (sending) routetrace back to to: " << routePacket.srcIP << "::" << routePacket.srcPort << endl;
+					}
 		
-			LinkPacket linkstatePacket = getLinkPktFromBuffer(buffer);
-			vector<Node> recNodes = getNodesFromLinkPacket(linkstatePacket);
+					// send packet back to routetrace
+					sock_sendto.sin_family = AF_INET;
+					sock_sendto.sin_port = htons( atoi( routePacket.srcPort) );
+					inet_pton(AF_INET, routePacket.srcIP, &sock_sendto.sin_addr);
+					memset(sock_sendto.sin_zero, '\0', sizeof(sock_sendto.sin_zero));
+					sendto_len = sizeof(sock_sendto);
+					
+					strcpy(routePacket.srcIP, emulatorIP.c_str());
+					strcpy(routePacket.srcPort, emulatorPort.c_str());
+					char* sendPkt = (char*)malloc(ROUTETRACESIZE);
+					serializeRoutePacket(routePacket, sendPkt);
+					
+					if ( sendto(socketFD, (void*)sendPkt, ROUTETRACESIZE, 0, 
+							  (struct sockaddr*) &sock_sendto, sendto_len) == -1 ) {
+						perror("sendto()");
+					}
+					
+					free(sendPkt);
+				}
+				
+				else {
+					cout << "Now we have to do something more.." << endl;
+				}
+				
+			}
 		}
 	}
 	
