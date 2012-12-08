@@ -83,10 +83,10 @@ void
 serializeLinkPacket(LinkPacket pkt, char* buffer) {
 	memcpy(buffer, &(pkt.type), sizeof(char));
 	memcpy(buffer+1, &(pkt.sequence), sizeof(uint32_t));
-	memcpy(buffer+33, &(pkt.length), sizeof(uint32_t));
-	memcpy(buffer+65, &(pkt.srcIP), sizeof(uint32_t));
-	memcpy(buffer+97, &(pkt.srcPort), sizeof(uint16_t));
-	memcpy(buffer+113, &(pkt.sequence), pkt.length);
+	memcpy(buffer+5, &(pkt.length), sizeof(uint32_t));
+	memcpy(buffer+9, &(pkt.srcIP), sizeof(uint32_t));
+	memcpy(buffer+13, &(pkt.srcPort), sizeof(uint16_t));
+	memcpy(buffer+LINKPACKETHEADER, pkt.payload, pkt.length);
 
 }
 
@@ -107,12 +107,12 @@ LinkPacket getLinkPktFromBuffer(char* buffer) {
 	LinkPacket pkt;
 	memcpy(&(pkt.type), buffer, sizeof(char));
 	memcpy(&(pkt.sequence), buffer+1, sizeof(uint32_t));
-	memcpy(&(pkt.length), buffer+33, sizeof(uint32_t));
-	memcpy(&(pkt.srcIP), buffer+65, sizeof(uint32_t));
-	memcpy(&(pkt.srcPort), buffer+97, sizeof(uint16_t));
-	memcpy(&(pkt.sequence), buffer+113, pkt.length);
+	memcpy(&(pkt.length), buffer+5, sizeof(uint32_t));
+	memcpy(&(pkt.srcIP), buffer+9, sizeof(uint32_t));
+	memcpy(&(pkt.srcPort), buffer+13, sizeof(uint16_t));
+	pkt.payload = buffer+LINKPACKETHEADER;
 
-	return LinkPacket();
+	return pkt;
 }
 
 

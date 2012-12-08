@@ -284,13 +284,6 @@ int main(int argc, char *argv[]) {
 		break;
 	}
 	
-	// Set up the local Node "emulator" with info about the current host
-	string ipAddress =  getIP();
-	emulator->setHostname(ipAddress);
-	emulator->setPort(port);
-	if(debug)
-		cout << "ADDR/PORT for current emulator: " << emulator->toString() << endl << endl;
-	
 	// TODO: Disable different nodes and you will see the difference
 	top.disableNode("5.0.0.0:5");
 	//top.disableNode("3.0.0.0:3");
@@ -299,23 +292,6 @@ int main(int argc, char *argv[]) {
 	createRoutes(top);
 	//createRoutes(top, *emulator);
 	
-	
-	
-	/*for(int i = 0; i < topologySize; i++) {
-	}
-	
-	// Look through the topology
-	for(int i = 0; i < topologySize; i++) {
-		if(topology[i].compareTo(*emulator) == 0) {
-			if(debug)
-				cout << "This 'emulator' node is topology[" << i << "]" << endl;
-				cout << topology[i].toString() << endl << endl;
-			
-			// Set up the remaining members of the 'emulator' Node
-			emulator->setOnline(true);
-			emulator->addNeighbors(topology[i].getNeighbors());
-		}
-	}*/
 	
 	// Send a message to each of the emulator's neighbors
 	// TODO: Probably put this all in its own function for organization
@@ -349,10 +325,12 @@ int main(int argc, char *argv[]) {
 			cout << "Sending message to: " << neighbors[i].getHostname().c_str()
 				<< ":" << neighbors[i].getPort() << endl;
 
-		if ( sendto(socketFD, (void*)sendPkt, 18, 0, 
+		if ( sendto(socketFD, (void*)sendPkt, LINKPACKETHEADER+linkstatePacket.length, 0, 
 						(struct sockaddr*) &sock_sendto, sendto_len) == -1 ) {
 			perror("sendto()");
 		}
+		
+		free(sendPkt);
 	}
 	
 	
@@ -366,14 +344,16 @@ int main(int argc, char *argv[]) {
 		int numbytes;
 		memset(buffer, 0,  1024); // Need to zero the buffer
 
-		if ((numbytes = recvfrom(socketFD, buffer, 18, 0, 
+		if ((numbytes = recvfrom(socketFD, buffer, MAXLINKPACKET, 0, 
 						(struct sockaddr*)&addr, &addr_len)) <= -1) {
 			
 			// Nothing received
 		}
-		else { 
+		else {
+		
+			LinkPacket linkstatePacket = getLinkPktFromBuffer(buffer);
 			printf("emulator: packet is %d bytes long\n", numbytes);
-			cout << "MESSAGE: " << buffer << endl;
+			printf("MESSAGE: %s\n", linkstatePacket.payload);
 		}
 	}
 	
