@@ -93,7 +93,11 @@ serializeLinkPacket(LinkPacket pkt, char* buffer) {
 void 
 serializeRoutePacket(RoutePacket pkt, char* buffer) {
 	memcpy(buffer, &(pkt.type), sizeof(char));
-	//memcyp(
+	memcpy(buffer+1, &(pkt.ttl), sizeof(uint32_t));
+	memcpy(buffer+33, &(pkt.srcIP), 32);
+	memcpy(buffer+65, &(pkt.srcPort), 32);
+	memcpy(buffer+97, &(pkt.dstIP), 32);
+	memcpy(buffer+129, &(pkt.dstPort), 32);
 }
 
 /**
@@ -113,6 +117,17 @@ LinkPacket getLinkPktFromBuffer(char* buffer) {
 	memcpy(&(pkt.sequence), buffer+113, pkt.length);
 
 	return LinkPacket();
+}
+
+RoutePacket getRoutePktFromBuffer(char* buffer) {
+	RoutePacket pkt;
+	memcpy(&(pkt.type), buffer, sizeof(char));
+	memcpy(&(pkt.ttl), buffer+1, sizeof(uint32_t));
+	memcpy(&(pkt.srcIP), buffer+33, 32);
+	memcpy(&(pkt.srcPort), buffer+65, 32);
+	memcpy(&(pkt.dstIP), buffer+97, 32);
+	memcpy(&(pkt.dstPort), buffer+129, 32);
+	return pkt;
 }
 
 
