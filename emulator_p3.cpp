@@ -324,6 +324,7 @@ int main(int argc, char *argv[]) {
 		if(debug)
 			cout << "Sending message to: " << neighbors[i].getHostname().c_str()
 				<< ":" << neighbors[i].getPort() << endl;
+			//print_LinkPacketBuffer(sendPkt+LINKPACKETHEADER);
 
 		if ( sendto(socketFD, (void*)sendPkt, LINKPACKETHEADER+linkstatePacket.length, 0, 
 						(struct sockaddr*) &sock_sendto, sendto_len) == -1 ) {
@@ -353,7 +354,7 @@ int main(int argc, char *argv[]) {
 		else {
 		
 			LinkPacket linkstatePacket = getLinkPktFromBuffer(buffer);
-			printf("MESSAGE: %s\n", linkstatePacket.payload);
+			//vector<Node> recNodes = getNodesFromLinkPacket(linkstatePacket);
 		}
 	}
 	
