@@ -55,12 +55,12 @@ void print_LinkPacketBuffer(char* buffer) {
 
 
 void print_RoutePacket(RoutePacket pkt) {
-	printf("packet:\n\ttype: %c\n\tTTL: %d\n\tsrcIP: %s\n\tsrcPort: %s\n\tdstIP: %s\n\tdstPort: %s\n\t",
+	printf("packet:\n\ttype: %c\n\tTTL: %d\n\tsrcIP: %s\n\tsrcPort: %s\n\tdstIP: %s\n\tdstPort: %s\n",
 			pkt.type, pkt.ttl, pkt.srcIP, pkt.srcPort, pkt.dstIP, pkt.dstPort);
 }
 
 void print_RoutePacketBuffer(char* buffer) {
-	printf("\nPACKET BUFFER\n\ttype: %d\n\tTTL: %s\n\tsrcIP: %s\n\tsrcPort: %s\n\tdstIP: %s\n\tdstPort: %s\n\t",
+	printf("\nPACKET BUFFER\n\ttype: %d\n\tTTL: %s\n\tsrcIP: %s\n\tsrcPort: %s\n\tdstIP: %s\n\tdstPort: %s\n",
 			(char)*buffer, buffer+1, buffer+33, buffer+65, buffer+97, buffer+129);
 }
 
@@ -94,10 +94,11 @@ void
 serializeRoutePacket(RoutePacket pkt, char* buffer) {
 	memcpy(buffer, &(pkt.type), sizeof(char));
 	memcpy(buffer+1, &(pkt.ttl), sizeof(uint32_t));
-	memcpy(buffer+5, &(pkt.srcIP), 32);
-	memcpy(buffer+9, &(pkt.srcPort), 32);
-	memcpy(buffer+13, &(pkt.dstIP), 32);
-	memcpy(buffer+17, &(pkt.dstPort), 32);
+	printf("sizeof(pkt.srcIP): %lu\n", sizeof(pkt.srcIP));
+	memcpy(buffer+33, &(pkt.srcIP), 32);
+	memcpy(buffer+65, &(pkt.srcPort), 32);
+	memcpy(buffer+97, &(pkt.dstIP), 32);
+	memcpy(buffer+129, &(pkt.dstPort), 32);
 }
 
 /**
@@ -123,10 +124,10 @@ RoutePacket getRoutePktFromBuffer(char* buffer) {
 	RoutePacket pkt;
 	memcpy(&(pkt.type), buffer, sizeof(char));
 	memcpy(&(pkt.ttl), buffer+1, sizeof(uint32_t));
-	memcpy(&(pkt.srcIP), buffer+5, 32);
-	memcpy(&(pkt.srcPort), buffer+9, 32);
-	memcpy(&(pkt.dstIP), buffer+13, 32);
-	memcpy(&(pkt.dstPort), buffer+17, 32);
+	memcpy(&(pkt.srcIP), buffer+33, 32);
+	memcpy(&(pkt.srcPort), buffer+65, 32);
+	memcpy(&(pkt.dstIP), buffer+97, 32);
+	memcpy(&(pkt.dstPort), buffer+129, 32);
 	return pkt;
 }
 
@@ -137,7 +138,7 @@ RoutePacket getRoutePktFromBuffer(char* buffer) {
  * @param hostname The hostname of the ip address you want
  * @param ip The ip address associated with the given hostname (returned)
  */
-int hostname_to_ip(char *hostname , char *ip)
+int hostname_to_ip(const char *hostname , char *ip)
 {
 	struct addrinfo hints, *servinfo, *p;
 	struct sockaddr_in *h;

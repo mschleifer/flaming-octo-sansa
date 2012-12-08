@@ -27,8 +27,10 @@ using namespace std;
 // made them global..what the heck, why not
 string tracePort;
 string srcHostname;
+string srcIP;
 string srcPort;
 string dstHostname;
+string dstIP;
 string dstPort;
 bool debug = false;
 
@@ -42,7 +44,8 @@ int main(int argc, char *argv[]) {
 	// Get the commandline args
 	int c;
 	opterr = 0;
-	int ttl = 0;
+	int ttl = 0;;
+	
 	
 	while ((c = getopt(argc, argv, "a:b:c:d:e:f:")) != -1) {
 		switch (c) {
@@ -51,12 +54,17 @@ int main(int argc, char *argv[]) {
 			break;
 		  case 'b':
 			srcHostname = optarg;
+			char ip[32];
+			hostname_to_ip(srcHostname.c_str(), ip);
+			srcIP = ip;
 			break;
 		  case 'c':
 			srcPort = optarg;
 			break;
 		  case 'd':
 			dstHostname = optarg;
+			hostname_to_ip(dstHostname.c_str(), ip);
+			dstIP = ip;
 			break;
 		  case 'e':
 			dstPort = optarg;
@@ -118,18 +126,16 @@ int main(int argc, char *argv[]) {
 		return -1;
 	}
 	
-	//TODO: The above is not working on my machine, could be that. Obv need to get that working.
+	
 	
 	struct sockaddr_in sock_sendto;
-	//socklen_t sendto_len;
-	string srcIP = "TODO";		//TODO: convert those hostnames to IPs
-	string dstIP = "TODO";		//TODO:
+	socklen_t sendto_len;
 	
 	sock_sendto.sin_family = AF_INET;
 	sock_sendto.sin_port = htons( atoi(srcPort.c_str()) );
 	inet_pton(AF_INET, srcIP.c_str(), &sock_sendto.sin_addr);
 	memset(sock_sendto.sin_zero, '\0', sizeof(sock_sendto.sin_zero));
-	//sendto_len = sizeof(sock_sendto);
+	sendto_len = sizeof(sock_sendto);
 	
 	RoutePacket routeTracePkt;
 	routeTracePkt.type = 'T';
@@ -141,6 +147,12 @@ int main(int argc, char *argv[]) {
 	
 	char* sendPkt = (char*)malloc(161);
 	serializeRoutePacket(routeTracePkt, sendPkt);
+	print_RoutePacket(routeTracePkt);
+	print_RoutePacketBuffer(sendPkt);
+	RoutePacket pkt2 = getRoutePktFromBuffer(sendPkt);
+	print_RoutePacket(pkt2);
+	
+	
   
 	return 0;
 }
