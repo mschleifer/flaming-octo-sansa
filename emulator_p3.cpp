@@ -9,7 +9,7 @@
 #include <netinet/in.h>
 #include "structs.h"
 #include "helpers.h"
-#include "queue.h"
+//#include "queue.h"
 #include <arpa/inet.h>
 #include <stdbool.h>
 #include <sys/stat.h>
@@ -29,7 +29,6 @@ bool debug = true;
 vector<Node> topology; // Array of the nodes in the network
 vector<Node> top2;
 vector<Node> mainNodes;
-				// TODO: may want to use something other than an array
 Topology top = Topology(true);
 int topologySize = 0;
 Node *emulator = new Node();	// Node representing this particular emulator
@@ -56,7 +55,6 @@ void readTopology(const char* filename) {
 	{
 		topologySize++;
 	}
-	//topology = new Node[topologySize];
 	
 	// We'll read the file fo-real's this time and do some work
 	rewind(file);
@@ -200,6 +198,11 @@ int main(int argc, char *argv[]) {
 	
 	readTopology(filename); // Read the topology file
 	
+	// Set up the local Node "emulator" with info about the current host
+	emulator = &top.getNode(getNodeKey(getIP(), port));
+	if(debug)
+		cout << "Node for current emulator: " << emulator->toString() << endl << endl;
+	
 	// Get the hostname where this emulator is running
 	char hostname[255];
 	gethostname(hostname, 255);
@@ -246,10 +249,9 @@ int main(int argc, char *argv[]) {
 	// TODO: Disable different nodes and you will see the difference
 	top.disableNode("5.0.0.0:5");
 	//top.disableNode("3.0.0.0:3");
+	//top.disableNode("4.0.0.0:4");
+	//top.disableNode("3.0.0.0:3");
 	
-	/*cout << top.toString() << endl;
-	top.enableNode("4.0.0.0:4");
-	cout << top.toString() << endl;*/
 	
 	createRoutes(top);
 	/*if(debug) {
@@ -290,15 +292,26 @@ int main(int argc, char *argv[]) {
 		sock_sendto.sin_port = htons( atoi(neighbors[i].getPort().c_str()) );
 		inet_pton(AF_INET, neighbors[i].getHostname().c_str(), &sock_sendto.sin_addr);
 		memset(sock_sendto.sin_zero, '\0', sizeof(sock_sendto.sin_zero));
-	
-		string sendPkt = "HERE IS A MESSAGE\n";
 		sendto_len = sizeof(sock_sendto);
+
+		LinkPacket linkstatePacket;
+		linkstatePacket.type = 'L';
+		linkstatePacket.sequence = 1;
+		linkstatePacket.length = MAXLINKPAYLOAD;
+		linkstatePacket.srcIP = atoi(emulator->getHostname().c_str());
+		linkstatePacket.srcPort = atoi(emulator->getPort().c_str());
+		linkstatePacket.payload = (char*)"HELLO DOWN THERE"; // Setup with neighbors
+		linkstatePacket.length = 16;
+		
+		char* sendPkt = (char*)malloc(MAXLINKPACKET);
+		serializeLinkPacket(linkstatePacket, sendPkt);
+		
 
 		if(debug)
 			cout << "Sending message to: " << neighbors[i].getHostname().c_str()
 				<< ":" << neighbors[i].getPort() << endl;
 
-		if ( sendto(socketFD, (void*)sendPkt.c_str(), 18, 0, 
+		if ( sendto(socketFD, (void*)sendPkt, 18, 0, 
 						(struct sockaddr*) &sock_sendto, sendto_len) == -1 ) {
 			perror("sendto()");
 		}
