@@ -145,6 +145,8 @@ int main(int argc, char *argv[]) {
 	sendto_len = sizeof(sock_sendto);
 	
 	stepthree:
+	
+	
 	RoutePacket routeTracePkt;
 	routeTracePkt.type = 'T';
 	routeTracePkt.ttl = ttl;
@@ -156,10 +158,10 @@ int main(int argc, char *argv[]) {
 	char* sendPkt = (char*)malloc(ROUTETRACESIZE);
 	serializeRoutePacket(routeTracePkt, sendPkt);
 	
-	print_RoutePacket(routeTracePkt);
+	/*print_RoutePacket(routeTracePkt);
 	print_RoutePacketBuffer(sendPkt);
 	RoutePacket pkt2 = getRoutePktFromBuffer(sendPkt);
-	print_RoutePacket(pkt2);
+	print_RoutePacket(pkt2);*/
 	
 	
 	if(debug) {
@@ -178,10 +180,10 @@ int main(int argc, char *argv[]) {
 	addr_len = sizeof(addr);
 	int numbytes;
 	memset(buffer, 0,  1024); // Need to zero the buffer
-	
 	if ((numbytes = recvfrom(socketFD, buffer, MAXLINKPACKET, 0, 
 						(struct sockaddr*)&addr, &addr_len)) > 0) {
 			
+			cout << "something was received" << endl;
 			// Something received
 			RoutePacket routePkt = getRoutePktFromBuffer(buffer);
 			
@@ -201,8 +203,11 @@ int main(int argc, char *argv[]) {
 			
 			ttl++;
 			if (ttl > 25) return 0;
+			
+			
 			goto stepthree;
 	}
-  
+	
+	
 	return 0;
 }
