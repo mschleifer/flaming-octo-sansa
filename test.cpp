@@ -30,43 +30,42 @@ class TestClass {
 		}
 		
 		void findPath(Topology topology) {
-			cout << "findPath in TestClass" << endl;
+			cout << "findPath in TestClass: " << endl << endl;
 			Node start = topology.getNode(startkey);
 			vector<Node> startNeighbors = start.getNeighbors();
 			
 			
 			queue< map<string, Node> > pathQueue;
 			vector<string> visitedKeys;
+			vector< map<string, Node> > poppedFromQueue;
 			visitedKeys.push_back(startkey);
 			
+			// add neighbors to the queue
 			for (unsigned int i = 0; i < start.getNeighbors().size(); i++) {
-				
-				// if a neighbor matches and is online, we're done w/ cost=1
-				/*if (startNeighbors[i].getOnline() && startNeighbors[i].compareTo(endkey) == 0) {
-					this->path.push_back(startNeighbors[i]);
-					this->cost = 1;
-					return;
-				}*/
 				map<string, Node> map;
 				map[startkey] = topology.getNode(startNeighbors[i].getKey());
-				//cout << topology.getNode(startNeighbors[i].getKey()).toString() << endl;
-				
-				// start filling the pathQueue just in case
-				//pathQueue.push(topology.getNode(startNeighbors[i].getKey()));
 				pathQueue.push(map);
+				poppedFromQueue.push_back(map);
 				visitedKeys.push_back(startNeighbors[i].getKey());
 			}
 			
-			cout << "pathQueue size: " << pathQueue.size() << endl;
 			while (!pathQueue.empty()) {
+				//cout << "pathQueue size: " << pathQueue.size() << endl;
 				map<string, Node> testMap = pathQueue.front();
 				Node node = testMap.begin()->second;
-				pathQueue.pop();
 				
-				cout << "node.toString: " << node.toString() << endl;
+				//cout << "node.toString: " << node.toString() << endl;
 				if (node.getOnline() && node.compareTo(endkey) == 0) {
+					cout << "final node: " << node.toString() << endl;
+					cout << "final node key: " << node.getKey() << endl;
+					
 					this->path.push_back(node);
 					this->cost = 1;
+					for (unsigned int index = 0; index < poppedFromQueue.size(); index++) {
+						map<string, Node> poppedMap = poppedFromQueue[index];
+						cout << "hey: " << poppedMap.begin()->first << ", ";
+						cout << "key: " << poppedMap.begin()->second.getKey() << endl;
+					}
 					return;
 				}
 				
@@ -75,14 +74,17 @@ class TestClass {
 					// if !(visitedKeys.contains(key)) ..
 					if (!(std::find(visitedKeys.begin(), visitedKeys.end(), neighbors[j].getKey()) != visitedKeys.end())) {
 						visitedKeys.push_back(neighbors[j].getKey());
-						cout << neighbors[j].toString() << endl;
+						// cout << neighbors[j].toString() << endl;
 						map<string, Node> map;
 						map[node.getKey()] = topology.getNode(neighbors[j].getKey());
-						//pathQueue.push(topology.getNode(neighbors[j].getKey()));
 						pathQueue.push(map);
+						poppedFromQueue.push_back(map);
 					}
 				  
 				}
+				
+				//poppedFromQueue.push_back(pathQueue.front());
+				pathQueue.pop();
 			}
 			
 			
