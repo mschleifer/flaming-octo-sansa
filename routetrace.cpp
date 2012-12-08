@@ -42,6 +42,7 @@ int main(int argc, char *argv[]) {
 	// Get the commandline args
 	int c;
 	opterr = 0;
+	int ttl = 0;
 	
 	while ((c = getopt(argc, argv, "a:b:c:d:e:f:")) != -1) {
 		switch (c) {
@@ -74,11 +75,12 @@ int main(int argc, char *argv[]) {
 		cout << "ARGS: " << tracePort << " " << srcHostname << "::" << srcPort << " " << dstHostname << "::" << dstPort << " " << debug << endl;
 	}
 	
-	int rv = -1;
+	
 	char hostname[255];
 	gethostname(hostname, 255);
 	cout << "Hostname: " << hostname << endl;
 	
+	int rv;
 	int socketFD;
 	struct addrinfo *addrInfo, hints, *p;	// Use these to getaddrinfo()
 	
@@ -98,18 +100,47 @@ int main(int argc, char *argv[]) {
 	// Try to connect the address with a socket
 	for (p = addrInfo; p != NULL; p = p->ai_next) {
 		if ((socketFD = socket(p->ai_family, p->ai_socktype, p->ai_protocol)) == -1) {
-			perror("sender: socket");
+			perror("routetrace: socket");
 			continue;
 		}
 		
-		fcntl(socketFD, F_SETFL, O_NONBLOCK);
+		//fcntl(socketFD, F_SETFL, O_NONBLOCK);
 		if (bind(socketFD, p->ai_addr, p->ai_addrlen) == -1) {
 			close(socketFD);
-			perror("sender: connect");
+			perror("routetrace: bind");
 			continue;
 		}
 		break;
 	}
+	
+	if (p == NULL) {
+		fprintf(stderr, "routetrace: failed to bind socket.\n");
+		return -1;
+	}
+	
+	//TODO: The above is not working on my machine, could be that. Obv need to get that working.
+	
+	struct sockaddr_in sock_sendto;
+	//socklen_t sendto_len;
+	string srcIP = "TODO";		//TODO: convert those hostnames to IPs
+	string dstIP = "TODO";		//TODO:
+	
+	sock_sendto.sin_family = AF_INET;
+	sock_sendto.sin_port = htons( atoi(srcPort.c_str()) );
+	inet_pton(AF_INET, srcIP.c_str(), &sock_sendto.sin_addr);
+	memset(sock_sendto.sin_zero, '\0', sizeof(sock_sendto.sin_zero));
+	//sendto_len = sizeof(sock_sendto);
+	
+	RoutePacket routeTracePkt;
+	routeTracePkt.type = 'T';
+	routeTracePkt.ttl = ttl;
+	strcpy(routeTracePkt.srcIP, srcIP.c_str());
+	strcpy(routeTracePkt.srcPort, srcPort.c_str());
+	strcpy(routeTracePkt.dstIP, dstIP.c_str());
+	strcpy(routeTracePkt.dstPort, dstPort.c_str());
+	
+	char* sendPkt = (char*)malloc(161);
+	serializeRoutePacket(routeTracePkt, sendPkt);
   
 	return 0;
 }

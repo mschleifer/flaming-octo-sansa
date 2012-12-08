@@ -90,6 +90,12 @@ serializeLinkPacket(LinkPacket pkt, char* buffer) {
 
 }
 
+void 
+serializeRoutePacket(RoutePacket pkt, char* buffer) {
+	memcpy(buffer, &(pkt.type), sizeof(char));
+	//memcyp(
+}
+
 /**
  * Takes in a buffer that is assumed to contain everything that a packet
  * would contain, and it returns the packet with all information filled
