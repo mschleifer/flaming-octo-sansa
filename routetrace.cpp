@@ -22,9 +22,12 @@
 #include "util.hpp"
 #include <iostream>
 
+
+#define ROUTETRACESIZE (133)
 using namespace std;
 
 // made them global..what the heck, why not
+string traceIP;
 string tracePort;
 string srcHostname;
 string srcIP;
@@ -41,12 +44,13 @@ int main(int argc, char *argv[]) {
 		return 0;
 	}
   
-	// Get the commandline args
+	
+	char* buffer = (char*)malloc(1024);
 	int c;
 	opterr = 0;
 	int ttl = 0;;
 	
-	
+	// Get the commandline args
 	while ((c = getopt(argc, argv, "a:b:c:d:e:f:")) != -1) {
 		switch (c) {
 		  case 'a':
@@ -85,8 +89,12 @@ int main(int argc, char *argv[]) {
 	
 	
 	char hostname[255];
+	char ip[32];
 	gethostname(hostname, 255);
-	cout << "Hostname: " << hostname << endl;
+	//cout << "Hostname: " << hostname << endl;
+	hostname_to_ip(hostname, ip);
+	traceIP = ip;
+	//cout << "traceIP: " << traceIP << endl;
 	
 	int rv;
 	int socketFD;
@@ -140,28 +148,45 @@ int main(int argc, char *argv[]) {
 	RoutePacket routeTracePkt;
 	routeTracePkt.type = 'T';
 	routeTracePkt.ttl = ttl;
-	strcpy(routeTracePkt.srcIP, srcIP.c_str());
-	strcpy(routeTracePkt.srcPort, srcPort.c_str());
+	strcpy(routeTracePkt.srcIP, traceIP.c_str());
+	strcpy(routeTracePkt.srcPort, tracePort.c_str());
 	strcpy(routeTracePkt.dstIP, dstIP.c_str());
 	strcpy(routeTracePkt.dstPort, dstPort.c_str());
 	
 	char* sendPkt = (char*)malloc(161);
 	serializeRoutePacket(routeTracePkt, sendPkt);
-	print_RoutePacket(routeTracePkt);
+	
+	/*print_RoutePacket(routeTracePkt);
 	print_RoutePacketBuffer(sendPkt);
 	RoutePacket pkt2 = getRoutePktFromBuffer(sendPkt);
-	print_RoutePacket(pkt2);
+	print_RoutePacket(pkt2);*/
 	
 	
-	/*if(debug) {
-		cout << "Sending message to: " << neighbors[i].getHostname().c_str() << ":" << neighbors[i].getPort() << endl;
+	if(debug) {
+		cout << "Sending routetrace pkt to: " << dstIP << "::" << dstPort << endl;
 	}
-	if ( sendto(socketFD, (void*)sendPkt, LINKPACKETHEADER+linkstatePacket.length, 0, 
+	
+	if ( sendto(socketFD, (void*)sendPkt, ROUTETRACESIZE, 0, 
 			  (struct sockaddr*) &sock_sendto, sendto_len) == -1 ) {
 		perror("sendto()");
 	}
 	
-	free(sendPkt);*/
+	free(sendPkt);
+	
+	struct sockaddr_storage addr;
+	socklen_t addr_len;
+	addr_len = sizeof(addr);
+	int numbytes;
+	memset(buffer, 0,  1024); // Need to zero the buffer
+	
+	if ((numbytes = recvfrom(socketFD, buffer, MAXLINKPACKET, 0, 
+						(struct sockaddr*)&addr, &addr_len)) > 0) {
+			
+			// Something received
+			RoutePacket routePkt = getRoutePktFromBuffer(buffer);
+			printf("routetrace: packet is %d bytes long\n", numbytes);
+			print_RoutePacket(routePkt);
+	}
   
 	return 0;
 }
