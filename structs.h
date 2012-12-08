@@ -15,4 +15,14 @@ typedef struct LinkPacket {
 	char* payload;
 } LinkPacket;
 
+// Not currently same as the 'recommended' packet struct on the website
+typedef struct RoutePacket {
+	char type;
+	uint32_t ttl;
+	char srcIP[32];
+	char srcPort[32];
+	char dstIP[32];
+	char dstPort[32];
+} RoutePacket;
+
 #endif

@@ -54,6 +54,17 @@ void print_LinkPacketBuffer(char* buffer) {
 }
 
 
+void print_RoutePacket(RoutePacket pkt) {
+	printf("packet:\n\ttype: %c\n\tTTL: %d\n\tsrcIP: %s\n\tsrcPort: %s\n\tdstIP: %s\n\tdstPort: %s\n\t",
+			pkt.type, pkt.ttl, pkt.srcIP, pkt.srcPort, pkt.dstIP, pkt.dstPort);
+}
+
+void print_RoutePacketBuffer(char* buffer) {
+	printf("\nPACKET BUFFER\n\ttype: %d\n\tTTL: %s\n\tsrcIP: %s\n\tsrcPort: %s\n\tdstIP: %s\n\tdstPort: %s\n\t",
+			(char)*buffer, buffer+1, buffer+33, buffer+65, buffer+97, buffer+129);
+}
+
+
 /**
  * Simply prints the given message to stderr
  */
