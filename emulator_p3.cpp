@@ -406,7 +406,6 @@ int main(int argc, char *argv[]) {
 				else {
 					// send packet back to next hop
 					
-					//TODO: forward to next on path to pkt.dstNode
 					string gotoIp;
 					string gotoPort;
 					for (unsigned int i = 0; i < bestRoutes.size(); i++ ) {
