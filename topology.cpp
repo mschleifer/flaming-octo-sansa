@@ -55,11 +55,12 @@ class Topology {
 	 * Will abruptly exit if there is nothing found.
 	 */
 	Node& getNode(string nodeKey) {
+		
 		if (topology_nodes.count(nodeKey) == 1) {
 			return topology_nodes[nodeKey];
 		}
 
-		cout << "Something went wrong.  getNode() in Topology." << endl;
+		cout << "Something went wrong.  getNode() in Topology." << nodeKey << endl;
 		exit(-1);
 	}
 	

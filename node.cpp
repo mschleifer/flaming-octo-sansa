@@ -48,7 +48,7 @@ class Node {
 			node_host = node.node_host;
 			node_port = node.node_port;
 			node_online = node.node_online;
-			node_neighbors.clear();
+			node_neighbors = node.node_neighbors;
 			return *this;
 		}
 		
@@ -86,6 +86,9 @@ class Node {
 			return node_port; 
 		}
 		
+		void setOnline(bool online) {
+			node_online = online;
+		}
 	
 		/**
 		 * Sets the node to be online
