@@ -94,10 +94,10 @@ void
 serializeRoutePacket(RoutePacket pkt, char* buffer) {
 	memcpy(buffer, &(pkt.type), sizeof(char));
 	memcpy(buffer+1, &(pkt.ttl), sizeof(uint32_t));
-	memcpy(buffer+33, &(pkt.srcIP), 32);
-	memcpy(buffer+65, &(pkt.srcPort), 32);
-	memcpy(buffer+97, &(pkt.dstIP), 32);
-	memcpy(buffer+129, &(pkt.dstPort), 32);
+	memcpy(buffer+5, &(pkt.srcIP), 32);
+	memcpy(buffer+9, &(pkt.srcPort), 32);
+	memcpy(buffer+13, &(pkt.dstIP), 32);
+	memcpy(buffer+17, &(pkt.dstPort), 32);
 }
 
 /**
@@ -123,10 +123,10 @@ RoutePacket getRoutePktFromBuffer(char* buffer) {
 	RoutePacket pkt;
 	memcpy(&(pkt.type), buffer, sizeof(char));
 	memcpy(&(pkt.ttl), buffer+1, sizeof(uint32_t));
-	memcpy(&(pkt.srcIP), buffer+33, 32);
-	memcpy(&(pkt.srcPort), buffer+65, 32);
-	memcpy(&(pkt.dstIP), buffer+97, 32);
-	memcpy(&(pkt.dstPort), buffer+129, 32);
+	memcpy(&(pkt.srcIP), buffer+5, 32);
+	memcpy(&(pkt.srcPort), buffer+9, 32);
+	memcpy(&(pkt.dstIP), buffer+13, 32);
+	memcpy(&(pkt.dstPort), buffer+17, 32);
 	return pkt;
 }
 
