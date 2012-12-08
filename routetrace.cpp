@@ -145,6 +145,7 @@ int main(int argc, char *argv[]) {
 	memset(sock_sendto.sin_zero, '\0', sizeof(sock_sendto.sin_zero));
 	sendto_len = sizeof(sock_sendto);
 	
+	stepthree:
 	RoutePacket routeTracePkt;
 	routeTracePkt.type = 'T';
 	routeTracePkt.ttl = ttl;
@@ -184,8 +185,24 @@ int main(int argc, char *argv[]) {
 			
 			// Something received
 			RoutePacket routePkt = getRoutePktFromBuffer(buffer);
-			printf("routetrace: packet is %d bytes long\n", numbytes);
-			print_RoutePacket(routePkt);
+			
+			if (debug) {
+				  printf("routetrace: packet is %d bytes long\n", numbytes);
+				  print_RoutePacket(routePkt);
+			}
+			
+			string rpSrcIP = routePkt.srcIP;
+			string rpSrcPort = routePkt.srcPort;
+			
+			if (dstIP.compare(rpSrcIP) == 0 && dstPort.compare(rpSrcPort) == 0) {
+				  cout << "TERMINATING..." << endl;
+				  cout << "TTL: " << ttl;
+				  exit(-1);
+			}
+			
+			ttl++;
+			if (ttl > 25) return 0;
+			goto stepthree;
 	}
   
 	return 0;
