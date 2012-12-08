@@ -33,6 +33,7 @@ vector<TestClass> bestRoutes;
 Topology top = Topology(true);
 int topologySize = 0;
 Node *emulator = new Node();	// Node representing this particular emulator
+map<string, int> sequenceMap;	// Keep track of the last seq. no. seen for each Node
 
 
 /*
@@ -82,6 +83,7 @@ void readTopology(const char* filename) {
 		Node n = Node(address, port, true);
 		topology.push_back(n);
 		top2.push_back(n);
+		sequenceMap.insert(pair<string,int>(getNodeKey(n.getHostname(), n.getPort()), 0));
 		
 		// Add each other token in the line to the list of connections
 		while((token = strtok_r(NULL, " \n", saveptr)) != NULL) {
@@ -367,16 +369,44 @@ int main(int argc, char *argv[]) {
 		else {
 			char type;
 			memcpy(&(type), buffer, sizeof(char));
-			cout << "packet type: " << type << endl;
+			cout << "Received packet type: " << type << endl;
 			
 			if (type == 'L') {
 				LinkPacket linkstatePacket = getLinkPktFromBuffer(buffer);
 				vector<Node> recNodes = getNodesFromLinkPacket(linkstatePacket);
+				
+				// If this is a newer linkstate packet
+				if(sequenceMap[getNodeKey(linkstatePacket.srcIP,linkstatePacket.srcPort)] < 
+						(int)linkstatePacket.sequence)
+				{
+					// Update the sequenceMap
+					sequenceMap[getNodeKey(linkstatePacket.srcIP,linkstatePacket.srcPort)] = linkstatePacket.sequence;
+					
+					// Update your view of the topology
+					// For the nodes received in the linkstatePacket
+					for(vector<Node>::iterator itr = recNodes.begin(); itr != recNodes.end(); itr++) {
+						// If the matching node in the topology has a different "online" value
+						if(itr->getOnline() != top.getNode(getNodeKey(itr->getHostname(),itr->getPort())).getOnline()) {
+							if(itr->getOnline()) {
+								top.enableNode(getNodeKey(itr->getHostname(),itr->getPort()));
+								cout << "Enabled " << itr->toString() << endl;
+							}
+							else {
+								top.disableNode(getNodeKey(itr->getHostname(),itr->getPort()));
+								cout << "Disabled " << itr->toString() << endl;
+							}
+						}
+					}
+					
+					
+					// Forward the packet on to your neighbors
+				}
+				
 			}
 			else if (type == 'T') {
 				RoutePacket routePacket = getRoutePktFromBuffer(buffer);
 				print_RoutePacket(routePacket);
-	
+
 				if (routePacket.ttl == 0) {
 				  
 					if(debug) {
