@@ -30,14 +30,14 @@ class TestClass {
 		}
 		
 		void findPath(Topology topology) {
-			cout << "findPath in TestClass: " << endl << endl;
+			//cout << "findPath in TestClass: " << endl << endl;
 			Node start = topology.getNode(startkey);
 			vector<Node> startNeighbors = start.getNeighbors();
 			
 			
 			queue< map<string, Node> > pathQueue;
 			vector<string> visitedKeys;
-			vector< map<string, Node> > poppedFromQueue;
+			vector< map<string, Node> > pathQueueVector;
 			visitedKeys.push_back(startkey);
 			
 			// add neighbors to the queue
@@ -45,7 +45,7 @@ class TestClass {
 				map<string, Node> map;
 				map[startkey] = topology.getNode(startNeighbors[i].getKey());
 				pathQueue.push(map);
-				poppedFromQueue.push_back(map);
+				pathQueueVector.push_back(map);
 				visitedKeys.push_back(startNeighbors[i].getKey());
 			}
 			
@@ -61,17 +61,17 @@ class TestClass {
 					
 					this->path.push_back(node);
 					this->cost = 1;
-					string testkey = this->endkey;
-					for (unsigned int index = 0; index < poppedFromQueue.size(); index++) {
-						map<string, Node> poppedMap = poppedFromQueue[index];
+					string endStr = this->endkey;
+					for (unsigned int index = 0; index < pathQueueVector.size(); index++) {
+						map<string, Node> poppedMap = pathQueueVector[index];
 						//cout << "parentKey: " << poppedMap.begin()->first << ", ";
 						//cout << "key: " << poppedMap.begin()->second.getKey() << endl;
-						if (poppedMap.begin()->second.getKey().compare(testkey) == 0) {
+						if (poppedMap.begin()->second.getKey().compare(endStr) == 0) {
 							string parentkey = poppedMap.begin()->first;
 							this->path.push_back(topology.getNode(parentkey));
 							this->cost++;
-							//cout << "testkey: " << testkey << ", parentkey: " << parentkey << endl;
-							testkey = parentkey;
+							//cout << "endStr: " << endStr << ", parentkey: " << parentkey << endl;
+							endStr = parentkey;
 							index = -1;
 						}
 					}
@@ -89,12 +89,11 @@ class TestClass {
 						map<string, Node> map;
 						map[node.getKey()] = topology.getNode(neighbors[j].getKey());
 						pathQueue.push(map);
-						poppedFromQueue.push_back(map);
+						pathQueueVector.push_back(map);
 					}
 				  
 				}
 				
-				//poppedFromQueue.push_back(pathQueue.front());
 				pathQueue.pop();
 			}
 			

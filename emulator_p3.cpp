@@ -117,12 +117,29 @@ void createRoutes(Topology topology) {
 	vector<Node> mainNodes = topology.getNodes();
 	cout << mainNodes[0].toString() << endl;
 	map<string, TestClass> routeMap;
-	string startkey = mainNodes[0].getKey();
-	string endkey = mainNodes[7].getKey();
-	TestClass tc = TestClass(startkey, endkey);
+	vector<TestClass> testMap;
+	//string startkey = mainNodes[0].getKey();
+	//string endkey = mainNodes[7].getKey();
 	
-	tc.findPath(topology);
-	cout << tc.toString() << endl;
+	for (unsigned int i = 0; i < mainNodes.size(); i++) {
+		for (unsigned int j = 0; j < mainNodes.size(); j++) {
+			if (i == j) continue;
+			string startkey = mainNodes[i].getKey();
+			string endkey = mainNodes[j].getKey();
+			TestClass tc = TestClass(startkey, endkey);
+			tc.findPath(topology);
+			testMap.push_back(tc);
+		}
+	}
+	//TestClass tc = TestClass(startkey, endkey);
+	
+	for (unsigned int i = 0; i < testMap.size(); i++) {
+		cout << testMap[i].toString();
+		cout << endl;
+	}
+	//tc.findPath(topology);
+	//cout << tc.toString() << endl;
+	cout << "FFFFFFFFF" << endl;
 	// TODO: This seems to me like it'll be tough.  We're going to need to come
 	// TODO: up with a number of structures to keep track of different data
 	// TODO: elements (network graph, routing table for each node, etc.).
