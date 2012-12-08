@@ -36,6 +36,8 @@ string dstIP;
 string dstPort;
 bool debug = false;
 
+vector< map<string, string> > route;
+
 int main(int argc, char *argv[]) {
 	if (argc != 13) {
 		printError("Incorrect number of arguments");
@@ -144,6 +146,11 @@ int main(int argc, char *argv[]) {
 	memset(sock_sendto.sin_zero, '\0', sizeof(sock_sendto.sin_zero));
 	sendto_len = sizeof(sock_sendto);
 	
+	/*  Don't need to initially add to routes
+	map<string, string> hop;
+	hop[srcIP] = srcPort;
+	route.push_back(hop);*/
+	
 	stepthree:
 	
 	
@@ -187,10 +194,12 @@ int main(int argc, char *argv[]) {
 			
 			// Something received
 			RoutePacket routePkt = getRoutePktFromBuffer(buffer);
+			map<string, string> hop;
+			hop[routePkt.srcIP] = routePkt.srcPort;
+			route.push_back(hop);
 			
 			if (debug) {
 				  printf("routetrace: (received) packet is %d bytes long\n", numbytes);
-				  // TODO: Need to save returned packets, where they came from
 				  print_RoutePacket(routePkt);
 				  cout << endl;
 			}
@@ -199,15 +208,18 @@ int main(int argc, char *argv[]) {
 			string rpSrcPort = routePkt.srcPort;
 			
 			if (dstIP.compare(rpSrcIP) == 0 && dstPort.compare(rpSrcPort) == 0) {
-				  cout << "TERMINATING..." << endl;
-				  cout << "TTL: " << ttl;
-				  exit(-1);
+				  printf("Hop#\tIP\t\t\tPort\n");
+				  for (unsigned int i = 0; i < route.size(); i++) {
+					  string ip = route[i].begin()->first;
+					  string port = route[i].begin()->second;
+					  printf("%u\t%s\t\t%s\n", i, ip.c_str(), port.c_str());
+					 // cout << i << "," << ip << "," << port << endl;
+				  }
+				  
+				  return 0;
 			}
 			
 			ttl++;
-			if (ttl > 25) return 0;
-			
-			
 			goto stepthree;
 	}
 	
