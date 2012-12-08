@@ -16,10 +16,11 @@ using namespace std;
 class TestClass {
 	public:
 		
-		TestClass(string startkey, string endkey) {
+		TestClass(string startkey, string endkey, Topology topology) {
 			this->startkey = startkey;
 			this->endkey = endkey;
 			this->cost = 999999;
+			this->findPath(topology);
 		}
 		
 		TestClass(string startkey, string endkey, vector<Node> path, int cost) {

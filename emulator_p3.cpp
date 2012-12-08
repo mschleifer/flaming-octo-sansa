@@ -115,8 +115,6 @@ void readTopology(const char* filename) {
 void createRoutes(Topology topology) {
 	cout << "inside createRoutes: " << topology.toString() << endl;
 	vector<Node> mainNodes = topology.getNodes();
-	cout << mainNodes[0].toString() << endl;
-	map<string, TestClass> routeMap;
 	vector<TestClass> testMap;
 	//string startkey = mainNodes[0].getKey();
 	//string endkey = mainNodes[7].getKey();
@@ -130,20 +128,23 @@ void createRoutes(Topology topology) {
 			if (i == j) continue;
 			string startkey = mainNodes[i].getKey();
 			string endkey = mainNodes[j].getKey();
-			TestClass tc = TestClass(startkey, endkey);
-			tc.findPath(topology);
+			TestClass tc = TestClass(startkey, endkey, topology);
 			testMap.push_back(tc);
 		}
 	}
-	//TestClass tc = TestClass(startkey, endkey);
 	
 	for (unsigned int i = 0; i < testMap.size(); i++) {
 		cout << testMap[i].toString();
 		cout << endl;
 	}
-	//tc.findPath(topology);
-	//cout << tc.toString() << endl;
-	cout << "Finished and didn't take long? Yep!" << endl;
+	
+	cout << "Finished and didn't take long? Yep!" << endl << endl;
+	cout << "So at the very least, we have some way that we can give our program a "
+		  << "start node, end node, and topology, and it will find the best paths. "
+		  << "You are more familiar with what exactly I need to do with link state "
+		  << "packets and sending w/ sequence numbers and etc, " 
+		  << "so you'll have to explain what I should attempt to do " 
+		  << "with the class.  I think this was definitely a big part of it though." << endl;
 	// TODO: This seems to me like it'll be tough.  We're going to need to come
 	// TODO: up with a number of structures to keep track of different data
 	// TODO: elements (network graph, routing table for each node, etc.).
@@ -242,6 +243,7 @@ int main(int argc, char *argv[]) {
 	if(debug)
 		cout << "ADDR/PORT for current emulator: " << emulator->toString() << endl << endl;
 	
+	// TODO: Disable different nodes and you will see the difference
 	top.disableNode("5.0.0.0:5");
 	//top.disableNode("3.0.0.0:3");
 	
