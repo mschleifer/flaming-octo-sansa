@@ -153,17 +153,17 @@ int main(int argc, char *argv[]) {
 	strcpy(routeTracePkt.dstIP, dstIP.c_str());
 	strcpy(routeTracePkt.dstPort, dstPort.c_str());
 	
-	char* sendPkt = (char*)malloc(161);
+	char* sendPkt = (char*)malloc(ROUTETRACESIZE);
 	serializeRoutePacket(routeTracePkt, sendPkt);
 	
-	/*print_RoutePacket(routeTracePkt);
+	print_RoutePacket(routeTracePkt);
 	print_RoutePacketBuffer(sendPkt);
 	RoutePacket pkt2 = getRoutePktFromBuffer(sendPkt);
-	print_RoutePacket(pkt2);*/
+	print_RoutePacket(pkt2);
 	
 	
 	if(debug) {
-		cout << "Sending routetrace pkt to: " << dstIP << "::" << dstPort << endl;
+		cout << "Sending routetrace pkt to: " << srcIP << "::" << srcPort << endl;
 	}
 	
 	if ( sendto(socketFD, (void*)sendPkt, ROUTETRACESIZE, 0, 

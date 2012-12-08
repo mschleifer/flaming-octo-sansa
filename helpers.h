@@ -62,8 +62,8 @@ void print_RoutePacket(RoutePacket pkt) {
 }
 
 void print_RoutePacketBuffer(char* buffer) {
-	printf("\nPACKET BUFFER\n\ttype: %d\n\tTTL: %s\n\tsrcIP: %s\n\tsrcPort: %s\n\tdstIP: %s\n\tdstPort: %s\n",
-			(char)*buffer, buffer+1, buffer+5, buffer+37, buffer+69, buffer+101);
+	printf("\nPACKET BUFFER\n\ttype: %c\n\tTTL: %d\n\tsrcIP: %s\n\tsrcPort: %s\n\tdstIP: %s\n\tdstPort: %s\n",
+			(char)*buffer, (int)*(buffer+1), buffer+5, buffer+37, buffer+69, buffer+101);
 }
 
 
