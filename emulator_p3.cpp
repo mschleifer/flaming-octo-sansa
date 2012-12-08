@@ -268,7 +268,7 @@ int main(int argc, char *argv[]) {
 	hints.ai_family = AF_INET;
 	hints.ai_socktype = SOCK_DGRAM;
 	hints.ai_protocol = IPPROTO_UDP;
-	//hints.ai_flags = AI_PASSIVE; Don't want to connect to "any" ip 
+	//hints.ai_flags = AI_PASSIVE; //Don't want to connect to "any" ip 
 	
 	// Try to get addrInfo for the specific hostname
 	if ( (rv = getaddrinfo(hostname, port, &hints, &addrInfo)) != 0) {
@@ -363,7 +363,7 @@ int main(int argc, char *argv[]) {
 		
 			char type;
 			memcpy(&(type), buffer, sizeof(char));
-			cout << "Packet type: " << type << endl;
+			cout << "packet type: " << type << endl;
 			
 			if (type == 'L') {
 				LinkPacket linkstatePacket = getLinkPktFromBuffer(buffer);
@@ -372,29 +372,24 @@ int main(int argc, char *argv[]) {
 			else if (type == 'T') {
 				RoutePacket routePacket = getRoutePktFromBuffer(buffer);
 				print_RoutePacket(routePacket);
-				
-				socklen_t sendto_len;
 	
 				if (routePacket.ttl == 0) {
 				  
 					if(debug) {
-						cout << "Sending routetrace back to to: " << routePacket.srcIP << "::" << routePacket.srcPort << endl;
+						cout << "emulator: (sending) routetrace back to to: " << routePacket.srcIP << "::" << routePacket.srcPort << endl;
 					}
-					
+		
 					// send packet back to routetrace
 					sock_sendto.sin_family = AF_INET;
-					sock_sendto.sin_port = htons( atoi(routePacket.srcIP) );
-					inet_pton(AF_INET, routePacket.srcPort, &sock_sendto.sin_addr);
+					sock_sendto.sin_port = htons( atoi( routePacket.srcPort) );
+					inet_pton(AF_INET, routePacket.srcIP, &sock_sendto.sin_addr);
 					memset(sock_sendto.sin_zero, '\0', sizeof(sock_sendto.sin_zero));
 					sendto_len = sizeof(sock_sendto);
 					
 					strcpy(routePacket.srcIP, emulatorIP.c_str());
 					strcpy(routePacket.srcPort, emulatorPort.c_str());
-					print_RoutePacket(routePacket);
-					
 					char* sendPkt = (char*)malloc(ROUTETRACESIZE);
 					serializeRoutePacket(routePacket, sendPkt);
-					
 					
 					if ( sendto(socketFD, (void*)sendPkt, ROUTETRACESIZE, 0, 
 							  (struct sockaddr*) &sock_sendto, sendto_len) == -1 ) {
@@ -405,9 +400,8 @@ int main(int argc, char *argv[]) {
 				}
 				
 				else {
-					cout << "WWWWWWWWWWWOOOOOOOOOOOOOOOOOO" << endl;
+					cout << "Now we have to do something more.." << endl;
 				}
-				
 				
 			}
 		}

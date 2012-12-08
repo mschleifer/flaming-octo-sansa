@@ -160,12 +160,14 @@ int main(int argc, char *argv[]) {
 	
 	/*print_RoutePacket(routeTracePkt);
 	print_RoutePacketBuffer(sendPkt);
-	RoutePacket pkt2 = getRoutePktFromBuffer(sendPkt);
-	print_RoutePacket(pkt2);*/
+	RoutePacket pkt2 = getRoutePktFromBuffer(sendPkt);*/
+	
 	
 	
 	if(debug) {
-		cout << "Sending routetrace pkt to: " << srcIP << "::" << srcPort << endl;
+		cout << "routetrace (sending) pkt to: " << srcIP << "::" << srcPort << endl;
+		print_RoutePacket(routeTracePkt);
+		cout << endl;
 	}
 	
 	if ( sendto(socketFD, (void*)sendPkt, ROUTETRACESIZE, 0, 
@@ -183,13 +185,13 @@ int main(int argc, char *argv[]) {
 	if ((numbytes = recvfrom(socketFD, buffer, MAXLINKPACKET, 0, 
 						(struct sockaddr*)&addr, &addr_len)) > 0) {
 			
-			cout << "something was received" << endl;
 			// Something received
 			RoutePacket routePkt = getRoutePktFromBuffer(buffer);
 			
 			if (debug) {
-				  printf("routetrace: packet is %d bytes long\n", numbytes);
+				  printf("routetrace: (received) packet is %d bytes long\n", numbytes);
 				  print_RoutePacket(routePkt);
+				  cout << endl;
 			}
 			
 			string rpSrcIP = routePkt.srcIP;
