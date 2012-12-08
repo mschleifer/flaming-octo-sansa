@@ -35,8 +35,7 @@ Node *emulator = new Node();	// Node representing this particular emulator
 
 
 /*
- * Reads a topology text file passed in by 'filename' and sets up the global
- * Node[] that represents the network.
+ * Reads a topology text file passed in by 'filename' and x
  *
  */
 void readTopology(const char* filename) {
@@ -149,6 +148,51 @@ void createRoutes(Topology topology) {
 	// TODO: Wikipedia has a pretty detailed description (link-state routing).
 }
 
+
+/**
+ * Finds the shortest path from this emulator's node to each of its'
+ * neighbors.  I'm not sure what exactly I'll need to do for this 
+ * project, but one of these two createRoutes methods should help.
+ */
+void createRoutes(Topology topology, Node emulator) {
+	cout << "Inside createRoutes: " << endl;
+	vector<Node> mainNodes = topology.getNodes();
+	vector<TestClass> testMap;
+	string startkey = emulator.getKey();
+	unsigned int startIndex = 99999;
+
+	// Get the index in the topology where 'this' node is located
+	for (unsigned int i = 0; i < mainNodes.size(); i++) {
+		if (emulator.getKey().compare(mainNodes[i].getKey()) == 0) {
+			startIndex = i;
+		}
+	}
+	
+	// If we didn't find 'this' node in the topology, something went wrong, exit
+	if (startIndex == 99999) {
+		cout << "Something went wrong.  (createRoutes(Topology, Node))..." << endl;
+		exit(-1);
+	}
+	
+	// Find the shortest path to each of the other nodes from this node
+	for (unsigned int j = 0; j < mainNodes.size(); j++) {
+		if (startIndex == j) continue;
+		string startkey = mainNodes[startIndex].getKey();
+		string endkey = mainNodes[j].getKey();
+		TestClass tc = TestClass(startkey, endkey, topology);
+		testMap.push_back(tc);
+	}
+	
+	
+	// Print out the results 
+	if (debug) {
+		for (unsigned int i = 0; i < testMap.size(); i++) {
+			cout << testMap[i].toString();
+			cout << endl;
+		}
+	}
+}
+
 /*
  * Determine where to forward a packet received by the emulator. Handles
  * both packets containing link-state info and those from routetrace
@@ -251,16 +295,9 @@ int main(int argc, char *argv[]) {
 	//top.disableNode("3.0.0.0:3");
 	//top.disableNode("4.0.0.0:4");
 	//top.disableNode("3.0.0.0:3");
-	
-	
 	createRoutes(top);
-	/*if(debug) {
-		cout << "TOPOLOGY ARRAY:" << endl;
-		for(int i = 0; i < topologySize; i++) {
-			cout << topology[i].toString() << endl;
-		}
-		cout << endl;
-	}*/
+	//createRoutes(top, *emulator);
+	
 	
 	
 	/*for(int i = 0; i < topologySize; i++) {

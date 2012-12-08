@@ -60,7 +60,7 @@ class Topology {
 			return topology_nodes[nodeKey];
 		}
 
-		cout << "Something went wrong.  getNode() in Topology." << nodeKey << endl;
+		cout << "Something went wrong.  getNode() in Topology...  " << nodeKey << endl;
 		exit(-1);
 	}
 	
