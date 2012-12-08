@@ -118,7 +118,7 @@ void createRoutes(Topology topology) {
 	cout << mainNodes[0].toString() << endl;
 	map<string, TestClass> routeMap;
 	string startkey = mainNodes[0].getKey();
-	string endkey = mainNodes[2].getKey();
+	string endkey = mainNodes[7].getKey();
 	TestClass tc = TestClass(startkey, endkey);
 	
 	tc.findPath(topology);
