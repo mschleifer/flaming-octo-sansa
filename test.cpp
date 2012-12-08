@@ -65,6 +65,11 @@ class TestClass {
 						map<string, Node> poppedMap = poppedFromQueue[index];
 						cout << "hey: " << poppedMap.begin()->first << ", ";
 						cout << "key: " << poppedMap.begin()->second.getKey() << endl;
+						if (poppedMap.begin()->second.getKey().compare(endkey) == 0) {
+							string parentkey = poppedMap.begin()->first;
+							this->path.push_back(topology.getNode(parentkey));
+							this->cost++;
+						}
 					}
 					return;
 				}
