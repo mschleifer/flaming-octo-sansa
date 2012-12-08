@@ -16,7 +16,6 @@
 #include <fcntl.h>
 #include <netdb.h>
 #include <string.h>
-#include "node.cpp"
 #include "topology.cpp"
 #include "test.cpp"
 #include "util.hpp"
@@ -312,10 +311,11 @@ int main(int argc, char *argv[]) {
 		linkstatePacket.type = 'L';
 		linkstatePacket.sequence = 1;
 		linkstatePacket.length = MAXLINKPAYLOAD;
-		linkstatePacket.srcIP = atoi(emulator->getHostname().c_str());
-		linkstatePacket.srcPort = atoi(emulator->getPort().c_str());
-		linkstatePacket.payload = (char*)"HELLO DOWN THERE"; // Setup with neighbors
-		linkstatePacket.length = 16;
+		memcpy(linkstatePacket.srcIP, emulator->getHostname().c_str(), emulator->getHostname().size());
+		memcpy(linkstatePacket.srcPort, emulator->getPort().c_str(), emulator->getPort().size());
+		linkstatePacket.payload = (char*)malloc(emulator->getNeighbors().size() * LINKPAYLOADNODE);
+		
+		createLinkPacketPayload(linkstatePacket.payload, emulator->getNeighbors());
 		
 		char* sendPkt = (char*)malloc(MAXLINKPACKET);
 		serializeLinkPacket(linkstatePacket, sendPkt);
@@ -331,6 +331,7 @@ int main(int argc, char *argv[]) {
 		}
 		
 		free(sendPkt);
+		free(linkstatePacket.payload);
 	}
 	
 	
@@ -352,7 +353,6 @@ int main(int argc, char *argv[]) {
 		else {
 		
 			LinkPacket linkstatePacket = getLinkPktFromBuffer(buffer);
-			printf("emulator: packet is %d bytes long\n", numbytes);
 			printf("MESSAGE: %s\n", linkstatePacket.payload);
 		}
 	}

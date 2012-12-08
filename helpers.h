@@ -15,13 +15,15 @@
 #include <stdbool.h>
 #include <string.h>
 #include <iostream>
+#include <vector>
+#include "node.cpp"
 
 using namespace std;
 
 #define BUFFER (5120)
 
-#define LINKPACKETHEADER (15)
-#define MAXLINKPACKET (129)
+#define LINKPACKETHEADER (57)
+#define MAXLINKPACKET (171)
 #define MAXLINKPAYLOAD (114)
 
 using namespace std;
@@ -40,7 +42,7 @@ void *get_in_addr(struct sockaddr *sa) {
  * @param pkt A packet to print
  */
 void print_LinkPacket(LinkPacket pkt) {
-	printf("packet:\n\ttype: %c\n\tsequence: %d\n\tlength: %d\n\tsrcIP: %d\n\tsrcPort: %d\n\tpayload: %s\n",
+	printf("packet:\n\ttype: %c\n\tsequence: %d\n\tlength: %d\n\tsrcIP: %s\n\tsrcPort: %s\n\tpayload: %s\n",
 			pkt.type, pkt.sequence, pkt.length, pkt.srcIP, pkt.srcPort, pkt.payload);
 }
 
@@ -50,7 +52,7 @@ void print_LinkPacket(LinkPacket pkt) {
  */
 void print_LinkPacketBuffer(char* buffer) {
 	printf("\nPACKET BUFFER\n\ttype: %d\n\tsequence: %s\n\tlength: %s\n\tsrcIP: %s\n\tsrcPort: %s\n\tpayload: %s\n",
-			(char)*buffer, buffer+1, buffer+33, buffer+65, buffer+97, buffer+113);
+			(char)*buffer, buffer+1, buffer+5, buffer+9, buffer+41, buffer+57);
 }
 
 
@@ -84,8 +86,8 @@ serializeLinkPacket(LinkPacket pkt, char* buffer) {
 	memcpy(buffer, &(pkt.type), sizeof(char));
 	memcpy(buffer+1, &(pkt.sequence), sizeof(uint32_t));
 	memcpy(buffer+5, &(pkt.length), sizeof(uint32_t));
-	memcpy(buffer+9, &(pkt.srcIP), sizeof(uint32_t));
-	memcpy(buffer+13, &(pkt.srcPort), sizeof(uint16_t));
+	memcpy(buffer+9, &(pkt.srcIP), 32);
+	memcpy(buffer+41, &(pkt.srcPort), 16);
 	memcpy(buffer+LINKPACKETHEADER, pkt.payload, pkt.length);
 
 }
@@ -198,6 +200,23 @@ int clearFile(char* file_name) {
   }
   
   return 0;
+}
+
+/* 
+ * Expects payload to have been allocated before calling.
+ */
+void createLinkPacketPayload(char* payload, vector<Node> neighbors) {
+	vector<Node>::iterator itr;
+	int offset = 0;
+	for(itr = neighbors.begin(); itr != neighbors.end(); itr++) {
+		bool online = (*itr).getOnline();
+	
+		memcpy(payload+offset, (*itr).getHostname().c_str(), 4);
+		memcpy(payload+offset+4, (*itr).getPort().c_str(), 2);
+		memcpy(payload+offset+6,&online, 1);
+		
+		offset += LINKPAYLOADNODE;
+	}
 }
 
 

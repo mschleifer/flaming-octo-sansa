@@ -6,12 +6,15 @@
 
 using namespace std;
 
+#define LINKPAYLOADNODE (7) // Each discrete item in the LinkPacket.payload is
+							// is a Node with 4byte IP, 2byte port, 1byte online
+
 typedef struct LinkPacket {
 	char type;
 	uint32_t sequence;
 	uint32_t length;
-	uint32_t srcIP;
-	uint16_t srcPort;
+	char srcIP[32];
+	char srcPort[16];
 	char* payload;
 } LinkPacket;
 

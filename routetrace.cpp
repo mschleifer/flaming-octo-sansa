@@ -16,7 +16,6 @@
 #include <fcntl.h>
 #include <netdb.h>
 #include <string.h>
-#include "node.cpp"
 #include "topology.cpp"
 #include "test.cpp"
 #include "util.hpp"
