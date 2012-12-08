@@ -153,6 +153,15 @@ int main(int argc, char *argv[]) {
 	print_RoutePacket(pkt2);
 	
 	
+	/*if(debug) {
+		cout << "Sending message to: " << neighbors[i].getHostname().c_str() << ":" << neighbors[i].getPort() << endl;
+	}
+	if ( sendto(socketFD, (void*)sendPkt, LINKPACKETHEADER+linkstatePacket.length, 0, 
+			  (struct sockaddr*) &sock_sendto, sendto_len) == -1 ) {
+		perror("sendto()");
+	}
+	
+	free(sendPkt);*/
   
 	return 0;
 }

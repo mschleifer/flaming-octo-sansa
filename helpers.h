@@ -61,7 +61,7 @@ void print_RoutePacket(RoutePacket pkt) {
 
 void print_RoutePacketBuffer(char* buffer) {
 	printf("\nPACKET BUFFER\n\ttype: %d\n\tTTL: %s\n\tsrcIP: %s\n\tsrcPort: %s\n\tdstIP: %s\n\tdstPort: %s\n",
-			(char)*buffer, buffer+1, buffer+33, buffer+65, buffer+97, buffer+129);
+			(char)*buffer, buffer+1, buffer+5, buffer+37, buffer+69, buffer+101);
 }
 
 
@@ -94,11 +94,10 @@ void
 serializeRoutePacket(RoutePacket pkt, char* buffer) {
 	memcpy(buffer, &(pkt.type), sizeof(char));
 	memcpy(buffer+1, &(pkt.ttl), sizeof(uint32_t));
-	printf("sizeof(pkt.srcIP): %lu\n", sizeof(pkt.srcIP));
-	memcpy(buffer+33, &(pkt.srcIP), 32);
-	memcpy(buffer+65, &(pkt.srcPort), 32);
-	memcpy(buffer+97, &(pkt.dstIP), 32);
-	memcpy(buffer+129, &(pkt.dstPort), 32);
+	memcpy(buffer+5, &(pkt.srcIP), 32);
+	memcpy(buffer+37, &(pkt.srcPort), 32);
+	memcpy(buffer+69, &(pkt.dstIP), 32);
+	memcpy(buffer+101, &(pkt.dstPort), 32);
 }
 
 /**
@@ -124,10 +123,10 @@ RoutePacket getRoutePktFromBuffer(char* buffer) {
 	RoutePacket pkt;
 	memcpy(&(pkt.type), buffer, sizeof(char));
 	memcpy(&(pkt.ttl), buffer+1, sizeof(uint32_t));
-	memcpy(&(pkt.srcIP), buffer+33, 32);
-	memcpy(&(pkt.srcPort), buffer+65, 32);
-	memcpy(&(pkt.dstIP), buffer+97, 32);
-	memcpy(&(pkt.dstPort), buffer+129, 32);
+	memcpy(&(pkt.srcIP), buffer+5, 32);
+	memcpy(&(pkt.srcPort), buffer+37, 32);
+	memcpy(&(pkt.dstIP), buffer+69, 32);
+	memcpy(&(pkt.dstPort), buffer+101, 32);
 	return pkt;
 }
 
