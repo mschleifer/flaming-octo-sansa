@@ -250,6 +250,7 @@ int main(int argc, char *argv[]) {
 	// Get the hostname where this emulator is running
 	char hostname[255];
 	gethostname(hostname, 255);
+	cout << "Hostname: " << hostname << endl;
 	
 	int socketFD;
 	struct addrinfo *addrInfo, hints, *p;	// Use these to getaddrinfo()

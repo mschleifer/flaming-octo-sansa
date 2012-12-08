@@ -43,8 +43,6 @@ int main(int argc, char *argv[]) {
 	int c;
 	opterr = 0;
 	
-	
-	
 	while ((c = getopt(argc, argv, "a:b:c:d:e:f:")) != -1) {
 		switch (c) {
 		  case 'a':
@@ -74,7 +72,43 @@ int main(int argc, char *argv[]) {
 	
 	if (debug) {
 		cout << "ARGS: " << tracePort << " " << srcHostname << "::" << srcPort << " " << dstHostname << "::" << dstPort << " " << debug << endl;
-		//printf("ARGS: %s %s %s %s %s %s\n", tracePort, srcHostname, srcPort, dstHostname, dstPort, debug? "True":"False");
+	}
+	
+	int rv = -1;
+	char hostname[255];
+	gethostname(hostname, 255);
+	cout << "Hostname: " << hostname << endl;
+	
+	int socketFD;
+	struct addrinfo *addrInfo, hints, *p;	// Use these to getaddrinfo()
+	
+	// Set up the hints
+	memset(&hints, 0, sizeof(hints));
+	hints.ai_family = AF_INET;
+	hints.ai_socktype = SOCK_DGRAM;
+	hints.ai_protocol = IPPROTO_UDP;
+	hints.ai_flags = AI_PASSIVE; 
+	
+	// Try to get addrInfo for the specific hostname
+	if ( (rv = getaddrinfo(hostname, tracePort.c_str(), &hints, &addrInfo)) != 0) {
+		fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
+		return -1;
+	}
+	
+	// Try to connect the address with a socket
+	for (p = addrInfo; p != NULL; p = p->ai_next) {
+		if ((socketFD = socket(p->ai_family, p->ai_socktype, p->ai_protocol)) == -1) {
+			perror("sender: socket");
+			continue;
+		}
+		
+		fcntl(socketFD, F_SETFL, O_NONBLOCK);
+		if (bind(socketFD, p->ai_addr, p->ai_addrlen) == -1) {
+			close(socketFD);
+			perror("sender: connect");
+			continue;
+		}
+		break;
 	}
   
 	return 0;
