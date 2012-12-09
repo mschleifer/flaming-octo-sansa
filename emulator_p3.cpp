@@ -9,7 +9,6 @@
 #include <netinet/in.h>
 #include "structs.h"
 #include "helpers.h"
-//#include "queue.h"
 #include <arpa/inet.h>
 #include <stdbool.h>
 #include <sys/stat.h>
@@ -18,7 +17,7 @@
 #include <string.h>
 #include "topology.cpp"
 #include "test.cpp"
-#include "util.hpp"
+//#include "util.hpp"
 #include <iostream>
 
 #define MAXLINE (440)
@@ -34,6 +33,8 @@ Topology top = Topology(true);
 int topologySize = 0;
 Node *emulator = new Node();	// Node representing this particular emulator
 map<string, int> sequenceMap;	// Keep track of the last seq. no. seen for each Node
+map<string, time_t> lastACKMap;	// Keep track of last ACK time for each node
+int currentSequence = 0;
 
 
 /*
@@ -41,7 +42,7 @@ map<string, int> sequenceMap;	// Keep track of the last seq. no. seen for each N
  *
  */
 void readTopology(const char* filename) {
-
+	cout << "--Running readTopology--" << endl;
 	char* line = (char*)malloc(MAXLINE);	// Line in the file
 	
 	FILE *file = fopen(filename, "r");
@@ -72,7 +73,7 @@ void readTopology(const char* filename) {
 	
 	while ( fgets ( line, MAXLINE, file ) != NULL ) // Read in a line
 	{
-		if(debug) cout << "LINE: " << line;
+		//if(debug) cout << "LINE: " << line;
 		
 		// Parse the line one token (<addr,port> pair) at a time
 		saveptr = &line;
@@ -101,7 +102,7 @@ void readTopology(const char* filename) {
 		top.addNeighbors(topology[i]);
 	}
 	
-	cout << "Topology after readTopology():" << endl << top.toString() << endl;
+	cout << top.toString() << endl;
 	
 	
 	if(debug) cout << endl;
@@ -113,7 +114,7 @@ void readTopology(const char* filename) {
  * protocol.
  */
 void createRoutes(Topology topology) {
-	cout << "inside createRoutes: " << topology.toString() << endl;
+	cout << "--Running createRoutes--" << topology.toString() << endl;
 	vector<Node> mainNodes = topology.getNodes();
 	vector<TestClass> testMap;
 	//string startkey = mainNodes[0].getKey();
@@ -158,7 +159,7 @@ void createRoutes(Topology topology) {
  * project, but one of these two createRoutes methods should help.
  */
 vector<TestClass> createRoutes(Topology topology, Node emulator) {
-	cout << "Inside createRoutes: " << endl;
+	cout << "--Running createRoutes--" << endl;
 	vector<Node> mainNodes = topology.getNodes();
 	vector<TestClass> testMap;
 	string startkey = emulator.getKey();
@@ -246,8 +247,8 @@ int main(int argc, char *argv[]) {
 			usage_Emulator(argv[0]);
 		}
 	}
-	if(debug)
-		printf("ARGS: %s %s %s\n", port, filename, debug ? "True" : "False");
+	//if(debug)
+		//printf("ARGS: %s %s %s\n", port, filename, debug ? "True" : "False");
 	
 	readTopology(filename); // Read the topology file
 	
@@ -262,22 +263,23 @@ int main(int argc, char *argv[]) {
 	char ip[32];
 	hostname_to_ip(hostname, ip);
 	emulatorIP = ip;
-	cout << "Hostname: " << hostname << endl;
-	cout << "Emulator IP::Port: " << emulatorIP << "::" << emulatorPort << endl;
+	//cout << "Hostname: " << hostname << endl;
+	//cout << "Emulator IP::Port: " << emulatorIP << "::" << emulatorPort << endl;
 	
 	int socketFD;
 	struct addrinfo *addrInfo, hints, *p;	// Use these to getaddrinfo()
-	
+
 	// Set up the hints
 	memset(&hints, 0, sizeof(hints));
 	hints.ai_family = AF_INET;
 	hints.ai_socktype = SOCK_DGRAM;
 	hints.ai_protocol = IPPROTO_UDP;
 	//hints.ai_flags = AI_PASSIVE; //Don't want to connect to "any" ip 
-	
+
 	// Try to get addrInfo for the specific hostname
 	if ( (rv = getaddrinfo(hostname, port, &hints, &addrInfo)) != 0) {
-		fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
+		//fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
+		perror("getaddrinfo");
 		return -1;
 	}
 	
@@ -297,29 +299,21 @@ int main(int argc, char *argv[]) {
 		break;
 	}
 	
-	// TODO: Disable different nodes and you will see the difference
-	top.disableNode("5.0.0.0:5");
-	//top.disableNode("3.0.0.0:3");
-	//top.disableNode("4.0.0.0:4");
-	//top.disableNode("3.0.0.0:3");
-	//createRoutes(top);
+	// Find the best routes
+	//top.disableNode("5.0.0.0:5");
 	bestRoutes = createRoutes(top, *emulator);
 	
+	struct sockaddr_in sock_sendto; // Sockaddr_in to use for sending
 	
 	// Send a message to each of the emulator's neighbors
-	// TODO: Probably put this all in its own function for organization
-	struct sockaddr_in sock_sendto;
-	socklen_t sendto_len;
-	
-	vector<Node> neighbors = emulator->getNeighbors();
-	
+	// TODO: might not need to
+	/*vector<Node> neighbors = emulator->getNeighbors();
 	for(int i = 0; i < (int)neighbors.size(); i++) {
-	
+		
 		sock_sendto.sin_family = AF_INET;
 		sock_sendto.sin_port = htons( atoi(neighbors[i].getPort().c_str()) );
 		inet_pton(AF_INET, neighbors[i].getHostname().c_str(), &sock_sendto.sin_addr);
 		memset(sock_sendto.sin_zero, '\0', sizeof(sock_sendto.sin_zero));
-		sendto_len = sizeof(sock_sendto);
 
 		LinkPacket linkstatePacket;
 		linkstatePacket.type = 'L';
@@ -342,25 +336,83 @@ int main(int argc, char *argv[]) {
 				<< ":" << neighbors[i].getPort() << endl;
 
 		if ( sendto(socketFD, (void*)sendPkt, LINKPACKETHEADER+linkstatePacket.length, 0, 
-						(struct sockaddr*) &sock_sendto, sendto_len) == -1 ) {
+						(struct sockaddr*) &sock_sendto, sizeof(sock_sendto)) == -1 ) {
 			perror("sendto()");
 		}
 		
 		free(sendPkt);
 		free(linkstatePacket.payload);
+	}*/
+	
+	// Setup lastACKMap before we start the loop
+	vector<Node> neighbors = emulator->getNeighbors();
+	for(int i = 0; i < (int)neighbors.size(); i++) {
+		lastACKMap.insert(pair<string,time_t>(getNodeKey(neighbors[i].getHostname(), 
+							neighbors[i].getPort()), time(NULL)));
 	}
-	
-	
 	
 	struct sockaddr_storage addr;
 	socklen_t addr_len;
+	bool topologyChanged = false;
 	
 	while (true) {
 		addr_len = sizeof(addr);
 
 		int numbytes;
 		memset(buffer, 0,  1024); // Need to zero the buffer
+		
+// REACHABLE CHECK, LINKSTATE SEND
+		// for each neighbor 
+		neighbors = emulator->getNeighbors();
+		for(int i = 0; i < (int)neighbors.size(); i++) {
+			// send QUERY
+			sock_sendto.sin_family = AF_INET;
+			sock_sendto.sin_port = htons( atoi(neighbors[i].getPort().c_str()) );
+			inet_pton(AF_INET, neighbors[i].getHostname().c_str(), &sock_sendto.sin_addr);
+			memset(sock_sendto.sin_zero, '\0', sizeof(sock_sendto.sin_zero));
 
+			QueryPacket queryPacket;
+			queryPacket.type = 'Q';
+			strcpy(queryPacket.srcIP, emulator->getHostname().c_str());
+			strcpy(queryPacket.srcPort, emulator->getPort().c_str());
+			
+			char* sendPkt = (char*)malloc(MAXQUERYPACKET);
+			memset(sendPkt, 0, MAXQUERYPACKET);
+			serializeQueryPacket(queryPacket, sendPkt);
+			
+			if ( sendto(socketFD, (void*)sendPkt, MAXQUERYPACKET, 0, 
+					(struct sockaddr*) &sock_sendto, sizeof(sock_sendto)) == -1 ) {
+				perror("sendto()");
+			}
+			free(sendPkt);
+			
+			// check currentTime - lastACKMap > TIMEOUT (expired if true)
+			if(difftime(time(NULL), lastACKMap[getNodeKey(neighbors[i].getHostname(), 
+							neighbors[i].getPort())]) > TIMEOUT) {
+				// AND node is online
+				if(neighbors[i].getOnline()) {
+					if(debug) cout << "TIMEOUT EXPIRED" << endl;
+				
+					// take node offline
+					top.disableNode(getNodeKey(neighbors[i].getHostname(), 
+										neighbors[i].getPort()));
+				
+					topologyChanged = true;
+				}				
+			}
+		}
+		
+		// If there was a change send out linkstate packets and rerun createRoutes()
+		if(topologyChanged) {
+			cout << "TOPOLOGY CHANGED" << endl;
+			bestRoutes = createRoutes(top, *emulator);
+			cout << top.toString();
+			
+			// TODO: Send out linkstate packets
+			topologyChanged = false;
+		}
+
+// RECEIVE BEHAVIOR
 		if ((numbytes = recvfrom(socketFD, buffer, MAXLINKPACKET, 0, 
 						(struct sockaddr*)&addr, &addr_len)) <= -1) {
 			
@@ -369,11 +421,19 @@ int main(int argc, char *argv[]) {
 		else {
 			char type;
 			memcpy(&(type), buffer, sizeof(char));
-			cout << "Received packet type: " << type << endl;
+			if(type != 'Q' && type != 'A')
+				cout << "Received packet type: " << type << endl;
 			
 			if (type == 'L') {
 				LinkPacket linkstatePacket = getLinkPktFromBuffer(buffer);
 				vector<Node> recNodes = getNodesFromLinkPacket(linkstatePacket);
+				
+				if(strcmp(linkstatePacket.srcIP, emulator->getHostname().c_str()) == 0 &&
+				   strcmp(linkstatePacket.srcPort, emulator->getPort().c_str()) == 0 ) {
+					
+					if(debug) cout << "Got our own LinkState Packet back" << endl;
+					break;	
+				}
 				
 				// If this is a newer linkstate packet
 				if(sequenceMap[getNodeKey(linkstatePacket.srcIP,linkstatePacket.srcPort)] < 
@@ -398,8 +458,29 @@ int main(int argc, char *argv[]) {
 						}
 					}
 					
+					cout << "Going to forward " << endl << "\t";
+					print_LinkPacket(getLinkPktFromBuffer(buffer));
 					
 					// Forward the packet on to your neighbors
+					vector<Node> n = emulator->getNeighbors();
+					for(vector<Node>::iterator itr = n.begin();
+							itr != n.end(); itr++) {
+						
+						//printf("\tForwarding to %s:%s\n", itr->getHostname().c_str(),itr->getPort().c_str());
+						sock_sendto.sin_family = AF_INET;
+						sock_sendto.sin_port = htons( atoi( itr->getPort().c_str()) );
+						inet_pton(AF_INET, itr->getHostname().c_str(), &sock_sendto.sin_addr);
+						memset(sock_sendto.sin_zero, '\0', sizeof(sock_sendto.sin_zero));
+						
+						if ( sendto(socketFD, (void*)buffer, LINKPACKETHEADER+linkstatePacket.length, 0, 
+							  (struct sockaddr*) &sock_sendto, sizeof(sock_sendto)) == -1 ) {
+							perror("sendto()");
+						}
+					}
+				}
+				else {
+					if(debug)
+						cout << "Got a packet with old sequence number" << endl;
 				}
 				
 			}
@@ -418,7 +499,6 @@ int main(int argc, char *argv[]) {
 					sock_sendto.sin_port = htons( atoi( routePacket.srcPort) );
 					inet_pton(AF_INET, routePacket.srcIP, &sock_sendto.sin_addr);
 					memset(sock_sendto.sin_zero, '\0', sizeof(sock_sendto.sin_zero));
-					sendto_len = sizeof(sock_sendto);
 					
 					strcpy(routePacket.srcIP, emulatorIP.c_str());
 					strcpy(routePacket.srcPort, emulatorPort.c_str());
@@ -426,7 +506,7 @@ int main(int argc, char *argv[]) {
 					serializeRoutePacket(routePacket, sendPkt);
 					
 					if ( sendto(socketFD, (void*)sendPkt, ROUTETRACESIZE, 0, 
-							  (struct sockaddr*) &sock_sendto, sendto_len) == -1 ) {
+							  (struct sockaddr*) &sock_sendto, sizeof(sock_sendto)) == -1 ) {
 						perror("sendto()");
 					}
 					
@@ -452,20 +532,55 @@ int main(int argc, char *argv[]) {
 					sock_sendto.sin_port = htons( atoi(gotoPort.c_str()) );
 					inet_pton(AF_INET, gotoIp.c_str(), &sock_sendto.sin_addr);
 					memset(sock_sendto.sin_zero, '\0', sizeof(sock_sendto.sin_zero));
-					sendto_len = sizeof(sock_sendto);
 					
 					routePacket.ttl--;
 					char* sendPkt = (char*)malloc(ROUTETRACESIZE);
 					serializeRoutePacket(routePacket, sendPkt);
 					
 					if ( sendto(socketFD, (void*)sendPkt, ROUTETRACESIZE, 0, 
-							  (struct sockaddr*) &sock_sendto, sendto_len) == -1 ) {
+							  (struct sockaddr*) &sock_sendto, sizeof(sock_sendto)) == -1 ) {
 						perror("sendto()");
 					}
 					
 					free(sendPkt);
 				}
 				
+			}
+			else if(type == 'Q') {
+			
+				QueryPacket queryPacket = getQueryPktFromBuffer(buffer);
+				
+				sock_sendto.sin_family = AF_INET;
+				sock_sendto.sin_port = htons( atoi(queryPacket.srcPort) );
+				inet_pton(AF_INET, queryPacket.srcIP, &sock_sendto.sin_addr);
+				memset(sock_sendto.sin_zero, '\0', sizeof(sock_sendto.sin_zero));
+
+				QueryPacket ACKPacket;
+				ACKPacket.type = 'A';
+				strcpy(ACKPacket.srcIP, emulator->getHostname().c_str());
+				strcpy(ACKPacket.srcPort, emulator->getPort().c_str());
+		
+				char* sendPkt = (char*)malloc(MAXQUERYPACKET);
+				memset(sendPkt, 0, MAXQUERYPACKET);
+				serializeQueryPacket(ACKPacket, sendPkt);
+
+				// Uncomment at your own peril
+				//cout << "Sending ACK to: " << queryPacket.srcIP << ":" << queryPacket.srcPort << endl;
+
+				if ( sendto(socketFD, (void*)sendPkt, MAXQUERYPACKET, 0, 
+						(struct sockaddr*) &sock_sendto, sizeof(sock_sendto)) == -1 ) {
+					perror("sendto()");
+				}
+		
+				free(sendPkt);
+			}
+			
+			else if(type == 'A') {
+				// Abandon all hope ye who uncomment here
+				//cout << "GOT ACK" << endl;
+				
+				QueryPacket ACKPacket = getQueryPktFromBuffer(buffer);
+				lastACKMap[getNodeKey(ACKPacket.srcIP, ACKPacket.srcPort)] = time(NULL);
 			}
 		}
 	}

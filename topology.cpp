@@ -3,6 +3,7 @@
 #include <vector>
 #include <sstream>
 #include <map>
+#include "util.hpp"
 
 using namespace std;
 
@@ -72,6 +73,26 @@ class Topology {
 	 * than it should be.
 	 */
 	void disableNode(string nodeKey) {
+
+		vector<string> disabledKeys;
+		if (topology_nodes.count(nodeKey) == 1) {
+			Node &node = topology_nodes[nodeKey]; 
+			node.setOffline();
+		}
+		
+		// makes the node offline for all others containing it; a hack
+		map<string,Node>::iterator itr;
+		for(itr = topology_nodes.begin(); itr != topology_nodes.end(); itr++) {
+			disabledKeys = itr->second.getNeighborsKeys();
+			for (unsigned int i = 0; i < disabledKeys.size(); i++) {
+				if(disabledKeys[i].compare(nodeKey) == 0) {
+					Node *disableNode = itr->second.getNeighbor(nodeKey);
+					disableNode->setOffline();
+				}
+			}	
+		}		
+		
+		/* OLD CODE
 		vector<string> disabledKeys;
 		if (topology_nodes.count(nodeKey) == 1) {
 			Node &node = topology_nodes[nodeKey]; 
@@ -84,7 +105,7 @@ class Topology {
 			Node &node = topology_nodes[disabledKeys[i]];
 			Node *disableNode = node.getNeighbor(nodeKey);
 			disableNode->setOffline();
-		}
+		}*/
 	}
 	
 	vector<Node> getNodes() {
@@ -105,6 +126,27 @@ class Topology {
 	 * @param nodeKey The key of the node, 'host:port'
 	 */
 	void enableNode(string nodeKey) {
+		
+		vector<string> enabledKeys;
+		if (topology_nodes.count(nodeKey) == 1) {
+			Node &node = topology_nodes[nodeKey]; 
+			node.setOnline();
+		}
+		
+		// makes the node online for all others containing it; a hack
+		map<string,Node>::iterator itr;
+		for(itr = topology_nodes.begin(); itr != topology_nodes.end(); itr++) {
+			enabledKeys = itr->second.getNeighborsKeys();
+			for (unsigned int i = 0; i < enabledKeys.size(); i++) {
+				if(enabledKeys[i].compare(nodeKey) == 0) {
+					Node *enableNode = itr->second.getNeighbor(nodeKey);
+					enableNode->setOnline();
+				}
+			}	
+		}
+		
+		
+		/* OLD CODE
 		vector<string> enabledKeys;
 		if (topology_nodes.count(nodeKey) == 1) {
 			Node &node = topology_nodes[nodeKey];
@@ -118,6 +160,7 @@ class Topology {
 			Node *enableNode = node.getNeighbor(nodeKey);
 			enableNode->setOnline();
 		}
+		*/
 	}
 	
 	

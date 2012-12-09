@@ -25,6 +25,8 @@ using namespace std;
 #define LINKPACKETHEADER (57)
 #define MAXLINKPACKET (988)
 #define MAXLINKPAYLOAD (931)
+#define MAXQUERYPACKET (49)
+#define TIMEOUT (4)
 
 using namespace std;
 
@@ -63,7 +65,7 @@ vector<Node> getNodesFromLinkPacket(LinkPacket linkPacket) {
  * @param pkt A packet to print
  */
 void print_LinkPacket(LinkPacket pkt) {
-	printf("packet:\n\ttype: %c\n\tsequence: %d\n\tlength: %d\n\tsrcIP: %s\n\tsrcPort: %s\n\tpayload: ",
+	printf("Link Packet:\n\ttype: %c\n\tsequence: %d\n\tlength: %d\n\tsrcIP: %s\n\tsrcPort: %s\n\tpayload: ",
 			pkt.type, pkt.sequence, pkt.length, pkt.srcIP, pkt.srcPort);
 	vector<Node> n = getNodesFromLinkPacket(pkt);
 	for(vector<Node>::iterator itr = n.begin(); itr != n.end(); itr++) {
@@ -85,7 +87,7 @@ void print_LinkPacketBuffer(char* buffer) {
 
 
 void print_RoutePacket(RoutePacket pkt) {
-	printf("packet:\n\ttype: %c\n\tTTL: %d\n\tsrcIP: %s\n\tsrcPort: %s\n\tdstIP: %s\n\tdstPort: %s\n",
+	printf("Route Packet:\n\ttype: %c\n\tTTL: %d\n\tsrcIP: %s\n\tsrcPort: %s\n\tdstIP: %s\n\tdstPort: %s\n",
 			pkt.type, pkt.ttl, pkt.srcIP, pkt.srcPort, pkt.dstIP, pkt.dstPort);
 }
 
@@ -94,6 +96,10 @@ void print_RoutePacketBuffer(char* buffer) {
 			(char)*buffer, (int)*(buffer+1), buffer+5, buffer+37, buffer+69, buffer+101);
 }
 
+void print_QueryPacket(QueryPacket pkt) {
+	printf("Query Packet:\n\ttype: %c\n\tsrcIP: %s\n\tsrcPort: %s\n",
+			pkt.type, pkt.srcIP, pkt.srcPort);
+}
 
 /**
  * Simply prints the given message to stderr
@@ -117,7 +123,6 @@ serializeLinkPacket(LinkPacket pkt, char* buffer) {
 	memcpy(buffer+9, &(pkt.srcIP), 32);
 	memcpy(buffer+41, &(pkt.srcPort), 16);
 	memcpy(buffer+LINKPACKETHEADER, pkt.payload, pkt.length);
-
 }
 
 void 
@@ -128,6 +133,13 @@ serializeRoutePacket(RoutePacket pkt, char* buffer) {
 	memcpy(buffer+37, &(pkt.srcPort), 32);
 	memcpy(buffer+69, &(pkt.dstIP), 32);
 	memcpy(buffer+101, &(pkt.dstPort), 32);
+}
+
+void
+serializeQueryPacket(QueryPacket pkt, char* buffer) {
+	memcpy(buffer, &(pkt.type), sizeof(char));
+	memcpy(buffer+1, &(pkt.srcIP), 32);
+	memcpy(buffer+33, &(pkt.srcPort), 16);
 }
 
 /**
@@ -160,6 +172,15 @@ RoutePacket getRoutePktFromBuffer(char* buffer) {
 	return pkt;
 }
 
+QueryPacket getQueryPktFromBuffer(char* buffer) {
+	QueryPacket pkt;
+	
+	memcpy(&(pkt.type), buffer, sizeof(char));
+	memcpy(&(pkt.srcIP), buffer+1, 32);
+	memcpy(&(pkt.srcPort), buffer+33, 16);
+
+	return pkt;
+}
 
 /**
  * Takes in a hostname and an ip, both strings, and gets the ip
