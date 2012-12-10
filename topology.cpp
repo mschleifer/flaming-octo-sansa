@@ -178,6 +178,7 @@ class Topology {
  			out << node.toString();
 			out << endl;
  		}
+ 		cout << endl;
 		
 		string toString = out.str();
 		return toString;

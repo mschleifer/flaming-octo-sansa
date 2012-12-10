@@ -391,11 +391,12 @@ int main(int argc, char *argv[]) {
 							neighbors[i].getPort())]) > TIMEOUT) {
 				// AND node is online
 				if(neighbors[i].getOnline()) {
-					if(debug) cout << "TIMEOUT EXPIRED" << endl;
+				
+					string offlineNodeKey = getNodeKey(neighbors[i].getHostname(), neighbors[i].getPort());
+					if(debug) cout << "TIMEOUT EXPIRED - " << offlineNodeKey << endl;
 				
 					// take node offline
-					top.disableNode(getNodeKey(neighbors[i].getHostname(), 
-										neighbors[i].getPort()));
+					top.disableNode(offlineNodeKey);
 				
 					topologyChanged = true;
 				}				
@@ -404,7 +405,7 @@ int main(int argc, char *argv[]) {
 		
 		// If there was a change send out linkstate packets and rerun createRoutes()
 		if(topologyChanged) {
-			cout << "TOPOLOGY CHANGED" << endl;
+			cout << "***TOPOLOGY CHANGED" << endl;
 			bestRoutes = createRoutes(top, *emulator);
 			cout << top.toString();
 			
@@ -580,7 +581,15 @@ int main(int argc, char *argv[]) {
 				//cout << "GOT ACK" << endl;
 				
 				QueryPacket ACKPacket = getQueryPktFromBuffer(buffer);
-				lastACKMap[getNodeKey(ACKPacket.srcIP, ACKPacket.srcPort)] = time(NULL);
+				string recNodeKey = getNodeKey(ACKPacket.srcIP, ACKPacket.srcPort);
+				lastACKMap[recNodeKey] = time(NULL);
+				if(!top.getNode(recNodeKey).getOnline()) {
+					top.enableNode(recNodeKey);
+					cout << endl << "***TOPOLOGY CHANGED: NODE ONLINE - " << recNodeKey << endl;
+					bestRoutes = createRoutes(top, *emulator);
+					cout << top.toString();
+				}
+				
 			}
 		}
 	}
