@@ -34,7 +34,7 @@ int topologySize = 0;
 Node *emulator = new Node();	// Node representing this particular emulator
 map<string, int> sequenceMap;	// Keep track of the last seq. no. seen for each Node
 map<string, time_t> lastACKMap;	// Keep track of last ACK time for each node
-int currentSequence = 0;
+int currentSequence = 0;		// Current seq. no. of linkstate packets sent by this emulator
 
 
 /*
@@ -138,18 +138,6 @@ void createRoutes(Topology topology) {
 		cout << testMap[i].toString();
 		cout << endl;
 	}
-	
-	cout << "Finished and didn't take long? Yep!" << endl << endl;
-	cout << "So at the very least, we have some way that we can give our program a "
-		  << "start node, end node, and topology, and it will find the best paths. "
-		  << "You are more familiar with what exactly I need to do with link state "
-		  << "packets and sending w/ sequence numbers and etc, " 
-		  << "so you'll have to explain what I should attempt to do " 
-		  << "with the class.  I think this was definitely a big part of it though." << endl;
-	// TODO: This seems to me like it'll be tough.  We're going to need to come
-	// TODO: up with a number of structures to keep track of different data
-	// TODO: elements (network graph, routing table for each node, etc.).
-	// TODO: Wikipedia has a pretty detailed description (link-state routing).
 }
 
 
@@ -247,8 +235,6 @@ int main(int argc, char *argv[]) {
 			usage_Emulator(argv[0]);
 		}
 	}
-	//if(debug)
-		//printf("ARGS: %s %s %s\n", port, filename, debug ? "True" : "False");
 	
 	readTopology(filename); // Read the topology file
 	
@@ -300,52 +286,12 @@ int main(int argc, char *argv[]) {
 	}
 	
 	// Find the best routes
-	//top.disableNode("5.0.0.0:5");
 	bestRoutes = createRoutes(top, *emulator);
 	
 	struct sockaddr_in sock_sendto; // Sockaddr_in to use for sending
 	
-	// Send a message to each of the emulator's neighbors
-	// TODO: might not need to
-	/*vector<Node> neighbors = emulator->getNeighbors();
-	for(int i = 0; i < (int)neighbors.size(); i++) {
-		
-		sock_sendto.sin_family = AF_INET;
-		sock_sendto.sin_port = htons( atoi(neighbors[i].getPort().c_str()) );
-		inet_pton(AF_INET, neighbors[i].getHostname().c_str(), &sock_sendto.sin_addr);
-		memset(sock_sendto.sin_zero, '\0', sizeof(sock_sendto.sin_zero));
-
-		LinkPacket linkstatePacket;
-		linkstatePacket.type = 'L';
-		linkstatePacket.sequence = 1;
-		linkstatePacket.length = 0;
-		strcpy(linkstatePacket.srcIP, emulator->getHostname().c_str());
-		strcpy(linkstatePacket.srcPort, emulator->getPort().c_str());
-		linkstatePacket.payload = (char*)malloc(emulator->getNeighbors().size() * LINKPAYLOADNODE);
-		linkstatePacket.length = emulator->getNeighbors().size() * LINKPAYLOADNODE;
-		
-		createLinkPacketPayload(linkstatePacket.payload, emulator->getNeighbors());
-		
-		char* sendPkt = (char*)malloc(MAXLINKPACKET);
-		memset(sendPkt, 0, MAXLINKPACKET);
-		serializeLinkPacket(linkstatePacket, sendPkt);
-		
-
-		if(debug)
-			cout << "Sending message to: " << neighbors[i].getHostname().c_str()
-				<< ":" << neighbors[i].getPort() << endl;
-
-		if ( sendto(socketFD, (void*)sendPkt, LINKPACKETHEADER+linkstatePacket.length, 0, 
-						(struct sockaddr*) &sock_sendto, sizeof(sock_sendto)) == -1 ) {
-			perror("sendto()");
-		}
-		
-		free(sendPkt);
-		free(linkstatePacket.payload);
-	}*/
-	
-	// Setup lastACKMap before we start the loop
-	vector<Node> neighbors = emulator->getNeighbors();
+	// Setup lastACKMap before we start looping forever
+	vector<Node> neighbors = emulator->getNeighbors(); // Used in other areas too
 	for(int i = 0; i < (int)neighbors.size(); i++) {
 		lastACKMap.insert(pair<string,time_t>(getNodeKey(neighbors[i].getHostname(), 
 							neighbors[i].getPort()), time(NULL)));
@@ -353,7 +299,7 @@ int main(int argc, char *argv[]) {
 	
 	struct sockaddr_storage addr;
 	socklen_t addr_len;
-	bool topologyChanged = false;
+	bool topologyChanged = false;	// Cheap way to keep track of topology changes
 	
 	while (true) {
 		addr_len = sizeof(addr);
@@ -361,10 +307,9 @@ int main(int argc, char *argv[]) {
 		int numbytes;
 		memset(buffer, 0,  1024); // Need to zero the buffer
 		
-// REACHABLE CHECK, LINKSTATE SEND
-		// for each neighbor 
+// CHECK IF YOUR NEIGHBORS ARE ONLINE
 		neighbors = emulator->getNeighbors();
-		for(int i = 0; i < (int)neighbors.size(); i++) {
+		for(int i = 0; i < (int)neighbors.size(); i++) { // for each neighbor 
 			// send QUERY
 			sock_sendto.sin_family = AF_INET;
 			sock_sendto.sin_port = htons( atoi(neighbors[i].getPort().c_str()) );
@@ -379,17 +324,19 @@ int main(int argc, char *argv[]) {
 			char* sendPkt = (char*)malloc(MAXQUERYPACKET);
 			memset(sendPkt, 0, MAXQUERYPACKET);
 			serializeQueryPacket(queryPacket, sendPkt);
+			// TODO: ^^ Might want to move this outside of loop
 			
 			if ( sendto(socketFD, (void*)sendPkt, MAXQUERYPACKET, 0, 
 					(struct sockaddr*) &sock_sendto, sizeof(sock_sendto)) == -1 ) {
-				perror("sendto()");
+				perror("QUERY - sendto()");
 			}
-			free(sendPkt);
+			
+			free(sendPkt); // TODO: This too
 			
 			// check currentTime - lastACKMap > TIMEOUT (expired if true)
 			if(difftime(time(NULL), lastACKMap[getNodeKey(neighbors[i].getHostname(), 
 							neighbors[i].getPort())]) > TIMEOUT) {
-				// AND node is online
+				// If the timeout is expired AND we thought the Node was online
 				if(neighbors[i].getOnline()) {
 				
 					string offlineNodeKey = getNodeKey(neighbors[i].getHostname(), neighbors[i].getPort());
@@ -409,7 +356,45 @@ int main(int argc, char *argv[]) {
 			bestRoutes = createRoutes(top, *emulator);
 			cout << top.toString();
 			
-			// TODO: Send out linkstate packets
+			// Send out linkstate packets
+			for(int i = 0; i < (int)neighbors.size(); i++) {
+				currentSequence++;
+				
+				sock_sendto.sin_family = AF_INET;
+				sock_sendto.sin_port = htons( atoi(neighbors[i].getPort().c_str()) );
+				inet_pton(AF_INET, neighbors[i].getHostname().c_str(), &sock_sendto.sin_addr);
+				memset(sock_sendto.sin_zero, '\0', sizeof(sock_sendto.sin_zero));
+
+				LinkPacket linkstatePacket;
+				linkstatePacket.type = 'L';
+				linkstatePacket.sequence = currentSequence;
+				linkstatePacket.length = 0;
+				strcpy(linkstatePacket.srcIP, emulator->getHostname().c_str());
+				strcpy(linkstatePacket.srcPort, emulator->getPort().c_str());
+				linkstatePacket.payload = (char*)malloc(emulator->getNeighbors().size() * LINKPAYLOADNODE);
+				linkstatePacket.length = emulator->getNeighbors().size() * LINKPAYLOADNODE;
+		
+				createLinkPacketPayload(linkstatePacket.payload, emulator->getNeighbors());
+		
+				char* sendPkt = (char*)malloc(MAXLINKPACKET);
+				memset(sendPkt, 0, MAXLINKPACKET);
+				serializeLinkPacket(linkstatePacket, sendPkt);
+		
+
+				if(debug)
+					cout << "Sending new LinkPacket to: " << neighbors[i].getHostname().c_str()
+						<< ":" << neighbors[i].getPort() << endl;
+					print_LinkPacket(linkstatePacket);
+
+				if ( sendto(socketFD, (void*)sendPkt, LINKPACKETHEADER+linkstatePacket.length, 0, 
+								(struct sockaddr*) &sock_sendto, sizeof(sock_sendto)) == -1 ) {
+					perror("NEW LINK OFFLINE - sendto()");
+				}
+		
+				free(sendPkt);
+				free(linkstatePacket.payload);
+			}
+			
 			topologyChanged = false;
 		}
 
@@ -422,22 +407,25 @@ int main(int argc, char *argv[]) {
 		else {
 			char type;
 			memcpy(&(type), buffer, sizeof(char));
-			if(type != 'Q' && type != 'A')
+			if(type != 'Q' && type != 'A') // Too much output with these included
 				cout << "Received packet type: " << type << endl;
-			
+				
+// RECEIVE L PACKET
 			if (type == 'L') {
+				// Parse incoming data
 				LinkPacket linkstatePacket = getLinkPktFromBuffer(buffer);
 				vector<Node> recNodes = getNodesFromLinkPacket(linkstatePacket);
 				
+				// If our neighbor forwarded us back our own packet
+				// This is poor optimization, but I honestly don't really care
 				if(strcmp(linkstatePacket.srcIP, emulator->getHostname().c_str()) == 0 &&
 				   strcmp(linkstatePacket.srcPort, emulator->getPort().c_str()) == 0 ) {
 					
 					if(debug) cout << "Got our own LinkState Packet back" << endl;
-					break;	
 				}
 				
-				// If this is a newer linkstate packet
-				if(sequenceMap[getNodeKey(linkstatePacket.srcIP,linkstatePacket.srcPort)] < 
+				// Else if this is a newer linkstate packet from the source
+				else if(sequenceMap[getNodeKey(linkstatePacket.srcIP,linkstatePacket.srcPort)] < 
 						(int)linkstatePacket.sequence)
 				{
 					// Update the sequenceMap
@@ -459,8 +447,10 @@ int main(int argc, char *argv[]) {
 						}
 					}
 					
-					cout << "Going to forward " << endl << "\t";
-					print_LinkPacket(getLinkPktFromBuffer(buffer));
+					if(debug) {
+						cout << "Going to forward " << endl << "\t";
+						print_LinkPacket(getLinkPktFromBuffer(buffer));
+					}
 					
 					// Forward the packet on to your neighbors
 					vector<Node> n = emulator->getNeighbors();
@@ -475,16 +465,22 @@ int main(int argc, char *argv[]) {
 						
 						if ( sendto(socketFD, (void*)buffer, LINKPACKETHEADER+linkstatePacket.length, 0, 
 							  (struct sockaddr*) &sock_sendto, sizeof(sock_sendto)) == -1 ) {
-							perror("sendto()");
+							perror("FORWARD LINK - sendto()");
 						}
 					}
+					// Don't forget to update the routes
+					bestRoutes = createRoutes(top, *emulator);
+					cout << top.toString();
 				}
+				// Else we got a linkstate packet from a source but it was old
+				// This probably shouldn't happen to us
 				else {
 					if(debug)
 						cout << "Got a packet with old sequence number" << endl;
 				}
 				
 			}
+// RECEIVE T PACKET
 			else if (type == 'T') {
 				RoutePacket routePacket = getRoutePktFromBuffer(buffer);
 				print_RoutePacket(routePacket);
@@ -508,7 +504,7 @@ int main(int argc, char *argv[]) {
 					
 					if ( sendto(socketFD, (void*)sendPkt, ROUTETRACESIZE, 0, 
 							  (struct sockaddr*) &sock_sendto, sizeof(sock_sendto)) == -1 ) {
-						perror("sendto()");
+						perror("ROUTE HOME - sendto()");
 					}
 					
 					free(sendPkt);
@@ -540,17 +536,19 @@ int main(int argc, char *argv[]) {
 					
 					if ( sendto(socketFD, (void*)sendPkt, ROUTETRACESIZE, 0, 
 							  (struct sockaddr*) &sock_sendto, sizeof(sock_sendto)) == -1 ) {
-						perror("sendto()");
+						perror("ROUTE NEXT - sendto()");
 					}
 					
 					free(sendPkt);
 				}
 				
 			}
+// RECEIVE Q PACKET
 			else if(type == 'Q') {
 			
 				QueryPacket queryPacket = getQueryPktFromBuffer(buffer);
 				
+				// Send an ACK back to the source of the Query
 				sock_sendto.sin_family = AF_INET;
 				sock_sendto.sin_port = htons( atoi(queryPacket.srcPort) );
 				inet_pton(AF_INET, queryPacket.srcIP, &sock_sendto.sin_addr);
@@ -570,77 +568,71 @@ int main(int argc, char *argv[]) {
 
 				if ( sendto(socketFD, (void*)sendPkt, MAXQUERYPACKET, 0, 
 						(struct sockaddr*) &sock_sendto, sizeof(sock_sendto)) == -1 ) {
-					perror("sendto()");
+					perror("ACK - sendto()");
 				}
 		
 				free(sendPkt);
 			}
-			
+// RECEIVE A PACKET
 			else if(type == 'A') {
 				// Abandon all hope ye who uncomment here
 				//cout << "GOT ACK" << endl;
 				
+				// Parse the incoming data and update lastACKMap
 				QueryPacket ACKPacket = getQueryPktFromBuffer(buffer);
 				string recNodeKey = getNodeKey(ACKPacket.srcIP, ACKPacket.srcPort);
 				lastACKMap[recNodeKey] = time(NULL);
+				
+				// If we get an ACK from a Node we didn't think was online
 				if(!top.getNode(recNodeKey).getOnline()) {
 					top.enableNode(recNodeKey);
 					cout << endl << "***TOPOLOGY CHANGED: NODE ONLINE - " << recNodeKey << endl;
 					bestRoutes = createRoutes(top, *emulator);
 					cout << top.toString();
+					
+					// Send out linkstate packets to neighbors
+					for(int i = 0; i < (int)neighbors.size(); i++) {
+						currentSequence++;
+				
+						sock_sendto.sin_family = AF_INET;
+						sock_sendto.sin_port = htons( atoi(neighbors[i].getPort().c_str()) );
+						inet_pton(AF_INET, neighbors[i].getHostname().c_str(), &sock_sendto.sin_addr);
+						memset(sock_sendto.sin_zero, '\0', sizeof(sock_sendto.sin_zero));
+
+						LinkPacket linkstatePacket;
+						linkstatePacket.type = 'L';
+						linkstatePacket.sequence = currentSequence;
+						linkstatePacket.length = 0;
+						strcpy(linkstatePacket.srcIP, emulator->getHostname().c_str());
+						strcpy(linkstatePacket.srcPort, emulator->getPort().c_str());
+						linkstatePacket.payload = (char*)malloc(emulator->getNeighbors().size() * LINKPAYLOADNODE);
+						linkstatePacket.length = emulator->getNeighbors().size() * LINKPAYLOADNODE;
+		
+						createLinkPacketPayload(linkstatePacket.payload, emulator->getNeighbors());
+		
+						char* sendPkt = (char*)malloc(MAXLINKPACKET);
+						memset(sendPkt, 0, MAXLINKPACKET);
+						serializeLinkPacket(linkstatePacket, sendPkt);
+						// TODO:^^ Might be worth moving everything above here outside of loop
+
+						if(debug)
+							cout << "Sending new LinkPacket to: " << neighbors[i].getHostname().c_str()
+								<< ":" << neighbors[i].getPort() << endl;
+							print_LinkPacket(linkstatePacket);
+
+						if ( sendto(socketFD, (void*)sendPkt, LINKPACKETHEADER+linkstatePacket.length, 0, 
+										(struct sockaddr*) &sock_sendto, sizeof(sock_sendto)) == -1 ) {
+							perror("NEW LINK ONLINE - sendto()");
+						}
+		
+						free(sendPkt); // TODO:^^ This too
+						free(linkstatePacket.payload); // TODO:^^ And this
+					}
 				}
 				
 			}
 		}
 	}
 	
-	// TODO: now the real stuff happens. Loop repeatedly calling createRoutes()
-	// TODO: and updating the shortest paths using link-state protocol.
-	
-	// TODO: Also need a forwardPacket() function for sending to neighbors
-	
 	return 0;
 }	// end main
-
-// NOTES ON THE LINK-STATE PROTOCOL (from Wikipedia)
-
-// DISTRIBUTING THE MAP INFORMATION
-	// First, each node needs to determine what other ports it is connected to
-	// it does this using a simple reachability protocol which it runs each of its neighbors
-	
-	// Next, each node periodically and in case of connectivity changes makes up 
-	// a short message, the link-state advertisement, which:
-    	// Identifies the node which is producing it.
-    	// Identifies all the other nodes (either routers or networks) to which it is directly connected.
-    	// Includes a sequence number, which increases every time the source node makes up a new version of the message.
-	// This message is then flooded throughout the network. Each node in the network remembers, 
-	// for every other node in the network, the sequence number of the last 
-	// link-state message which it received from that node
-	
-	// A Node sends a copy to all of its neighbors. When a link-state advertisement
-	// is received at a node, the node looks up the sequence number it has stored for
-	// the source of that link-state message. If this message is newer (i.e. has a higher
-	// sequence number), it is saved, and a copy is sent in turn to each of that node's neighbors
-	
-// CREATING THE MAP
-	// Finally, with the complete set of link-state advertisements 
-	// (one from each node in the network) in hand, it is "obviously" easy to 
-	// produce the graph for the map of the network.
-	
-	// The algorithm iterates over the collection of link-state advertisements; 
-	// for each one
-		// make links on the map of the network, from the node which sent that message
-		// to all the nodes which that message indicates are neighbours of the sending node
-	
-	// (Potentiall optional for use I think)
-	// if one node reports that it is connected to another, but the other node 
-	// does not report that it is connected to the first, there is a problem, 
-	// and the link is not included on the map
-	
-	// Link-state message giving information about the neighbors is recomputed, 
-	// and then flooded throughout the network, whenever there is a change in the
-	// connectivity between the node and its neighbors, e.g. when a link fails. 
-	// Any such change will be detected by the reachability protocol which each 
-	// node runs with its neighbors.
-	
-// CREATING THE ROUTING TABLE
