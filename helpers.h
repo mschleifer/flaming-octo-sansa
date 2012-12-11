@@ -26,7 +26,7 @@ using namespace std;
 #define MAXLINKPACKET (988)
 #define MAXLINKPAYLOAD (931)
 #define MAXQUERYPACKET (49)
-#define TIMEOUT (4)
+#define TIMEOUT (3)
 
 using namespace std;
 

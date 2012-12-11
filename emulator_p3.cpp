@@ -35,6 +35,7 @@ Node *emulator = new Node();	// Node representing this particular emulator
 map<string, int> sequenceMap;	// Keep track of the last seq. no. seen for each Node
 map<string, time_t> lastACKMap;	// Keep track of last ACK time for each node
 int currentSequence = 0;		// Current seq. no. of linkstate packets sent by this emulator
+time_t last_query_time = time(NULL);
 
 
 /*
@@ -308,6 +309,7 @@ int main(int argc, char *argv[]) {
 		memset(buffer, 0,  1024); // Need to zero the buffer
 		
 // CHECK IF YOUR NEIGHBORS ARE ONLINE
+		if (time(NULL) - last_query_time > 1.0) {
 		neighbors = emulator->getNeighbors();
 		for(int i = 0; i < (int)neighbors.size(); i++) { // for each neighbor 
 			// send QUERY
@@ -348,6 +350,8 @@ int main(int argc, char *argv[]) {
 					topologyChanged = true;
 				}				
 			}
+			last_query_time = time(NULL);
+		}
 		}
 		
 		// If there was a change send out linkstate packets and rerun createRoutes()
