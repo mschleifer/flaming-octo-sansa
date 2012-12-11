@@ -20,7 +20,7 @@
 //#include "util.hpp"
 #include <iostream>
 
-#define MAXLINE (440)
+#define MAXLINE (2000)
 #define ROUTETRACESIZE (133)
 
 /* Global Variables */
@@ -74,7 +74,7 @@ void readTopology(const char* filename) {
 	
 	while ( fgets ( line, MAXLINE, file ) != NULL ) // Read in a line
 	{
-		//if(debug) cout << "LINE: " << line;
+		if(debug) cout << "LINE: " << line;
 		
 		// Parse the line one token (<addr,port> pair) at a time
 		saveptr = &line;
@@ -97,8 +97,10 @@ void readTopology(const char* filename) {
 		nodeCount++; // New host node in topology for a new line
 	}
 	
+	cout << nodeCount << endl;
 	// Add the initial nodes; then add the neighbors of them
 	top.addNodes(topology);
+	cout << top.toString() << endl;
 	for (unsigned int i = 0; i < topology.size(); i++) {
 		top.addNeighbors(topology[i]);
 	}
