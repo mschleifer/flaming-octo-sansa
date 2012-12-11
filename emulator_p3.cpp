@@ -542,7 +542,17 @@ int main(int argc, char *argv[]) {
 					
 					if ( sendto(socketFD, (void*)sendPkt, ROUTETRACESIZE, 0, 
 							  (struct sockaddr*) &sock_sendto, sizeof(sock_sendto)) == -1 ) {
-						perror("ROUTE NEXT - sendto()");
+						// sending failure packet to routetrace
+						sock_sendto.sin_family = AF_INET;
+						sock_sendto.sin_port = htons( atoi(routePacket.srcPort) );
+						inet_pton(AF_INET, routePacket.srcIP, &sock_sendto.sin_addr);
+						memset(sock_sendto.sin_zero, '\0', sizeof(sock_sendto.sin_zero));
+						
+						sendPkt[0] = 'F';
+						if ( sendto(socketFD, (void*)sendPkt, ROUTETRACESIZE, 0, 
+							  (struct sockaddr*) &sock_sendto, sizeof(sock_sendto)) == -1 ) {
+							perror("FAILURE SENDING FAIL PACKET");
+						}
 					}
 					
 					free(sendPkt);

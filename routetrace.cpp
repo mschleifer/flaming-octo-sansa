@@ -203,6 +203,12 @@ int main(int argc, char *argv[]) {
 				  print_RoutePacket(routePkt);
 				  cout << endl;
 			}
+
+			if (routePkt.type == 'F') {
+				 cout <<	"No path found between " << srcIP << "::" << srcPort << " and " << dstIP << "::" << dstPort << endl;
+				
+				return 0;
+			}
 			
 			string rpSrcIP = routePkt.srcIP;
 			string rpSrcPort = routePkt.srcPort;
